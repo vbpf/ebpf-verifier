@@ -70,7 +70,7 @@ int main(int argc, char** argv) {
     // Always call ebpf_verifier_clear_thread_local_state on scope exit.
     at_scope_exit<ebpf_verifier_clear_thread_local_state> clear_thread_local_state;
 
-    ebpf_verifier_options_t ebpf_verifier_options = ebpf_verifier_default_options;
+    ebpf_verifier_options_t ebpf_verifier_options;
 
     crab::CrabEnableWarningMsg(false);
 
@@ -97,7 +97,7 @@ int main(int argc, char** argv) {
         ->capture_default_str()
         ->check(CLI::IsMember({"stats", "linux", "zoneCrab", "cfg"}));
 
-    app.add_flag("--termination,!--no-verify-termination", ebpf_verifier_options.check_termination,
+    app.add_flag("--termination,!--no-verify-termination", ebpf_verifier_options.cfg_opts.check_for_termination,
                  "Verify termination. Default: ignore")
         ->group("Features");
 
@@ -124,7 +124,7 @@ int main(int argc, char** argv) {
         ->expected(0, _conformance_groups.size())
         ->check(CLI::IsMember(_get_conformance_group_names()));
 
-    app.add_flag("--simplify,!--no-simplify", ebpf_verifier_options.simplify,
+    app.add_flag("--simplify,!--no-simplify", ebpf_verifier_options.cfg_opts.simplify,
                  "Simplify the CFG before analysis by merging chains of instructions into a single basic block. "
                  "Default: enabled")
         ->group("Verbosity");
@@ -193,7 +193,7 @@ int main(int argc, char** argv) {
     // Read a set of raw program sections from an ELF file.
     vector<raw_program> raw_progs;
     try {
-        raw_progs = read_elf(filename, desired_section, &ebpf_verifier_options, &platform);
+        raw_progs = read_elf(filename, desired_section, ebpf_verifier_options, &platform);
     } catch (std::runtime_error& e) {
         std::cerr << "error: " << e.what() << std::endl;
         return 1;
@@ -208,7 +208,7 @@ int main(int argc, char** argv) {
         if (!desired_section.empty() && raw_progs.empty()) {
             // We could not find the desired program, so get the full list
             // of possibilities.
-            raw_progs = read_elf(filename, string(), &ebpf_verifier_options, &platform);
+            raw_progs = read_elf(filename, string(), ebpf_verifier_options, &platform);
         }
         for (const raw_program& raw_prog : raw_progs) {
             std::cout << "section=" << raw_prog.section_name << " function=" << raw_prog.function_name << std::endl;
@@ -232,15 +232,12 @@ int main(int argc, char** argv) {
         print_map_descriptors(global_program_info->map_descriptors, out);
     }
 
-    prepare_cfg_options cfg_options = {.simplify = ebpf_verifier_options.simplify,
-                                       .check_for_termination = ebpf_verifier_options.check_termination};
-
     if (domain == "zoneCrab") {
         ebpf_verifier_stats_t verifier_stats;
         const auto [res, seconds] = timed_execution([&] {
-            return ebpf_verify_program(std::cout, prog, raw_prog.info, &ebpf_verifier_options, &verifier_stats);
+            return ebpf_verify_program(std::cout, prog, raw_prog.info, ebpf_verifier_options, &verifier_stats);
         });
-        if (res && ebpf_verifier_options.check_termination &&
+        if (res && ebpf_verifier_options.cfg_opts.check_for_termination &&
             (ebpf_verifier_options.print_failures || ebpf_verifier_options.print_invariants)) {
             std::cout << "Program terminates within " << verifier_stats.max_loop_count << " loop iterations\n";
         }
@@ -254,7 +251,7 @@ int main(int argc, char** argv) {
     } else if (domain == "stats") {
         // Convert the instruction sequence to a control-flow graph.
         const cfg_t cfg =
-            prepare_cfg(prog, raw_prog.info, cfg_options);
+            prepare_cfg(prog, raw_prog.info, ebpf_verifier_options.cfg_options);
 
         // Just print eBPF program stats.
         auto stats = collect_stats(cfg);
@@ -269,7 +266,7 @@ int main(int argc, char** argv) {
     } else if (domain == "cfg") {
         // Convert the instruction sequence to a control-flow graph.
         const cfg_t cfg =
-            prepare_cfg(prog, raw_prog.info, cfg_options);
+            prepare_cfg(prog, raw_prog.info, ebpf_verifier_options.cfg_options);
         std::cout << cfg;
         std::cout << "\n";
     } else {

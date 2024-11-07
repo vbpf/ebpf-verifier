@@ -94,7 +94,7 @@ static checks_db generate_report(const cfg_t& cfg, const crab::invariant_table_t
         }
     }
 
-    if (thread_local_options.check_termination) {
+    if (thread_local_options.cfg_opts.check_for_termination) {
         // Gather the upper bound of loop counts from post-invariants.
         for (const auto& [label, inv] : post_invariants) {
             if (inv.is_bottom()) {
@@ -163,12 +163,12 @@ static checks_db get_analysis_report(std::ostream& s, const cfg_t& cfg, const cr
 }
 
 static checks_db get_ebpf_report(std::ostream& s, const cfg_t& cfg, program_info info,
-                                 const ebpf_verifier_options_t* options,
+                                 const ebpf_verifier_options_t& options,
                                  const std::optional<InstructionSeq>& prog = std::nullopt) {
     global_program_info = std::move(info);
     crab::domains::clear_global_state();
     crab::variable_t::clear_thread_local_state();
-    thread_local_options = *options;
+    thread_local_options = options;
 
     try {
         // Get dictionaries of pre-invariants and post-invariants for each basic block.
@@ -185,10 +185,7 @@ static checks_db get_ebpf_report(std::ostream& s, const cfg_t& cfg, program_info
 
 /// Returned value is true if the program passes verification.
 bool run_ebpf_analysis(std::ostream& s, const cfg_t& cfg, const program_info& info,
-                       const ebpf_verifier_options_t* options, ebpf_verifier_stats_t* stats) {
-    if (options == nullptr) {
-        options = &ebpf_verifier_default_options;
-    }
+                       const ebpf_verifier_options_t& options, ebpf_verifier_stats_t* stats) {
     const checks_db report = get_ebpf_report(s, cfg, info, options);
     if (stats) {
         stats->total_unreachable = report.total_unreachable;
@@ -221,10 +218,7 @@ std::tuple<string_invariant, bool> ebpf_analyze_program_for_test(std::ostream& o
         throw std::runtime_error("Entry invariant is inconsistent");
     }
     try {
-        const cfg_t cfg = prepare_cfg(prog, info,
-                                      {.simplify = options.simplify,
-                                       .check_for_termination = options.check_termination,
-                                       .must_have_exit = false});
+        const cfg_t cfg = prepare_cfg(prog, info, options.cfg_opts);
         auto [pre_invariants, post_invariants] = run_forward_analyzer(cfg, std::move(entry_inv));
         const checks_db report = get_analysis_report(std::cerr, cfg, pre_invariants, post_invariants);
         print_report(os, report, prog, false);
@@ -240,24 +234,19 @@ std::tuple<string_invariant, bool> ebpf_analyze_program_for_test(std::ostream& o
 
 /// Returned value is true if the program passes verification.
 bool ebpf_verify_program(std::ostream& os, const InstructionSeq& prog, const program_info& info,
-                         const ebpf_verifier_options_t* options, ebpf_verifier_stats_t* stats) {
-    if (options == nullptr) {
-        options = &ebpf_verifier_default_options;
-    }
-
+                         const ebpf_verifier_options_t& options, ebpf_verifier_stats_t* stats) {
     // Convert the instruction sequence to a control-flow graph
     // in a "passive", non-deterministic form.
-    const cfg_t cfg =
-        prepare_cfg(prog, info, {.simplify = options->simplify, .check_for_termination = options->check_termination});
+    const cfg_t cfg = prepare_cfg(prog, info, options.cfg_opts);
 
     std::optional<InstructionSeq> prog_opt = std::nullopt;
-    if (options->print_failures) {
+    if (options.print_failures) {
         prog_opt = prog;
     }
 
     const checks_db report = get_ebpf_report(os, cfg, info, options, prog_opt);
-    if (options->print_failures) {
-        print_report(os, report, prog, options->print_line_info);
+    if (options.print_failures) {
+        print_report(os, report, prog, options.print_line_info);
     }
     if (stats) {
         stats->total_unreachable = report.total_unreachable;

@@ -617,7 +617,7 @@ struct prepare_cfg_options {
     /// When true, simplifies the control flow graph by merging basic blocks.
     bool simplify = true;
     /// When true, verifies that the program terminates.
-    bool check_for_termination = true;
+    bool check_for_termination = false;
     /// When true, ensures the program has a valid exit block.
     bool must_have_exit = true;
 };

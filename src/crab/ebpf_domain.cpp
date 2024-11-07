@@ -825,7 +825,7 @@ ebpf_domain_t ebpf_domain_t::calculate_constant_limits() {
         inv += r.shared_offset >= 0;
         inv += r.packet_offset <= variable_t::packet_size();
         inv += r.packet_offset >= 0;
-        if (thread_local_options.check_termination) {
+        if (thread_local_options.cfg_opts.check_for_termination) {
             for (const variable_t counter : variable_t::get_loop_counters()) {
                 inv += counter <= std::numeric_limits<int32_t>::max();
                 inv += counter >= 0;

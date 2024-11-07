@@ -88,7 +88,7 @@ static std::tuple<ELFIO::Elf64_Addr, unsigned char> get_value(const ELFIO::const
 
 // parse_maps_sections processes all maps sections in the provided ELF file by calling the platform-specific maps'
 // parser. The section index of each maps section is inserted into section_indices.
-static size_t parse_map_sections(const ebpf_verifier_options_t* options, const ebpf_platform_t* platform,
+static size_t parse_map_sections(const ebpf_verifier_options_t& options, const ebpf_platform_t* platform,
                                  const ELFIO::elfio& reader, vector<EbpfMapDescriptor>& map_descriptors,
                                  std::set<ELFIO::Elf_Half>& section_indices,
                                  const ELFIO::const_symbol_section_accessor& symbols) {
@@ -116,8 +116,7 @@ static size_t parse_map_sections(const ebpf_verifier_options_t* options, const e
             if (s->get_size() % map_record_size != 0) {
                 throw std::runtime_error("bad maps section size");
             }
-            platform->parse_maps_section(map_descriptors, s->get_data(), map_record_size, map_count, platform,
-                                         *options);
+            platform->parse_maps_section(map_descriptors, s->get_data(), map_record_size, map_count, platform, options);
         }
         section_indices.insert(s->get_index());
     }
@@ -125,7 +124,7 @@ static size_t parse_map_sections(const ebpf_verifier_options_t* options, const e
     return map_record_size;
 }
 
-vector<raw_program> read_elf(const string& path, const string& desired_section, const ebpf_verifier_options_t* options,
+vector<raw_program> read_elf(const string& path, const string& desired_section, const ebpf_verifier_options_t& options,
                              const ebpf_platform_t* platform) {
     if (std::ifstream stream{path, std::ios::in | std::ios::binary}) {
         return read_elf(stream, path, desired_section, options, platform);
@@ -280,10 +279,7 @@ std::map<std::string, size_t> parse_map_section(const libbtf::btf_type_data& btf
 }
 
 vector<raw_program> read_elf(std::istream& input_stream, const std::string& path, const std::string& desired_section,
-                             const ebpf_verifier_options_t* options, const ebpf_platform_t* platform) {
-    if (options == nullptr) {
-        options = &ebpf_verifier_default_options;
-    }
+                             const ebpf_verifier_options_t& options, const ebpf_platform_t* platform) {
     ELFIO::elfio reader;
     if (!reader.load(input_stream)) {
         throw std::runtime_error("Can't process ELF file " + path);
@@ -311,7 +307,7 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
     if (btf) {
         // Parse the BTF type data.
         btf_data = vector_of<std::byte>(*btf);
-        if (options->dump_btf_types_json) {
+        if (options.dump_btf_types_json) {
             std::stringstream output;
             std::cout << "Dumping BTF data for" << path << std::endl;
             // Dump the BTF data to cout for debugging purposes.
