@@ -156,7 +156,7 @@ struct Un {
     constexpr bool operator==(const Un&) const = default;
 };
 
-/// This instruction is encoded similarly to LDDW.
+/// This Command is encoded similarly to LDDW.
 /// See comment in makeLddw() at asm_unmarshal.cpp
 struct LoadMapFd {
     Reg dst;
@@ -245,7 +245,7 @@ struct Exit {
     bool operator==(const Exit& other) const noexcept = default;
 };
 
-/// Experimental callx instruction.
+/// Experimental callx Command.
 struct Callx {
     Reg func;
     constexpr bool operator==(const Callx&) const = default;
@@ -258,7 +258,7 @@ struct Deref {
     constexpr bool operator==(const Deref&) const = default;
 };
 
-/// Load/store instruction.
+/// Load/store Command.
 struct Mem {
     Deref access;
     Value value;
@@ -266,7 +266,7 @@ struct Mem {
     constexpr bool operator==(const Mem&) const = default;
 };
 
-/// A deprecated instruction for checked access to packets; it is actually a
+/// A deprecated Command for checked access to packets; it is actually a
 /// function call, and analyzed as one, e.g., by scratching caller-saved
 /// registers after it is performed.
 struct Packet {
@@ -276,7 +276,7 @@ struct Packet {
     constexpr bool operator==(const Packet&) const = default;
 };
 
-/// Special instruction for atomically updating values inside shared memory.
+/// Special Command for atomically updating values inside shared memory.
 /// The analysis just treats an atomic operation as a series of consecutive
 /// operations, and the atomicity itself is not significant.
 struct Atomic {
@@ -296,7 +296,7 @@ struct Atomic {
     constexpr bool operator==(const Atomic&) const = default;
 };
 
-/// Not an instruction, just used for failure cases.
+/// Not an Command, just used for failure cases.
 struct Undefined {
     int opcode{};
     constexpr bool operator==(const Undefined&) const = default;
@@ -309,6 +309,14 @@ struct Assume {
     Condition cond;
     constexpr bool operator==(const Assume&) const = default;
 };
+
+struct IncrementLoopCounter {
+    label_t name;
+    bool operator==(const IncrementLoopCounter&) const = default;
+};
+
+using Command = std::variant<Undefined, Bin, Un, LoadMapFd, Call, CallLocal, Callx, Exit, Jmp, Mem, Packet, Atomic,
+                             Assume, IncrementLoopCounter>;
 
 /// Condition check whether something is a valid size.
 struct ValidSize {
@@ -406,28 +414,20 @@ struct BoundedLoopCount {
     static constexpr int limit = 100000;
 };
 
-using AssertionConstraint = std::variant<Comparable, Addable, ValidDivisor, ValidAccess, ValidStore, ValidSize,
-                                         ValidMapKeyValue, ValidCall, TypeConstraint, FuncConstraint, ZeroCtxOffset, BoundedLoopCount>;
+using Assertion = std::variant<Comparable, Addable, ValidDivisor, ValidAccess, ValidStore, ValidSize, ValidMapKeyValue,
+                               ValidCall, TypeConstraint, FuncConstraint, ZeroCtxOffset, BoundedLoopCount>;
 
-struct Assert {
-    AssertionConstraint cst;
-    Assert(AssertionConstraint cst) : cst(std::move(cst)) {}
-    constexpr bool operator==(const Assert&) const = default;
+struct Instruction {
+    Command cmd;
+    std::vector<Assertion> preconditions;
+    bool operator==(const Instruction&) const = default;
 };
-
-struct IncrementLoopCounter {
-    label_t name;
-    bool operator==(const IncrementLoopCounter&) const = default;
-};
-
-using Instruction = std::variant<Undefined, Bin, Un, LoadMapFd, Call, CallLocal, Callx, Exit, Jmp, Mem, Packet, Atomic,
-                                 Assume, Assert, IncrementLoopCounter>;
 
 using LabeledInstruction = std::tuple<label_t, Instruction, std::optional<btf_line_info_t>>;
 using InstructionSeq = std::vector<LabeledInstruction>;
 
 // cpu=v4 supports 32-bit PC offsets so we need a large enough type.
-using pc_t = size_t;
+using pc_t = uint32_t;
 
 } // namespace asm_syntax
 

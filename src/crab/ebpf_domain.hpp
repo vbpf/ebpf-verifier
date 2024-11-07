@@ -52,32 +52,34 @@ class ebpf_domain_t final {
     // abstract transformers
     void operator()(const basic_block_t& bb);
 
-    void operator()(const Addable&);
-    void operator()(const Assert&);
     void operator()(const Assume&);
     void operator()(const Bin&);
     void operator()(const Call&);
     void operator()(const CallLocal&);
     void operator()(const Callx&);
-    void operator()(const Comparable&);
     void operator()(const Exit&);
-    void operator()(const FuncConstraint&);
-    void operator()(const Jmp&);
+    void operator()(const Jmp&) const;
     void operator()(const LoadMapFd&);
     void operator()(const Atomic&);
     void operator()(const Mem&);
-    void operator()(const ValidDivisor&);
     void operator()(const Packet&);
-    void operator()(const TypeConstraint&);
     void operator()(const Un&);
     void operator()(const Undefined&);
+    void operator()(const IncrementLoopCounter&);
+
+    void operator()(const Assertion&);
+
+    void operator()(const Addable&);
+    void operator()(const Comparable&);
+    void operator()(const FuncConstraint&);
+    void operator()(const ValidDivisor&);
+    void operator()(const TypeConstraint&);
     void operator()(const ValidAccess&);
     void operator()(const ValidCall&);
     void operator()(const ValidMapKeyValue&);
     void operator()(const ValidSize&);
     void operator()(const ValidStore&);
     void operator()(const ZeroCtxOffset&);
-    void operator()(const IncrementLoopCounter&);
     void operator()(const BoundedLoopCount&);
 
     void initialize_loop_counter(const label_t& label);

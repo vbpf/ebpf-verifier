@@ -205,7 +205,7 @@ struct MarshalVisitor {
 
     vector<ebpf_inst> operator()(Assume const&) const { throw std::invalid_argument("Cannot marshal assumptions"); }
 
-    vector<ebpf_inst> operator()(Assert const&) const { throw std::invalid_argument("Cannot marshal assertions"); }
+    vector<ebpf_inst> operator()(Assertion const&) const { throw std::invalid_argument("Cannot marshal assertions"); }
 
     vector<ebpf_inst> operator()(Jmp const& b) const {
         if (b.cond) {
@@ -294,11 +294,11 @@ struct MarshalVisitor {
     vector<ebpf_inst> operator()(IncrementLoopCounter const&) const { return {}; }
 };
 
-vector<ebpf_inst> marshal(const Instruction& ins, const pc_t pc) {
+vector<ebpf_inst> marshal(const Command& ins, const pc_t pc) {
     return std::visit(MarshalVisitor{label_to_offset16(pc), label_to_offset32(pc)}, ins);
 }
 
-static int size(const Instruction& inst) {
+static int size(const Command& inst) {
     if (const auto pins = std::get_if<Bin>(&inst)) {
         if (pins->lddw) {
             return 2;
@@ -315,7 +315,7 @@ static auto get_labels(const InstructionSeq& insts) {
     std::map<label_t, pc_t> pc_of_label;
     for (const auto& [label, inst, _] : insts) {
         pc_of_label[label] = pc;
-        pc += size(inst);
+        pc += size(inst.cmd);
     }
     return pc_of_label;
 }
@@ -326,10 +326,10 @@ vector<ebpf_inst> marshal(const InstructionSeq& insts) {
     pc_t pc = 0;
     for (auto [label, ins, _] : insts) {
         (void)label; // unused
-        if (const auto pins = std::get_if<Jmp>(&ins)) {
+        if (const auto pins = std::get_if<Jmp>(&ins.cmd)) {
             pins->target = label_t{gsl::narrow<int>(pc_of_label.at(pins->target))};
         }
-        for (const auto e : marshal(ins, pc)) {
+        for (const auto e : marshal(ins.cmd, pc)) {
             pc++;
             res.push_back(e);
         }

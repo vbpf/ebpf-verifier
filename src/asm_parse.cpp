@@ -133,7 +133,7 @@ static Deref deref(const std::string& width, const std::string& basereg, const s
     };
 }
 
-Instruction parse_instruction(const std::string& line, const std::map<std::string, label_t>& label_name_to_label) {
+Command parse_instruction(const std::string& line, const std::map<std::string, label_t>& label_name_to_label) {
     // treat ";" as a comment
     std::string text = line.substr(0, line.find(';'));
     const size_t end = text.find_last_not_of(' ');
@@ -246,7 +246,7 @@ static InstructionSeq parse_program(std::istream& is) {
         if (line.empty()) {
             continue;
         }
-        Instruction ins = parse_instruction(line, {});
+        Command ins = parse_instruction(line, {});
         if (std::holds_alternative<Undefined>(ins)) {
             continue;
         }

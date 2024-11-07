@@ -152,7 +152,7 @@ static InstructionSeq raw_cfg_to_instruction_seq(const vector<std::tuple<string,
     for (const auto& [label_name, raw_block] : raw_blocks) {
         for (const string& line : raw_block) {
             try {
-                const Instruction& ins = parse_instruction(line, label_name_to_label);
+                const Command& ins = parse_instruction(line, label_name_to_label);
                 if (std::holds_alternative<Undefined>(ins)) {
                     std::cout << "text:" << line << "; ins: " << ins << "\n";
                 }
@@ -182,7 +182,7 @@ static ebpf_verifier_options_t raw_options_to_options(const std::set<string>& ra
     // Default to not assuming assertions.
     options.assume_assertions = false;
 
-    // Permit test cases to not have an exit instruction.
+    // Permit test cases to not have an exit Command.
     options.cfg_opts.must_have_exit = false;
 
     for (const string& name : raw_options) {

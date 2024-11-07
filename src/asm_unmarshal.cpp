@@ -78,7 +78,7 @@ static auto getMemWidth(const uint8_t opcode) -> int {
     }
 }
 
-static Instruction shift32(const Reg dst, const Bin::Op op) {
+static Command shift32(const Reg dst, const Bin::Op op) {
     return Bin{.op = op, .dst = dst, .v = Imm{32}, .is64 = true, .lddw = false};
 }
 
@@ -274,7 +274,7 @@ struct Unmarshaller {
         }
     }
 
-    auto makeMemOp(const pc_t pc, const ebpf_inst inst) -> Instruction {
+    auto makeMemOp(const pc_t pc, const ebpf_inst inst) -> Command {
         if (inst.dst > R10_STACK_POINTER || inst.src > R10_STACK_POINTER) {
             throw InvalidInstruction(pc, "bad register");
         }
@@ -381,7 +381,7 @@ struct Unmarshaller {
         }
     }
 
-    auto makeAluOp(const size_t pc, const ebpf_inst inst) -> Instruction {
+    auto makeAluOp(const size_t pc, const ebpf_inst inst) -> Command {
         const bool is64 = (inst.opcode & INST_CLS_MASK) == INST_CLS_ALU64;
         if (!info.platform->supports_group(is64 ? bpf_conformance_groups_t::base64
                                                 : bpf_conformance_groups_t::base32)) {
@@ -394,8 +394,8 @@ struct Unmarshaller {
             throw InvalidInstruction(pc, "bad register");
         }
         return std::visit(
-            overloaded{[&](const Un::Op op) -> Instruction { return Un{.op = op, .dst = Reg{inst.dst}, .is64 = is64}; },
-                       [&](const Bin::Op op) -> Instruction {
+            overloaded{[&](const Un::Op op) -> Command { return Un{.op = op, .dst = Reg{inst.dst}, .is64 = is64}; },
+                       [&](const Bin::Op op) -> Command {
                            Bin res{
                                .op = op,
                                .dst = Reg{inst.dst},
@@ -417,7 +417,7 @@ struct Unmarshaller {
 
     [[nodiscard]]
     auto makeLddw(const ebpf_inst inst, const int32_t next_imm, const vector<ebpf_inst>& insts, const pc_t pc) const
-        -> Instruction {
+        -> Command {
         if (!info.platform->supports_group(bpf_conformance_groups_t::base64)) {
             throw InvalidInstruction{pc, inst.opcode};
         }
@@ -588,7 +588,7 @@ struct Unmarshaller {
     }
 
     [[nodiscard]]
-    auto makeJmp(const ebpf_inst inst, const vector<ebpf_inst>& insts, const pc_t pc) const -> Instruction {
+    auto makeJmp(const ebpf_inst inst, const vector<ebpf_inst>& insts, const pc_t pc) const -> Command {
         switch ((inst.opcode >> 4) & 0xF) {
         case INST_CALL:
             if ((inst.opcode & INST_CLS_MASK) != INST_CLS_JMP) {
@@ -704,7 +704,7 @@ struct Unmarshaller {
         }
         for (size_t pc = 0; pc < insts.size();) {
             const ebpf_inst inst = insts[pc];
-            Instruction new_ins;
+            Command new_ins;
             bool skip_instruction = false;
             bool fallthrough = true;
             switch (inst.opcode & INST_CLS_MASK) {

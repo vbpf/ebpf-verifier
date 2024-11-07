@@ -39,8 +39,8 @@ void print(const InstructionSeq& insts, std::ostream& out, const std::optional<c
 
 std::string to_string(label_t const& label);
 
-std::ostream& operator<<(std::ostream& os, Instruction const& ins);
-std::string to_string(Instruction const& ins);
+std::ostream& operator<<(std::ostream& os, Command const& ins);
+std::string to_string(Command const& ins);
 
 std::ostream& operator<<(std::ostream& os, Bin::Op op);
 std::ostream& operator<<(std::ostream& os, Condition::Op op);
@@ -54,19 +54,18 @@ inline std::ostream& operator<<(std::ostream& os, Value const& a) {
     return os << std::get<Reg>(a);
 }
 
-inline std::ostream& operator<<(std::ostream& os, Undefined const& a) { return os << Instruction{a}; }
-inline std::ostream& operator<<(std::ostream& os, LoadMapFd const& a) { return os << Instruction{a}; }
-inline std::ostream& operator<<(std::ostream& os, Bin const& a) { return os << Instruction{a}; }
-inline std::ostream& operator<<(std::ostream& os, Un const& a) { return os << Instruction{a}; }
-inline std::ostream& operator<<(std::ostream& os, Call const& a) { return os << Instruction{a}; }
-inline std::ostream& operator<<(std::ostream& os, Callx const& a) { return os << Instruction{a}; }
-inline std::ostream& operator<<(std::ostream& os, Exit const& a) { return os << Instruction{a}; }
-inline std::ostream& operator<<(std::ostream& os, Jmp const& a) { return os << Instruction{a}; }
-inline std::ostream& operator<<(std::ostream& os, Packet const& a) { return os << Instruction{a}; }
-inline std::ostream& operator<<(std::ostream& os, Mem const& a) { return os << Instruction{a}; }
-inline std::ostream& operator<<(std::ostream& os, Atomic const& a) { return os << Instruction{a}; }
-inline std::ostream& operator<<(std::ostream& os, Assume const& a) { return os << Instruction{a}; }
-inline std::ostream& operator<<(std::ostream& os, Assert const& a) { return os << Instruction{a}; }
-inline std::ostream& operator<<(std::ostream& os, IncrementLoopCounter const& a) { return os << Instruction{a}; }
-std::ostream& operator<<(std::ostream& os, AssertionConstraint const& a);
-std::string to_string(AssertionConstraint const& constraint);
+inline std::ostream& operator<<(std::ostream& os, Undefined const& a) { return os << Command{a}; }
+inline std::ostream& operator<<(std::ostream& os, LoadMapFd const& a) { return os << Command{a}; }
+inline std::ostream& operator<<(std::ostream& os, Bin const& a) { return os << Command{a}; }
+inline std::ostream& operator<<(std::ostream& os, Un const& a) { return os << Command{a}; }
+inline std::ostream& operator<<(std::ostream& os, Call const& a) { return os << Command{a}; }
+inline std::ostream& operator<<(std::ostream& os, Callx const& a) { return os << Command{a}; }
+inline std::ostream& operator<<(std::ostream& os, Exit const& a) { return os << Command{a}; }
+inline std::ostream& operator<<(std::ostream& os, Jmp const& a) { return os << Command{a}; }
+inline std::ostream& operator<<(std::ostream& os, Packet const& a) { return os << Command{a}; }
+inline std::ostream& operator<<(std::ostream& os, Mem const& a) { return os << Command{a}; }
+inline std::ostream& operator<<(std::ostream& os, Atomic const& a) { return os << Command{a}; }
+inline std::ostream& operator<<(std::ostream& os, Assume const& a) { return os << Command{a}; }
+inline std::ostream& operator<<(std::ostream& os, IncrementLoopCounter const& a) { return os << Command{a}; }
+std::ostream& operator<<(std::ostream& os, const Assertion& a);
+std::string to_string(const Assertion& constraint);

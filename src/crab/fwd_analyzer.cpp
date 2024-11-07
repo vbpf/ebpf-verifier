@@ -128,7 +128,7 @@ std::pair<invariant_table_t, invariant_table_t> run_forward_analyzer(const cfg_t
         // Initialize loop counters for potential loop headers.
         // This enables enforcement of upper bounds on loop iterations
         // during program verification.
-        // TODO: Consider making this an instruction instead of an explicit call.
+        // TODO: Consider making this a Command instead of an explicit call.
         analyzer._wto.for_each_loop_head([&](const label_t& label) { entry_inv.initialize_loop_counter(label); });
     }
     analyzer.set_pre(cfg.entry_label(), entry_inv);

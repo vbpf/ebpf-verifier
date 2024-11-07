@@ -18,14 +18,14 @@ using std::string;
 using std::to_string;
 using std::vector;
 
-static optional<label_t> get_jump(Instruction ins) {
+static optional<label_t> get_jump(Command ins) {
     if (const auto pins = std::get_if<Jmp>(&ins)) {
         return pins->target;
     }
     return {};
 }
 
-static bool has_fall(const Instruction& ins) {
+static bool has_fall(const Command& ins) {
     if (std::holds_alternative<Exit>(ins)) {
         return false;
     }
@@ -47,12 +47,12 @@ static void add_cfg_nodes(cfg_t& cfg, const label_t& caller_label, const label_t
     basic_block_t& exit_to_node = cfg.get_node(cfg.next_nodes(caller_label).front());
 
     // Construct the variable prefix to use for the new stack frame,
-    // and store a copy in the CallLocal instruction since the instruction-specific
+    // and store a copy in the CallLocal Command since the Command-specific
     // labels may only exist until the CFG is simplified.
     basic_block_t& caller_node = cfg.get_node(caller_label);
     const std::string stack_frame_prefix = to_string(caller_label);
     for (auto& inst : caller_node) {
-        if (const auto pcall = std::get_if<CallLocal>(&inst)) {
+        if (const auto pcall = std::get_if<CallLocal>(&inst.cmd)) {
             pcall->stack_frame_prefix = stack_frame_prefix;
         }
     }
@@ -73,9 +73,9 @@ static void add_cfg_nodes(cfg_t& cfg, const label_t& caller_label, const label_t
         const label_t label{macro_label.from, macro_label.to, stack_frame_prefix};
         auto& bb = cfg.insert(label);
         for (auto inst : cfg.get_node(macro_label)) {
-            if (const auto pexit = std::get_if<Exit>(&inst)) {
+            if (const auto pexit = std::get_if<Exit>(&inst.cmd)) {
                 pexit->stack_frame_prefix = label.stack_frame_prefix;
-            } else if (const auto pcall = std::get_if<Call>(&inst)) {
+            } else if (const auto pcall = std::get_if<Call>(&inst.cmd)) {
                 pcall->stack_frame_prefix = label.stack_frame_prefix;
             }
             bb.insert(inst);
@@ -123,7 +123,7 @@ static void add_cfg_nodes(cfg_t& cfg, const label_t& caller_label, const label_t
     for (const auto& macro_label : seen_labels) {
         for (const label_t label(macro_label.from, macro_label.to, caller_label_str);
              const auto& inst : cfg.get_node(label)) {
-            if (const auto pins = std::get_if<CallLocal>(&inst)) {
+            if (const auto pins = std::get_if<CallLocal>(&inst.cmd)) {
                 if (stack_frame_depth >= MAX_CALL_STACK_FRAMES) {
                     throw std::runtime_error{"too many call stack frames"};
                 }
@@ -142,7 +142,7 @@ static cfg_t instruction_seq_to_cfg(const InstructionSeq& insts, const bool must
     // Do a first pass ignoring all function macro calls.
     for (const auto& [label, inst, _] : insts) {
 
-        if (std::holds_alternative<Undefined>(inst)) {
+        if (std::holds_alternative<Undefined>(inst.cmd)) {
             continue;
         }
 
@@ -158,20 +158,20 @@ static cfg_t instruction_seq_to_cfg(const InstructionSeq& insts, const bool must
             cfg.get_node(*falling_from) >> bb;
             falling_from = {};
         }
-        if (has_fall(inst)) {
+        if (has_fall(inst.cmd)) {
             falling_from = label;
         }
-        if (auto jump_target = get_jump(inst)) {
+        if (auto jump_target = get_jump(inst.cmd)) {
             bb >> cfg.insert(*jump_target);
         }
 
-        if (std::holds_alternative<Exit>(inst)) {
+        if (std::holds_alternative<Exit>(inst.cmd)) {
             bb >> cfg.get_node(cfg.exit_label());
         }
     }
     if (falling_from) {
         if (must_have_exit) {
-            throw std::invalid_argument{"fallthrough in last instruction"};
+            throw std::invalid_argument{"fallthrough in last Command"};
         } else {
             cfg.get_node(*falling_from) >> cfg.get_node(cfg.exit_label());
         }
@@ -181,7 +181,7 @@ static cfg_t instruction_seq_to_cfg(const InstructionSeq& insts, const bool must
     // we only add new nodes that are actually reachable, based on the
     // results of the first pass.
     for (const auto& [label, inst, _] : insts) {
-        if (const auto pins = std::get_if<CallLocal>(&inst)) {
+        if (const auto pins = std::get_if<CallLocal>(&inst.cmd)) {
             add_cfg_nodes(cfg, label, pins->target);
         }
     }
@@ -236,9 +236,7 @@ static cfg_t to_nondet(const cfg_t& cfg) {
         basic_block_t& newbb = res.insert(this_label);
 
         for (const auto& ins : bb) {
-            if (!std::holds_alternative<Jmp>(ins)) {
-                newbb.insert(ins);
-            }
+            newbb.insert(ins);
         }
 
         for (const label_t& prev_label : bb.prev_blocks_set()) {
@@ -250,7 +248,7 @@ static cfg_t to_nondet(const cfg_t& cfg) {
         auto nextlist = bb.next_blocks_set();
         if (nextlist.size() == 2) {
             label_t mid_label = this_label;
-            auto jmp = std::get<Jmp>(*bb.rbegin());
+            auto jmp = std::get<Jmp>(bb.rbegin()->cmd);
 
             nextlist.erase(jmp.target);
             label_t fallthrough = *nextlist.begin();
@@ -262,7 +260,7 @@ static cfg_t to_nondet(const cfg_t& cfg) {
             for (const auto& [next_label, cond1] : jumps) {
                 label_t jump_label = label_t::make_jump(mid_label, next_label);
                 basic_block_t& jump_bb = res.insert(jump_label);
-                jump_bb.insert(Assume{cond1});
+                jump_bb.insert({.cmd = Assume{cond1}});
                 newbb >> jump_bb;
                 jump_bb >> res.insert(next_label);
             }
@@ -275,9 +273,9 @@ static cfg_t to_nondet(const cfg_t& cfg) {
     return res;
 }
 
-/// Get the type of given instruction.
+/// Get the type of given Command.
 /// Most of these type names are also statistics header labels.
-static std::string instype(Instruction ins) {
+static std::string instype(Command ins) {
     if (const auto pcall = std::get_if<Call>(&ins)) {
         if (pcall->is_map_lookup) {
             return "call_1";
@@ -334,20 +332,20 @@ std::map<std::string, int> collect_stats(const cfg_t& cfg) {
         basic_block_t const& bb = cfg.get_node(this_label);
 
         for (Instruction ins : bb) {
-            if (const auto pins = std::get_if<LoadMapFd>(&ins)) {
+            if (const auto pins = std::get_if<LoadMapFd>(&ins.cmd)) {
                 if (pins->mapfd == -1) {
                     res["map_in_map"] = 1;
                 }
             }
-            if (const auto pins = std::get_if<Call>(&ins)) {
+            if (const auto pins = std::get_if<Call>(&ins.cmd)) {
                 if (pins->reallocate_packet) {
                     res["reallocate"] = 1;
                 }
             }
-            if (const auto pins = std::get_if<Bin>(&ins)) {
+            if (const auto pins = std::get_if<Bin>(&ins.cmd)) {
                 res[pins->is64 ? "arith64" : "arith32"]++;
             }
-            res[instype(ins)]++;
+            res[instype(ins.cmd)]++;
         }
         if (unique(bb.prev_blocks()).size() > 1) {
             res["joins"]++;
@@ -369,10 +367,10 @@ cfg_t prepare_cfg(const InstructionSeq& prog, const program_info& info, const pr
     if (options.check_for_termination) {
         const wto_t wto(det_cfg);
         wto.for_each_loop_head(
-            [&](const label_t& label) { det_cfg.get_node(label).insert_front(IncrementLoopCounter{label}); });
+            [&](const label_t& label) { det_cfg.get_node(label).insert_front({.cmd = IncrementLoopCounter{label}}); });
     }
 
-    // Annotate the CFG by adding in assertions before every memory instruction.
+    // Annotate the CFG by adding in assertions before every memory Command.
     explicate_assertions(det_cfg, info);
 
     // Translate conditional jumps to non-deterministic jumps.

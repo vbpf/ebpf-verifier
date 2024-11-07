@@ -35,7 +35,6 @@ class cfg_t;
 class basic_block_t final {
     friend class cfg_t;
 
-  private:
   public:
     basic_block_t(const basic_block_t&) = delete;
 
@@ -60,7 +59,7 @@ class basic_block_t final {
         m_ts.push_back(arg);
     }
 
-    /// Insert an instruction at the front of the basic block.
+    /// Insert an Instruction at the front of the basic block.
     /// @note Cannot modify entry or exit blocks.
     void insert_front(const Instruction& arg) {
         assert(label() != label_t::entry);
@@ -625,11 +624,11 @@ struct prepare_cfg_options {
 cfg_t prepare_cfg(const InstructionSeq& prog, const program_info& info, const prepare_cfg_options& options);
 
 void explicate_assertions(cfg_t& cfg, const program_info& info);
-std::vector<Assert> get_assertions(Instruction ins, const program_info& info, const std::optional<label_t>& label);
+std::vector<Assertion> get_assertions(Command ins, const program_info& info, const std::optional<label_t>& label);
 
 void print_dot(const cfg_t& cfg, std::ostream& out);
 void print_dot(const cfg_t& cfg, const std::string& outfile);
 
-std::ostream& operator<<(std::ostream& o, const crab::basic_block_t& bb);
+std::ostream& operator<<(std::ostream& o, const basic_block_t& bb);
 std::ostream& operator<<(std::ostream& o, const crab::basic_block_rev_t& bb);
 std::ostream& operator<<(std::ostream& o, const cfg_t& cfg);
