@@ -62,7 +62,9 @@ static checks_db generate_report(const cfg_t& cfg, const crab::invariant_table_t
     for (const label_t& label : cfg.sorted_labels()) {
         const basic_block_t& bb = cfg.get_node(label);
         ebpf_domain_t from_inv(pre_invariants.at(label));
-        from_inv.set_require_check(
+        const bool pre_bot = from_inv.is_bottom();
+        crab::ebpf_checker checker{from_inv};
+        checker.set_require_check(
             [&m_db, label](auto& inv, const crab::linear_constraint_t& cst, const std::string& s) {
                 if (inv.is_bottom()) {
                     return true;
@@ -85,9 +87,12 @@ static checks_db generate_report(const cfg_t& cfg, const crab::invariant_table_t
                 }
             });
 
-        const bool pre_bot = from_inv.is_bottom();
-
-        from_inv(bb);
+        for (const GuardedInstruction& ins : bb) {
+            for (const Assertion& assertion : ins.preconditions) {
+                checker(assertion);
+            }
+            std::visit(crab::ebpf_transformer{from_inv}, ins.cmd);
+        };
 
         if (!pre_bot && from_inv.is_bottom()) {
             m_db.add_unreachable(label, std::string("Code is unreachable after ") + to_string(bb.label()));
@@ -172,7 +177,7 @@ static checks_db get_ebpf_report(std::ostream& s, const cfg_t& cfg, program_info
 
     try {
         // Get dictionaries of pre-invariants and post-invariants for each basic block.
-        ebpf_domain_t entry_dom = ebpf_domain_t::setup_entry(true);
+        ebpf_domain_t entry_dom = crab::ebpf_transformer::setup_entry(true);
         auto [pre_invariants, post_invariants] = run_forward_analyzer(cfg, std::move(entry_dom));
         return get_analysis_report(s, cfg, pre_invariants, post_invariants, prog);
     } catch (std::runtime_error& e) {

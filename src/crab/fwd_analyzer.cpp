@@ -69,7 +69,10 @@ class interleaved_fwd_fixpoint_iterator_t final {
 
     void transform_to_post(const label_t& label, ebpf_domain_t pre) {
         const basic_block_t& bb = _cfg.get_node(label);
-        pre(bb);
+
+        for (const GuardedInstruction& ins : bb) {
+            std::visit(ebpf_transformer{pre}, ins.cmd);
+        };
         _post[label] = std::move(pre);
     }
 
@@ -129,7 +132,8 @@ std::pair<invariant_table_t, invariant_table_t> run_forward_analyzer(const cfg_t
         // This enables enforcement of upper bounds on loop iterations
         // during program verification.
         // TODO: Consider making this an instruction instead of an explicit call.
-        analyzer._wto.for_each_loop_head([&](const label_t& label) { entry_inv.initialize_loop_counter(label); });
+        analyzer._wto.for_each_loop_head(
+            [&](const label_t& label) { ebpf_transformer{entry_inv}.initialize_loop_counter(label); });
     }
     analyzer.set_pre(cfg.entry_label(), entry_inv);
     for (const auto& component : analyzer._wto) {

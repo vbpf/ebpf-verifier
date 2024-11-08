@@ -38,7 +38,7 @@ static const std::map<std::string, bpf_conformance_groups_t> _conformance_groups
     {"callx", bpf_conformance_groups_t::callx},       {"divmul32", bpf_conformance_groups_t::divmul32},
     {"divmul64", bpf_conformance_groups_t::divmul64}, {"packet", bpf_conformance_groups_t::packet}};
 
-static std::optional<bpf_conformance_groups_t> _get_conformance_group_by_name(std::string group) {
+static std::optional<bpf_conformance_groups_t> _get_conformance_group_by_name(const std::string& group) {
     if (!_conformance_groups.contains(group)) {
         return {};
     }
