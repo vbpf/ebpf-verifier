@@ -259,7 +259,7 @@ struct CommandPrinterVisitor {
     void operator()(Exit const& b) { os_ << "exit"; }
 
     void operator()(Jmp const& b) {
-        // A "standalone" jump Command.
+        // A "standalone" jump Instruction.
         // Print the label without offset calculations.
         if (b.cond) {
             os_ << "if ";
@@ -361,12 +361,12 @@ string to_string(label_t const& label) {
     return str.str();
 }
 
-std::ostream& operator<<(std::ostream& os, Command const& ins) {
+std::ostream& operator<<(std::ostream& os, Instruction const& ins) {
     std::visit(CommandPrinterVisitor{os}, ins);
     return os;
 }
 
-string to_string(Command const& ins) {
+string to_string(Instruction const& ins) {
     std::stringstream str;
     str << ins;
     return str.str();
@@ -383,7 +383,7 @@ string to_string(Assertion const& constraint) {
     return str.str();
 }
 
-int size(const Command& inst) {
+int size(const Instruction& inst) {
     if (const auto bin = std::get_if<Bin>(&inst)) {
         if (bin->lddw) {
             return 2;

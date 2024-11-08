@@ -315,8 +315,8 @@ struct IncrementLoopCounter {
     bool operator==(const IncrementLoopCounter&) const = default;
 };
 
-using Command = std::variant<Undefined, Bin, Un, LoadMapFd, Call, CallLocal, Callx, Exit, Jmp, Mem, Packet, Atomic,
-                             Assume, IncrementLoopCounter>;
+using Instruction = std::variant<Undefined, Bin, Un, LoadMapFd, Call, CallLocal, Callx, Exit, Jmp, Mem, Packet, Atomic,
+                                 Assume, IncrementLoopCounter>;
 
 /// Condition check whether something is a valid size.
 struct ValidSize {
@@ -417,13 +417,13 @@ struct BoundedLoopCount {
 using Assertion = std::variant<Comparable, Addable, ValidDivisor, ValidAccess, ValidStore, ValidSize, ValidMapKeyValue,
                                ValidCall, TypeConstraint, FuncConstraint, ZeroCtxOffset, BoundedLoopCount>;
 
-struct Instruction {
-    Command cmd;
+struct GuardedInstruction {
+    Instruction cmd;
     std::vector<Assertion> preconditions;
-    bool operator==(const Instruction&) const = default;
+    bool operator==(const GuardedInstruction&) const = default;
 };
 
-using LabeledInstruction = std::tuple<label_t, Instruction, std::optional<btf_line_info_t>>;
+using LabeledInstruction = std::tuple<label_t, GuardedInstruction, std::optional<btf_line_info_t>>;
 using InstructionSeq = std::vector<LabeledInstruction>;
 
 // cpu=v4 supports 32-bit PC offsets so we need a large enough type.

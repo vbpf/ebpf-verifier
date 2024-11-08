@@ -39,8 +39,8 @@ void print(const InstructionSeq& insts, std::ostream& out, const std::optional<c
 
 std::string to_string(label_t const& label);
 
-std::ostream& operator<<(std::ostream& os, Command const& ins);
-std::string to_string(Command const& ins);
+std::ostream& operator<<(std::ostream& os, Instruction const& ins);
+std::string to_string(Instruction const& ins);
 
 std::ostream& operator<<(std::ostream& os, Bin::Op op);
 std::ostream& operator<<(std::ostream& os, Condition::Op op);

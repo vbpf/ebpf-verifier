@@ -1204,7 +1204,7 @@ void ebpf_domain_t::operator()(const Assertion& assertion) {
 }
 
 void ebpf_domain_t::operator()(const basic_block_t& bb) {
-    for (const Instruction& ins : bb) {
+    for (const GuardedInstruction& ins : bb) {
         for (const Assertion& assertion : ins.preconditions) {
             (*this)(assertion);
         }

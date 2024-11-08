@@ -276,9 +276,9 @@ static void compare_unmarshal_marshal(const ebpf_inst& ins1, const ebpf_inst& in
     REQUIRE(memcmp(&expected_result2, &result2, sizeof(result2)) == 0);
 }
 
-// Verify that if we marshal a Command and then unmarshal it,
+// Verify that if we marshal a Instruction and then unmarshal it,
 // we get the original.
-static void compare_marshal_unmarshal(const Command& ins, bool double_cmd = false,
+static void compare_marshal_unmarshal(const Instruction& ins, bool double_cmd = false,
                                       const ebpf_platform_t& platform = g_ebpf_platform_linux) {
     program_info info{.platform = &platform, .type = platform.get_program_type("unspec", "unspec")};
     InstructionSeq parsed = std::get<InstructionSeq>(unmarshal(raw_program{"", "", 0, "", marshal(ins, 0), info}));
@@ -289,7 +289,7 @@ static void compare_marshal_unmarshal(const Command& ins, bool double_cmd = fals
     REQUIRE(single.cmd == ins);
 }
 
-static void check_marshal_unmarshal_fail(const Command& ins, const std::string& expected_error_message,
+static void check_marshal_unmarshal_fail(const Instruction& ins, const std::string& expected_error_message,
                                          const ebpf_platform_t& platform = g_ebpf_platform_linux) {
     const program_info info{.platform = &platform, .type = platform.get_program_type("unspec", "unspec")};
     auto result = unmarshal(raw_program{"", "", 0, "", marshal(ins, 0), info});

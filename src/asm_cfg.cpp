@@ -18,14 +18,14 @@ using std::string;
 using std::to_string;
 using std::vector;
 
-static optional<label_t> get_jump(Command ins) {
+static optional<label_t> get_jump(Instruction ins) {
     if (const auto pins = std::get_if<Jmp>(&ins)) {
         return pins->target;
     }
     return {};
 }
 
-static bool has_fall(const Command& ins) {
+static bool has_fall(const Instruction& ins) {
     if (std::holds_alternative<Exit>(ins)) {
         return false;
     }
@@ -47,7 +47,7 @@ static void add_cfg_nodes(cfg_t& cfg, const label_t& caller_label, const label_t
     basic_block_t& exit_to_node = cfg.get_node(cfg.next_nodes(caller_label).front());
 
     // Construct the variable prefix to use for the new stack frame,
-    // and store a copy in the CallLocal Command since the Command-specific
+    // and store a copy in the CallLocal Instruction since the Instruction-specific
     // labels may only exist until the CFG is simplified.
     basic_block_t& caller_node = cfg.get_node(caller_label);
     const std::string stack_frame_prefix = to_string(caller_label);
@@ -171,7 +171,7 @@ static cfg_t instruction_seq_to_cfg(const InstructionSeq& insts, const bool must
     }
     if (falling_from) {
         if (must_have_exit) {
-            throw std::invalid_argument{"fallthrough in last Command"};
+            throw std::invalid_argument{"fallthrough in last Instruction"};
         } else {
             cfg.get_node(*falling_from) >> cfg.get_node(cfg.exit_label());
         }
@@ -273,9 +273,9 @@ static cfg_t to_nondet(const cfg_t& cfg) {
     return res;
 }
 
-/// Get the type of given Command.
+/// Get the type of given Instruction.
 /// Most of these type names are also statistics header labels.
-static std::string instype(Command ins) {
+static std::string instype(Instruction ins) {
     if (const auto pcall = std::get_if<Call>(&ins)) {
         if (pcall->is_map_lookup) {
             return "call_1";
@@ -331,7 +331,7 @@ std::map<std::string, int> collect_stats(const cfg_t& cfg) {
         res["basic_blocks"]++;
         basic_block_t const& bb = cfg.get_node(this_label);
 
-        for (Instruction ins : bb) {
+        for (GuardedInstruction ins : bb) {
             if (const auto pins = std::get_if<LoadMapFd>(&ins.cmd)) {
                 if (pins->mapfd == -1) {
                     res["map_in_map"] = 1;
@@ -370,7 +370,7 @@ cfg_t prepare_cfg(const InstructionSeq& prog, const program_info& info, const pr
             [&](const label_t& label) { det_cfg.get_node(label).insert_front({.cmd = IncrementLoopCounter{label}}); });
     }
 
-    // Annotate the CFG by adding in assertions before every memory Command.
+    // Annotate the CFG by adding in assertions before every memory Instruction.
     explicate_assertions(det_cfg, info);
 
     // Translate conditional jumps to non-deterministic jumps.

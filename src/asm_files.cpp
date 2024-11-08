@@ -200,7 +200,7 @@ void relocate_map(ebpf_inst& inst, const std::string& symbol_name,
 // are loaded and can be appended to the calling program.
 struct function_relocation {
     size_t prog_index{};              // Index of source program in vector of raw programs.
-    ELFIO::Elf_Xword source_offset{}; // Instruction offset in source section of source instruction.
+    ELFIO::Elf_Xword source_offset{}; // GuardedInstruction offset in source section of source instruction.
     ELFIO::Elf_Xword relocation_entry_index{};
     string target_function_name;
 };

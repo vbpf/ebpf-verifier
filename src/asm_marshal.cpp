@@ -292,11 +292,11 @@ struct MarshalVisitor {
     vector<ebpf_inst> operator()(IncrementLoopCounter const&) const { return {}; }
 };
 
-vector<ebpf_inst> marshal(const Command& ins, const pc_t pc) {
+vector<ebpf_inst> marshal(const Instruction& ins, const pc_t pc) {
     return std::visit(MarshalVisitor{label_to_offset16(pc), label_to_offset32(pc)}, ins);
 }
 
-static int size(const Command& inst) {
+static int size(const Instruction& inst) {
     if (const auto pins = std::get_if<Bin>(&inst)) {
         if (pins->lddw) {
             return 2;

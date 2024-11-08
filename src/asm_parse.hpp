@@ -6,4 +6,4 @@
 
 #include "asm_syntax.hpp"
 
-Command parse_instruction(const std::string& line, const std::map<std::string, label_t>& label_name_to_label);
+Instruction parse_instruction(const std::string& line, const std::map<std::string, label_t>& label_name_to_label);
