@@ -59,7 +59,7 @@ class basic_block_t final {
         m_ts.push_back(arg);
     }
 
-    /// Insert an GuardedInstruction at the front of the basic block.
+    /// Insert a GuardedInstruction at the front of the basic block.
     /// @note Cannot modify entry or exit blocks.
     void insert_front(const GuardedInstruction& arg) {
         assert(label() != label_t::entry);

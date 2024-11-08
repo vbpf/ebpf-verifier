@@ -293,7 +293,7 @@ vector<Assertion> get_assertions(Instruction ins, const program_info& info, cons
 }
 
 /// Annotate the CFG by adding explicit assertions for all the preconditions
-/// of any Instruction. For example, jump instructions are asserted not to
+/// of any instruction. For example, jump instructions are asserted not to
 /// compare numbers and pointers, or pointers to potentially distinct memory
 /// regions. The verifier will use these assertions to treat the program as
 /// unsafe unless it can prove that the assertions can never fail.

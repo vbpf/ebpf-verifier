@@ -182,7 +182,7 @@ static ebpf_verifier_options_t raw_options_to_options(const std::set<string>& ra
     // Default to not assuming assertions.
     options.assume_assertions = false;
 
-    // Permit test cases to not have an exit Instruction.
+    // Permit test cases to not have an exit instruction.
     options.cfg_opts.must_have_exit = false;
 
     for (const string& name : raw_options) {
