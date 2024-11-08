@@ -142,7 +142,7 @@ static cfg_t instruction_seq_to_cfg(const InstructionSeq& insts, const bool must
     // Do a first pass ignoring all function macro calls.
     for (const auto& [label, inst, _] : insts) {
 
-        if (std::holds_alternative<Undefined>(inst.cmd)) {
+        if (std::holds_alternative<Undefined>(inst)) {
             continue;
         }
 
@@ -153,19 +153,19 @@ static cfg_t instruction_seq_to_cfg(const InstructionSeq& insts, const bool must
             cfg.get_node(cfg.entry_label()) >> bb;
         }
 
-        bb.insert(inst);
+        bb.insert({.cmd = inst});
         if (falling_from) {
             cfg.get_node(*falling_from) >> bb;
             falling_from = {};
         }
-        if (has_fall(inst.cmd)) {
+        if (has_fall(inst)) {
             falling_from = label;
         }
-        if (auto jump_target = get_jump(inst.cmd)) {
+        if (auto jump_target = get_jump(inst)) {
             bb >> cfg.insert(*jump_target);
         }
 
-        if (std::holds_alternative<Exit>(inst.cmd)) {
+        if (std::holds_alternative<Exit>(inst)) {
             bb >> cfg.get_node(cfg.exit_label());
         }
     }
@@ -181,7 +181,7 @@ static cfg_t instruction_seq_to_cfg(const InstructionSeq& insts, const bool must
     // we only add new nodes that are actually reachable, based on the
     // results of the first pass.
     for (const auto& [label, inst, _] : insts) {
-        if (const auto pins = std::get_if<CallLocal>(&inst.cmd)) {
+        if (const auto pins = std::get_if<CallLocal>(&inst)) {
             add_cfg_nodes(cfg, label, pins->target);
         }
     }

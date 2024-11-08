@@ -313,7 +313,7 @@ static auto get_labels(const InstructionSeq& insts) {
     std::map<label_t, pc_t> pc_of_label;
     for (const auto& [label, inst, _] : insts) {
         pc_of_label[label] = pc;
-        pc += size(inst.cmd);
+        pc += size(inst);
     }
     return pc_of_label;
 }
@@ -324,10 +324,10 @@ vector<ebpf_inst> marshal(const InstructionSeq& insts) {
     pc_t pc = 0;
     for (auto [label, ins, _] : insts) {
         (void)label; // unused
-        if (const auto pins = std::get_if<Jmp>(&ins.cmd)) {
+        if (const auto pins = std::get_if<Jmp>(&ins)) {
             pins->target = label_t{gsl::narrow<int>(pc_of_label.at(pins->target))};
         }
-        for (const auto e : marshal(ins.cmd, pc)) {
+        for (const auto e : marshal(ins, pc)) {
             pc++;
             res.push_back(e);
         }

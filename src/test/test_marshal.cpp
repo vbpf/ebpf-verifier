@@ -232,7 +232,7 @@ static void compare_unmarshal_marshal(const ebpf_inst& ins, const ebpf_inst& exp
     auto [_, single, _2] = parsed.front();
     (void)_;  // unused
     (void)_2; // unused
-    std::vector<ebpf_inst> marshaled = marshal(single.cmd, 0);
+    std::vector<ebpf_inst> marshaled = marshal(single, 0);
     REQUIRE(marshaled.size() == 1);
     ebpf_inst result = marshaled.back();
     REQUIRE(memcmp(&expected_result, &result, sizeof(result)) == 0);
@@ -250,7 +250,7 @@ static void compare_unmarshal_marshal(const ebpf_inst& ins1, const ebpf_inst& in
     auto [_, single, _2] = parsed.front();
     (void)_;  // unused
     (void)_2; // unused
-    std::vector<ebpf_inst> marshaled = marshal(single.cmd, 0);
+    std::vector<ebpf_inst> marshaled = marshal(single, 0);
     REQUIRE(marshaled.size() == 1);
     ebpf_inst result = marshaled.back();
     REQUIRE(memcmp(&expected_result, &result, sizeof(result)) == 0);
@@ -268,7 +268,7 @@ static void compare_unmarshal_marshal(const ebpf_inst& ins1, const ebpf_inst& in
     auto [_, single, _2] = parsed.front();
     (void)_;  // unused
     (void)_2; // unused
-    std::vector<ebpf_inst> marshaled = marshal(single.cmd, 0);
+    std::vector<ebpf_inst> marshaled = marshal(single, 0);
     REQUIRE(marshaled.size() == 2);
     ebpf_inst result1 = marshaled.front();
     REQUIRE(memcmp(&expected_result1, &result1, sizeof(result1)) == 0);
@@ -286,7 +286,7 @@ static void compare_marshal_unmarshal(const Instruction& ins, bool double_cmd = 
     auto [_, single, _2] = parsed.back();
     (void)_;  // unused
     (void)_2; // unused
-    REQUIRE(single.cmd == ins);
+    REQUIRE(single == ins);
 }
 
 static void check_marshal_unmarshal_fail(const Instruction& ins, const std::string& expected_error_message,

@@ -423,7 +423,7 @@ struct GuardedInstruction {
     bool operator==(const GuardedInstruction&) const = default;
 };
 
-using LabeledInstruction = std::tuple<label_t, GuardedInstruction, std::optional<btf_line_info_t>>;
+using LabeledInstruction = std::tuple<label_t, Instruction, std::optional<btf_line_info_t>>;
 using InstructionSeq = std::vector<LabeledInstruction>;
 
 // cpu=v4 supports 32-bit PC offsets so we need a large enough type.

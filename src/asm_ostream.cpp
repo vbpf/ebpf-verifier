@@ -372,8 +372,8 @@ string to_string(Instruction const& ins) {
     return str.str();
 }
 
-std::ostream& operator<<(std::ostream& os, const Assertion& assertion) {
-    std::visit(AssertionPrinterVisitor{os}, assertion);
+std::ostream& operator<<(std::ostream& os, const Assertion& a) {
+    std::visit(AssertionPrinterVisitor{os}, a);
     return os;
 }
 
@@ -400,7 +400,7 @@ auto get_labels(const InstructionSeq& insts) {
     std::map<label_t, pc_t> pc_of_label;
     for (const auto& [label, inst, _] : insts) {
         pc_of_label[label] = pc;
-        pc += size(inst.cmd);
+        pc += size(inst);
     }
     return pc_of_label;
 }
@@ -431,18 +431,18 @@ void print(const InstructionSeq& insts, std::ostream& out, const std::optional<c
             } else {
                 out << std::setw(8) << pc << ":\t";
             }
-            if (const auto jmp = std::get_if<Jmp>(&ins.cmd)) {
+            if (const auto jmp = std::get_if<Jmp>(&ins)) {
                 if (!pc_of_label.contains(jmp->target)) {
                     throw std::runtime_error(string("Cannot find label ") + to_string(jmp->target));
                 }
                 const pc_t target_pc = pc_of_label.at(jmp->target);
                 visitor(*jmp, target_pc - static_cast<int>(pc) - 1);
             } else {
-                std::visit(visitor, ins.cmd);
+                std::visit(visitor, ins);
             }
             out << "\n";
         }
-        pc += size(ins.cmd);
+        pc += size(ins);
     }
 }
 
