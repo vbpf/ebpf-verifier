@@ -331,7 +331,7 @@ std::map<std::string, int> collect_stats(const cfg_t& cfg) {
         res["basic_blocks"]++;
         basic_block_t const& bb = cfg.get_node(this_label);
 
-        for (GuardedInstruction ins : bb) {
+        for (const auto& ins : bb) {
             if (const auto pins = std::get_if<LoadMapFd>(&ins.cmd)) {
                 if (pins->mapfd == -1) {
                     res["map_in_map"] = 1;
