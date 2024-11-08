@@ -105,87 +105,87 @@ std::ostream& operator<<(std::ostream& os, const Condition::Op op) {
 
 static string size(const int w) { return string("u") + std::to_string(w * 8); }
 
-std::ostream& operator<<(std::ostream& os, ValidStore const& a) {
-    return os << a.mem << ".type != stack -> " << TypeConstraint{a.val, TypeGroup::number};
-}
+// ReSharper disable CppMemberFunctionMayBeConst
+struct AssertionPrinterVisitor {
+    std::ostream& _os;
 
-std::ostream& operator<<(std::ostream& os, ValidAccess const& a) {
-    if (a.or_null) {
-        os << "(" << TypeConstraint{a.reg, TypeGroup::number} << " and " << a.reg << ".value == 0) or ";
-    }
-    os << "valid_access(" << a.reg << ".offset";
-    if (a.offset > 0) {
-        os << "+" << a.offset;
-    } else if (a.offset < 0) {
-        os << a.offset;
+    void operator()(ValidStore const& a) {
+        _os << a.mem << ".type != stack -> " << TypeConstraint{a.val, TypeGroup::number};
     }
 
-    if (a.width == Value{Imm{0}}) {
-        // a.width == 0, meaning we only care it's an in-bound pointer,
-        // so it can be compared with another pointer to the same region.
-        os << ") for comparison/subtraction";
-    } else {
-        os << ", width=" << a.width << ") for ";
-        if (a.access_type == AccessType::read) {
-            os << "read";
+    void operator()(ValidAccess const& a) {
+        if (a.or_null) {
+            _os << "(" << TypeConstraint{a.reg, TypeGroup::number} << " and " << a.reg << ".value == 0) or ";
+        }
+        _os << "valid_access(" << a.reg << ".offset";
+        if (a.offset > 0) {
+            _os << "+" << a.offset;
+        } else if (a.offset < 0) {
+            _os << a.offset;
+        }
+
+        if (a.width == Value{Imm{0}}) {
+            // a.width == 0, meaning we only care it's an in-bound pointer,
+            // so it can be compared with another pointer to the same region.
+            _os << ") for comparison/subtraction";
         } else {
-            os << "write";
+            _os << ", width=" << a.width << ") for ";
+            if (a.access_type == AccessType::read) {
+                _os << "read";
+            } else {
+                _os << "write";
+            }
         }
     }
-    return os;
-}
 
-std::ostream& operator<<(std::ostream& os, const BoundedLoopCount& a) {
-    return os << crab::variable_t::loop_counter(to_string(a.name)) << " < " << a.limit;
-}
-
-static crab::variable_t typereg(const Reg& r) { return crab::variable_t::reg(crab::data_kind_t::types, r.v); }
-
-std::ostream& operator<<(std::ostream& os, ValidSize const& a) {
-    const auto op = a.can_be_zero ? " >= " : " > ";
-    return os << a.reg << ".value" << op << 0;
-}
-
-std::ostream& operator<<(std::ostream& os, ValidCall const& a) {
-    const EbpfHelperPrototype proto = global_program_info->platform->get_helper_prototype(a.func);
-    return os << "valid call(" << proto.name << ")";
-}
-
-std::ostream& operator<<(std::ostream& os, ValidMapKeyValue const& a) {
-    return os << "within stack(" << a.access_reg << ":" << (a.key ? "key_size" : "value_size") << "(" << a.map_fd_reg
-              << "))";
-}
-
-std::ostream& operator<<(std::ostream& os, ZeroCtxOffset const& a) {
-    return os << crab::variable_t::reg(crab::data_kind_t::ctx_offsets, a.reg.v) << " == 0";
-}
-
-std::ostream& operator<<(std::ostream& os, Comparable const& a) {
-    if (a.or_r2_is_number) {
-        os << TypeConstraint{a.r2, TypeGroup::number} << " or ";
+    void operator()(const BoundedLoopCount& a) {
+        _os << crab::variable_t::loop_counter(to_string(a.name)) << " < " << a.limit;
     }
-    return os << typereg(a.r1) << " == " << typereg(a.r2) << " in " << TypeGroup::singleton_ptr;
-}
 
-std::ostream& operator<<(std::ostream& os, Addable const& a) {
-    return os << TypeConstraint{a.ptr, TypeGroup::pointer} << " -> " << TypeConstraint{a.num, TypeGroup::number};
-}
+    static crab::variable_t typereg(const Reg& r) { return crab::variable_t::reg(crab::data_kind_t::types, r.v); }
 
-std::ostream& operator<<(std::ostream& os, ValidDivisor const& a) { return os << a.reg << " != 0"; }
+    void operator()(ValidSize const& a) {
+        const auto op = a.can_be_zero ? " >= " : " > ";
+        _os << a.reg << ".value" << op << 0;
+    }
 
-std::ostream& operator<<(std::ostream& os, TypeConstraint const& tc) {
-    const string cmp_op = is_singleton_type(tc.types) ? "==" : "in";
-    return os << typereg(tc.reg) << " " << cmp_op << " " << tc.types;
-}
+    void operator()(ValidCall const& a) {
+        const EbpfHelperPrototype proto = global_program_info->platform->get_helper_prototype(a.func);
+        _os << "valid call(" << proto.name << ")";
+    }
 
-std::ostream& operator<<(std::ostream& os, FuncConstraint const& fc) { return os << typereg(fc.reg) << " is helper"; }
+    void operator()(ValidMapKeyValue const& a) {
+        _os << "within stack(" << a.access_reg << ":" << (a.key ? "key_size" : "value_size") << "(" << a.map_fd_reg
+            << "))";
+    }
 
-std::ostream& operator<<(std::ostream& os, AssertionConstraint const& a) {
-    return std::visit([&](const auto& a) -> std::ostream& { return os << a; }, a);
-}
+    void operator()(ZeroCtxOffset const& a) {
+        _os << crab::variable_t::reg(crab::data_kind_t::ctx_offsets, a.reg.v) << " == 0";
+    }
+
+    void operator()(Comparable const& a) {
+        if (a.or_r2_is_number) {
+            _os << TypeConstraint{a.r2, TypeGroup::number} << " or ";
+        }
+        _os << typereg(a.r1) << " == " << typereg(a.r2) << " in " << TypeGroup::singleton_ptr;
+    }
+
+    void operator()(Addable const& a) {
+        _os << TypeConstraint{a.ptr, TypeGroup::pointer} << " -> " << TypeConstraint{a.num, TypeGroup::number};
+    }
+
+    void operator()(ValidDivisor const& a) { _os << a.reg << " != 0"; }
+
+    void operator()(TypeConstraint const& tc) {
+        const string cmp_op = is_singleton_type(tc.types) ? "==" : "in";
+        _os << typereg(tc.reg) << " " << cmp_op << " " << tc.types;
+    }
+
+    void operator()(FuncConstraint const& fc) { _os << typereg(fc.reg) << " is helper"; }
+};
 
 // ReSharper disable CppMemberFunctionMayBeConst
-struct InstructionPrinterVisitor {
+struct CommandPrinterVisitor {
     std::ostream& os_;
 
     void visit(const auto& item) { std::visit(*this, item); }
@@ -259,7 +259,7 @@ struct InstructionPrinterVisitor {
     void operator()(Exit const& b) { os_ << "exit"; }
 
     void operator()(Jmp const& b) {
-        // A "standalone" jump instruction.
+        // A "standalone" jump Instruction.
         // Print the label without offset calculations.
         if (b.cond) {
             os_ << "if ";
@@ -351,8 +351,6 @@ struct InstructionPrinterVisitor {
         print(b.cond);
     }
 
-    void operator()(Assert const& a) { os_ << "assert " << a.cst; }
-
     void operator()(IncrementLoopCounter const& a) { os_ << crab::variable_t::loop_counter(to_string(a.name)) << "++"; }
 };
 // ReSharper restore CppMemberFunctionMayBeConst
@@ -364,7 +362,7 @@ string to_string(label_t const& label) {
 }
 
 std::ostream& operator<<(std::ostream& os, Instruction const& ins) {
-    std::visit(InstructionPrinterVisitor{os}, ins);
+    std::visit(CommandPrinterVisitor{os}, ins);
     return os;
 }
 
@@ -374,7 +372,12 @@ string to_string(Instruction const& ins) {
     return str.str();
 }
 
-string to_string(AssertionConstraint const& constraint) {
+std::ostream& operator<<(std::ostream& os, const Assertion& a) {
+    std::visit(AssertionPrinterVisitor{os}, a);
+    return os;
+}
+
+string to_string(Assertion const& constraint) {
     std::stringstream str;
     str << constraint;
     return str.str();
@@ -407,10 +410,10 @@ void print(const InstructionSeq& insts, std::ostream& out, const std::optional<c
     const auto pc_of_label = get_labels(insts);
     pc_t pc = 0;
     std::string previous_source;
-    InstructionPrinterVisitor visitor{out};
+    CommandPrinterVisitor visitor{out};
     for (const LabeledInstruction& labeled_inst : insts) {
         const auto& [label, ins, line_info] = labeled_inst;
-        if (!label_to_print.has_value() || (label == label_to_print)) {
+        if (!label_to_print.has_value() || label == label_to_print) {
             if (line_info.has_value() && print_line_info) {
                 auto& [file, source, line, column] = line_info.value();
                 // Only decorate the first instruction associated with a source line.
@@ -469,7 +472,10 @@ void print_dot(const cfg_t& cfg, std::ostream& out) {
 
         const auto& bb = cfg.get_node(label);
         for (const auto& ins : bb) {
-            out << ins << "\\l";
+            for (const auto& pre : ins.preconditions) {
+                out << "assert " << pre << "\\l";
+            }
+            out << ins.cmd << "\\l";
         }
 
         out << "\"];\n";
@@ -492,7 +498,11 @@ void print_dot(const cfg_t& cfg, const std::string& outfile) {
 std::ostream& operator<<(std::ostream& o, const basic_block_t& bb) {
     o << bb.label() << ":\n";
     for (const auto& s : bb) {
-        o << "  " << s << ";\n";
+        for (const auto& pre : s.preconditions) {
+            o << "  "
+              << "assert " << pre << ";\n";
+        }
+        o << "  " << s.cmd << ";\n";
     }
     auto [it, et] = bb.next_blocks();
     if (it != et) {
@@ -515,7 +525,11 @@ std::ostream& operator<<(std::ostream& o, const basic_block_t& bb) {
 std::ostream& operator<<(std::ostream& o, const crab::basic_block_rev_t& bb) {
     o << bb.label() << ":\n";
     for (const auto& s : bb) {
-        o << "  " << s << ";\n";
+        for (const auto& pre : s.preconditions) {
+            o << "  "
+              << "assert " << pre << ";\n";
+        }
+        o << "  " << s.cmd << ";\n";
     }
     o << "--> [";
     for (const label_t& label : bb.next_blocks_set()) {

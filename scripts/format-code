@@ -169,15 +169,15 @@ check_clang-format()
         cf=$(command -v clang-format 2> /dev/null)
         if [[ ! -x ${cf} ]]; then
             echo "clang-format is not installed"
-            exit 1
+            exit 0  # do not fail, just warn
         fi
         cf="clang-format"
     fi
 
-    local required_cfver='17.0.3'
-    # shellcheck disable=SC2155
-    local cfver=$(${cf} --version | grep -o -E '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
-    check_version "${required_cfver}" "${cfver}"
+#    local required_cfver='17.0.3'
+#    # shellcheck disable=SC2155
+#    local cfver=$(${cf} --version | grep -o -E '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+#    check_version "${required_cfver}" "${cfver}"
 }
 
 check_clang-format

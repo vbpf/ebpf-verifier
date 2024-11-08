@@ -310,6 +310,17 @@ struct Assume {
     constexpr bool operator==(const Assume&) const = default;
 };
 
+struct IncrementLoopCounter {
+    label_t name;
+    bool operator==(const IncrementLoopCounter&) const = default;
+};
+
+using Instruction = std::variant<Undefined, Bin, Un, LoadMapFd, Call, CallLocal, Callx, Exit, Jmp, Mem, Packet, Atomic,
+                                 Assume, IncrementLoopCounter>;
+
+using LabeledInstruction = std::tuple<label_t, Instruction, std::optional<btf_line_info_t>>;
+using InstructionSeq = std::vector<LabeledInstruction>;
+
 /// Condition check whether something is a valid size.
 struct ValidSize {
     Reg reg;
@@ -406,28 +417,17 @@ struct BoundedLoopCount {
     static constexpr int limit = 100000;
 };
 
-using AssertionConstraint = std::variant<Comparable, Addable, ValidDivisor, ValidAccess, ValidStore, ValidSize,
-                                         ValidMapKeyValue, ValidCall, TypeConstraint, FuncConstraint, ZeroCtxOffset, BoundedLoopCount>;
+using Assertion = std::variant<Comparable, Addable, ValidDivisor, ValidAccess, ValidStore, ValidSize, ValidMapKeyValue,
+                               ValidCall, TypeConstraint, FuncConstraint, ZeroCtxOffset, BoundedLoopCount>;
 
-struct Assert {
-    AssertionConstraint cst;
-    Assert(AssertionConstraint cst) : cst(std::move(cst)) {}
-    constexpr bool operator==(const Assert&) const = default;
+struct GuardedInstruction {
+    Instruction cmd;
+    std::vector<Assertion> preconditions;
+    bool operator==(const GuardedInstruction&) const = default;
 };
-
-struct IncrementLoopCounter {
-    label_t name;
-    bool operator==(const IncrementLoopCounter&) const = default;
-};
-
-using Instruction = std::variant<Undefined, Bin, Un, LoadMapFd, Call, CallLocal, Callx, Exit, Jmp, Mem, Packet, Atomic,
-                                 Assume, Assert, IncrementLoopCounter>;
-
-using LabeledInstruction = std::tuple<label_t, Instruction, std::optional<btf_line_info_t>>;
-using InstructionSeq = std::vector<LabeledInstruction>;
 
 // cpu=v4 supports 32-bit PC offsets so we need a large enough type.
-using pc_t = size_t;
+using pc_t = uint32_t;
 
 } // namespace asm_syntax
 

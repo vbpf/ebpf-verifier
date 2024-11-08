@@ -1195,9 +1195,20 @@ static linear_constraint_t type_is_not_stack(const reg_pack_t& r) {
     return r.type != T_STACK;
 }
 
+void ebpf_domain_t::operator()(const Assertion& assertion) {
+    if (check_require || thread_local_options.assume_assertions) {
+        this->current_assertion = to_string(assertion);
+        std::visit(*this, assertion);
+        this->current_assertion.clear();
+    }
+}
+
 void ebpf_domain_t::operator()(const basic_block_t& bb) {
-    for (const Instruction& statement : bb) {
-        std::visit(*this, statement);
+    for (const GuardedInstruction& ins : bb) {
+        for (const Assertion& assertion : ins.preconditions) {
+            (*this)(assertion);
+        }
+        std::visit(*this, ins.cmd);
     }
 }
 
@@ -1382,7 +1393,9 @@ void ebpf_domain_t::operator()(const Exit& a) {
     restore_callee_saved_registers(prefix);
 }
 
-void ebpf_domain_t::operator()(const Jmp& a) {}
+void ebpf_domain_t::operator()(const Jmp&) const {
+    // This is a NOP. It only exists to hold the jump preconditions.
+}
 
 void ebpf_domain_t::operator()(const Comparable& s) {
     using namespace crab::dsl_syntax;
@@ -1446,18 +1459,18 @@ void ebpf_domain_t::operator()(const BoundedLoopCount& s) {
 void ebpf_domain_t::operator()(const FuncConstraint& s) {
     // Look up the helper function id.
     const reg_pack_t& reg = reg_pack(s.reg);
-    auto src_interval = m_inv.eval_interval(reg.svalue);
-    if (auto sn = src_interval.singleton()) {
+    const auto src_interval = m_inv.eval_interval(reg.svalue);
+    if (const auto sn = src_interval.singleton()) {
         if (sn->fits<int32_t>()) {
             // We can now process it as if the id was immediate.
-            int32_t imm = sn->cast_to<int32_t>();
+            const int32_t imm = sn->cast_to<int32_t>();
             if (!global_program_info->platform->is_helper_usable(imm)) {
                 require(m_inv, linear_constraint_t::false_const(), "invalid helper function id " + std::to_string(imm));
                 return;
             }
             Call call = make_call(imm, *global_program_info->platform);
-            for (Assert a : get_assertions(call, *global_program_info, {})) {
-                (*this)(a);
+            for (const Assertion& assertion : get_assertions(call, *global_program_info, {})) {
+                (*this)(assertion);
             }
             return;
         }
@@ -1756,14 +1769,6 @@ void ebpf_domain_t::operator()(const ZeroCtxOffset& s) {
     using namespace crab::dsl_syntax;
     const auto reg = reg_pack(s.reg);
     require(m_inv, reg.ctx_offset == 0, "Nonzero context offset");
-}
-
-void ebpf_domain_t::operator()(const Assert& stmt) {
-    if (check_require || thread_local_options.assume_assertions) {
-        this->current_assertion = to_string(stmt.cst);
-        std::visit(*this, stmt.cst);
-        this->current_assertion.clear();
-    }
 }
 
 void ebpf_domain_t::operator()(const Packet& a) {

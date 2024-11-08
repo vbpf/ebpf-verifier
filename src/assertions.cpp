@@ -20,8 +20,8 @@ class AssertExtractor {
 
     static Imm imm(const Value& v) { return std::get<Imm>(v); }
 
-    static vector<Assert> zero_offset_ctx(const Reg reg) {
-        vector<Assert> res;
+    static vector<Assertion> zero_offset_ctx(const Reg reg) {
+        vector<Assertion> res;
         res.emplace_back(TypeConstraint{reg, TypeGroup::ctx});
         res.emplace_back(ZeroCtxOffset{reg});
         return res;
@@ -37,25 +37,20 @@ class AssertExtractor {
     explicit AssertExtractor(program_info info, std::optional<label_t> label)
         : info{std::move(info)}, current_label(label) {}
 
-    vector<Assert> operator()(const Undefined&) const {
+    vector<Assertion> operator()(const Undefined&) const {
         assert(false);
         return {};
     }
 
-    vector<Assert> operator()(const Assert&) const {
-        assert(false);
-        return {};
-    }
+    vector<Assertion> operator()(const IncrementLoopCounter& ipc) const { return {{BoundedLoopCount{ipc.name}}}; }
 
-    vector<Assert> operator()(const IncrementLoopCounter& ipc) const { return {{BoundedLoopCount{ipc.name}}}; }
-
-    vector<Assert> operator()(const LoadMapFd&) const { return {}; }
+    vector<Assertion> operator()(const LoadMapFd&) const { return {}; }
 
     /// Packet access implicitly uses R6, so verify that R6 still has a pointer to the context.
-    vector<Assert> operator()(const Packet&) const { return zero_offset_ctx({6}); }
+    vector<Assertion> operator()(const Packet&) const { return zero_offset_ctx({6}); }
 
-    vector<Assert> operator()(const Exit&) const {
-        vector<Assert> res;
+    vector<Assertion> operator()(const Exit&) const {
+        vector<Assertion> res;
         if (current_label->stack_frame_prefix.empty()) {
             // Verify that Exit returns a number.
             res.emplace_back(TypeConstraint{Reg{R0_RETURN_VALUE}, TypeGroup::number});
@@ -63,8 +58,8 @@ class AssertExtractor {
         return res;
     }
 
-    vector<Assert> operator()(const Call& call) const {
-        vector<Assert> res;
+    vector<Assertion> operator()(const Call& call) const {
+        vector<Assertion> res;
         std::optional<Reg> map_fd_reg;
         res.emplace_back(ValidCall{call.func, call.stack_frame_prefix});
         for (ArgSingle arg : call.singles) {
@@ -90,7 +85,7 @@ class AssertExtractor {
                 res.emplace_back(ValidMapKeyValue{arg.reg, *map_fd_reg, arg.kind == ArgSingle::Kind::PTR_TO_MAP_KEY});
                 break;
             case ArgSingle::Kind::PTR_TO_CTX:
-                for (const Assert& a : zero_offset_ctx(arg.reg)) {
+                for (const Assertion& a : zero_offset_ctx(arg.reg)) {
                     res.emplace_back(a);
                 }
                 break;
@@ -120,21 +115,21 @@ class AssertExtractor {
         return res;
     }
 
-    vector<Assert> operator()(const CallLocal&) const { return {}; }
+    vector<Assertion> operator()(const CallLocal&) const { return {}; }
 
-    vector<Assert> operator()(const Callx& callx) const {
-        vector<Assert> res;
+    vector<Assertion> operator()(const Callx& callx) const {
+        vector<Assertion> res;
         res.emplace_back(TypeConstraint{callx.func, TypeGroup::number});
         res.emplace_back(FuncConstraint{callx.func});
         return res;
     }
 
     [[nodiscard]]
-    vector<Assert> explicate(const Condition& cond) const {
+    vector<Assertion> explicate(const Condition& cond) const {
         if (info.type.is_privileged) {
             return {};
         }
-        vector<Assert> res;
+        vector<Assertion> res;
         if (const auto pimm = std::get_if<Imm>(&cond.right)) {
             if (pimm->v != 0) {
                 // no need to check for valid access, it must be a number
@@ -181,17 +176,17 @@ class AssertExtractor {
         return res;
     }
 
-    vector<Assert> operator()(const Assume& ins) const { return explicate(ins.cond); }
+    vector<Assertion> operator()(const Assume& ins) const { return explicate(ins.cond); }
 
-    vector<Assert> operator()(const Jmp& ins) const {
+    vector<Assertion> operator()(const Jmp& ins) const {
         if (!ins.cond) {
             return {};
         }
         return explicate(*ins.cond);
     }
 
-    vector<Assert> operator()(const Mem& ins) const {
-        vector<Assert> res;
+    vector<Assertion> operator()(const Mem& ins) const {
+        vector<Assertion> res;
         const Reg basereg = ins.access.basereg;
         Imm width{static_cast<uint32_t>(ins.access.width)};
         const int offset = ins.access.offset;
@@ -219,24 +214,26 @@ class AssertExtractor {
         return res;
     }
 
-    vector<Assert> operator()(const Atomic& ins) const {
+    vector<Assertion> operator()(const Atomic& ins) const {
 
         return {
-            Assert{TypeConstraint{ins.valreg, TypeGroup::number}},
-            Assert{TypeConstraint{ins.access.basereg, TypeGroup::pointer}},
-            Assert{make_valid_access(ins.access.basereg, ins.access.offset,
-                                     Imm{static_cast<uint32_t>(ins.access.width)}, false)},
+            Assertion{TypeConstraint{ins.valreg, TypeGroup::number}},
+            Assertion{TypeConstraint{ins.access.basereg, TypeGroup::pointer}},
+            Assertion{make_valid_access(ins.access.basereg, ins.access.offset,
+                                        Imm{static_cast<uint32_t>(ins.access.width)}, false)},
         };
     }
 
-    vector<Assert> operator()(const Un& ins) const { return {Assert{TypeConstraint{ins.dst, TypeGroup::number}}}; }
+    vector<Assertion> operator()(const Un& ins) const {
+        return {Assertion{TypeConstraint{ins.dst, TypeGroup::number}}};
+    }
 
-    vector<Assert> operator()(const Bin& ins) const {
+    vector<Assertion> operator()(const Bin& ins) const {
         switch (ins.op) {
         case Bin::Op::MOV:
             if (const auto src = std::get_if<Reg>(&ins.v)) {
                 if (!ins.is64) {
-                    return {Assert{TypeConstraint{*src, TypeGroup::number}}};
+                    return {Assertion{TypeConstraint{*src, TypeGroup::number}}};
                 }
             }
             return {};
@@ -244,27 +241,27 @@ class AssertExtractor {
         case Bin::Op::MOVSX16:
         case Bin::Op::MOVSX32:
             if (const auto src = std::get_if<Reg>(&ins.v)) {
-                return {Assert{TypeConstraint{*src, TypeGroup::number}}};
+                return {Assertion{TypeConstraint{*src, TypeGroup::number}}};
             }
             return {};
         case Bin::Op::ADD: {
             if (const auto src = std::get_if<Reg>(&ins.v)) {
-                return {Assert{TypeConstraint{ins.dst, TypeGroup::ptr_or_num}},
-                        Assert{TypeConstraint{*src, TypeGroup::ptr_or_num}}, Assert{Addable{*src, ins.dst}},
-                        Assert{Addable{ins.dst, *src}}};
+                return {Assertion{TypeConstraint{ins.dst, TypeGroup::ptr_or_num}},
+                        Assertion{TypeConstraint{*src, TypeGroup::ptr_or_num}}, Assertion{Addable{*src, ins.dst}},
+                        Assertion{Addable{ins.dst, *src}}};
             }
-            return {Assert{TypeConstraint{ins.dst, TypeGroup::ptr_or_num}}};
+            return {Assertion{TypeConstraint{ins.dst, TypeGroup::ptr_or_num}}};
         }
         case Bin::Op::SUB: {
             if (const auto reg = std::get_if<Reg>(&ins.v)) {
-                vector<Assert> res;
+                vector<Assertion> res;
                 // disallow map-map since same type does not mean same offset
                 // TODO: map identities
                 res.emplace_back(TypeConstraint{ins.dst, TypeGroup::ptr_or_num});
                 res.emplace_back(Comparable{.r1 = ins.dst, .r2 = *reg, .or_r2_is_number = true});
                 return res;
             }
-            return {Assert{TypeConstraint{ins.dst, TypeGroup::ptr_or_num}}};
+            return {Assertion{TypeConstraint{ins.dst, TypeGroup::ptr_or_num}}};
         }
         case Bin::Op::UDIV:
         case Bin::Op::UMOD:
@@ -272,25 +269,26 @@ class AssertExtractor {
         case Bin::Op::SMOD: {
             if (const auto src = std::get_if<Reg>(&ins.v)) {
                 const bool is_signed = (ins.op == Bin::Op::SDIV || ins.op == Bin::Op::SMOD);
-                return {Assert{TypeConstraint{ins.dst, TypeGroup::number}}, Assert{ValidDivisor{*src, is_signed}}};
+                return {Assertion{TypeConstraint{ins.dst, TypeGroup::number}},
+                        Assertion{ValidDivisor{*src, is_signed}}};
             }
-            return {Assert{TypeConstraint{ins.dst, TypeGroup::number}}};
+            return {Assertion{TypeConstraint{ins.dst, TypeGroup::number}}};
         }
         // For all other binary operations, the destination register must be a number and the source must either be an
         // immediate or a number.
         default:
             if (const auto src = std::get_if<Reg>(&ins.v)) {
-                return {Assert{TypeConstraint{ins.dst, TypeGroup::number}},
-                        Assert{TypeConstraint{*src, TypeGroup::number}}};
+                return {Assertion{TypeConstraint{ins.dst, TypeGroup::number}},
+                        Assertion{TypeConstraint{*src, TypeGroup::number}}};
             } else {
-                return {Assert{TypeConstraint{ins.dst, TypeGroup::number}}};
+                return {Assertion{TypeConstraint{ins.dst, TypeGroup::number}}};
             }
         }
         assert(false);
     }
 };
 
-vector<Assert> get_assertions(Instruction ins, const program_info& info, const std::optional<label_t>& label) {
+vector<Assertion> get_assertions(Instruction ins, const program_info& info, const std::optional<label_t>& label) {
     return std::visit(AssertExtractor{info, label}, ins);
 }
 
@@ -302,13 +300,8 @@ vector<Assert> get_assertions(Instruction ins, const program_info& info, const s
 void explicate_assertions(cfg_t& cfg, const program_info& info) {
     for (auto& [label, bb] : cfg) {
         (void)label; // unused
-        vector<Instruction> insts;
-        for (const auto& ins : bb) {
-            for (const auto& a : get_assertions(ins, info, bb.label())) {
-                insts.emplace_back(a);
-            }
-            insts.push_back(ins);
+        for (auto& ins : bb) {
+            ins.preconditions = get_assertions(ins.cmd, info, bb.label());
         }
-        bb.swap_instructions(insts);
     }
 }

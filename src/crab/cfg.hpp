@@ -35,12 +35,11 @@ class cfg_t;
 class basic_block_t final {
     friend class cfg_t;
 
-  private:
   public:
     basic_block_t(const basic_block_t&) = delete;
 
     using label_vec_t = std::set<label_t>;
-    using stmt_list_t = std::vector<Instruction>;
+    using stmt_list_t = std::vector<GuardedInstruction>;
     using neighbour_const_iterator = label_vec_t::const_iterator;
     using neighbour_const_reverse_iterator = label_vec_t::const_reverse_iterator;
     using iterator = stmt_list_t::iterator;
@@ -54,15 +53,15 @@ class basic_block_t final {
     label_vec_t m_prev, m_next;
 
   public:
-    void insert(const Instruction& arg) {
+    void insert(const GuardedInstruction& arg) {
         assert(label() != label_t::entry);
         assert(label() != label_t::exit);
         m_ts.push_back(arg);
     }
 
-    /// Insert an instruction at the front of the basic block.
+    /// Insert a GuardedInstruction at the front of the basic block.
     /// @note Cannot modify entry or exit blocks.
-    void insert_front(const Instruction& arg) {
+    void insert_front(const GuardedInstruction& arg) {
         assert(label() != label_t::entry);
         assert(label() != label_t::exit);
         m_ts.insert(m_ts.begin(), arg);
@@ -625,11 +624,11 @@ struct prepare_cfg_options {
 cfg_t prepare_cfg(const InstructionSeq& prog, const program_info& info, const prepare_cfg_options& options);
 
 void explicate_assertions(cfg_t& cfg, const program_info& info);
-std::vector<Assert> get_assertions(Instruction ins, const program_info& info, const std::optional<label_t>& label);
+std::vector<Assertion> get_assertions(Instruction ins, const program_info& info, const std::optional<label_t>& label);
 
 void print_dot(const cfg_t& cfg, std::ostream& out);
 void print_dot(const cfg_t& cfg, const std::string& outfile);
 
-std::ostream& operator<<(std::ostream& o, const crab::basic_block_t& bb);
+std::ostream& operator<<(std::ostream& o, const basic_block_t& bb);
 std::ostream& operator<<(std::ostream& o, const crab::basic_block_rev_t& bb);
 std::ostream& operator<<(std::ostream& o, const cfg_t& cfg);
