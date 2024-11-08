@@ -318,6 +318,9 @@ struct IncrementLoopCounter {
 using Instruction = std::variant<Undefined, Bin, Un, LoadMapFd, Call, CallLocal, Callx, Exit, Jmp, Mem, Packet, Atomic,
                                  Assume, IncrementLoopCounter>;
 
+using LabeledInstruction = std::tuple<label_t, Instruction, std::optional<btf_line_info_t>>;
+using InstructionSeq = std::vector<LabeledInstruction>;
+
 /// Condition check whether something is a valid size.
 struct ValidSize {
     Reg reg;
@@ -422,9 +425,6 @@ struct GuardedInstruction {
     std::vector<Assertion> preconditions;
     bool operator==(const GuardedInstruction&) const = default;
 };
-
-using LabeledInstruction = std::tuple<label_t, Instruction, std::optional<btf_line_info_t>>;
-using InstructionSeq = std::vector<LabeledInstruction>;
 
 // cpu=v4 supports 32-bit PC offsets so we need a large enough type.
 using pc_t = uint32_t;
