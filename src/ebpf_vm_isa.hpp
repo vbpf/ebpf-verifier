@@ -4,7 +4,7 @@
 #include <cinttypes>
 #include <tuple>
 
-// Header describing the GuardedInstruction Set Architecture (ISA)
+// Header describing the Instruction Set Architecture (ISA)
 // for the eBPF virtual machine.
 // See https://github.com/ebpffoundation/ebpf-docs/blob/update/rst/instruction-set.rst
 // for documentation.

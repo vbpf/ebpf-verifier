@@ -370,7 +370,7 @@ cfg_t prepare_cfg(const InstructionSeq& prog, const program_info& info, const pr
             [&](const label_t& label) { det_cfg.get_node(label).insert_front({.cmd = IncrementLoopCounter{label}}); });
     }
 
-    // Annotate the CFG by adding in assertions before every memory Instruction.
+    // Annotate the CFG by adding in assertions before every memory instruction.
     explicate_assertions(det_cfg, info);
 
     // Translate conditional jumps to non-deterministic jumps.
