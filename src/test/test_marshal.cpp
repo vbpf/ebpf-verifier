@@ -276,7 +276,7 @@ static void compare_unmarshal_marshal(const ebpf_inst& ins1, const ebpf_inst& in
     REQUIRE(memcmp(&expected_result2, &result2, sizeof(result2)) == 0);
 }
 
-// Verify that if we marshal a Instruction and then unmarshal it,
+// Verify that if we marshal an instruction and then unmarshal it,
 // we get the original.
 static void compare_marshal_unmarshal(const Instruction& ins, bool double_cmd = false,
                                       const ebpf_platform_t& platform = g_ebpf_platform_linux) {

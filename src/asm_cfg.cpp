@@ -47,7 +47,7 @@ static void add_cfg_nodes(cfg_t& cfg, const label_t& caller_label, const label_t
     basic_block_t& exit_to_node = cfg.get_node(cfg.next_nodes(caller_label).front());
 
     // Construct the variable prefix to use for the new stack frame,
-    // and store a copy in the CallLocal Instruction since the Instruction-specific
+    // and store a copy in the CallLocal instruction since the instruction-specific
     // labels may only exist until the CFG is simplified.
     basic_block_t& caller_node = cfg.get_node(caller_label);
     const std::string stack_frame_prefix = to_string(caller_label);
@@ -171,7 +171,7 @@ static cfg_t instruction_seq_to_cfg(const InstructionSeq& insts, const bool must
     }
     if (falling_from) {
         if (must_have_exit) {
-            throw std::invalid_argument{"fallthrough in last Instruction"};
+            throw std::invalid_argument{"fallthrough in last instruction"};
         } else {
             cfg.get_node(*falling_from) >> cfg.get_node(cfg.exit_label());
         }
