@@ -16,6 +16,11 @@
 namespace crab {
 
 class ebpf_domain_t final {
+    friend class ebpf_checker;
+    friend class ebpf_transformer;
+
+    friend std::ostream& operator<<(std::ostream& o, const ebpf_domain_t& dom);
+
   public:
     ebpf_domain_t();
     ebpf_domain_t(NumAbsDomain inv, domains::array_domain_t stack);
@@ -41,31 +46,58 @@ class ebpf_domain_t final {
     ebpf_domain_t widening_thresholds(const ebpf_domain_t& other, const thresholds_t& ts);
     ebpf_domain_t narrow(const ebpf_domain_t& other) const;
 
-    typedef bool check_require_func_t(NumAbsDomain&, const linear_constraint_t&, std::string);
-    void set_require_check(std::function<check_require_func_t> f);
+    static ebpf_domain_t calculate_constant_limits();
     extended_number get_loop_count_upper_bound() const;
-    static ebpf_domain_t setup_entry(bool init_r1);
 
     static ebpf_domain_t from_constraints(const std::set<std::string>& constraints, bool setup_constraints);
     string_invariant to_set() const;
 
-    // abstract transformers
-    void operator()(const basic_block_t& bb);
+  private:
+    // private generic domain functions
+    void operator+=(const linear_constraint_t& cst);
+    void operator-=(variable_t var);
 
-    void operator()(const Assume&);
-    void operator()(const Bin&);
-    void operator()(const Call&);
-    void operator()(const CallLocal&);
-    void operator()(const Callx&);
-    void operator()(const Exit&);
-    void operator()(const Jmp&) const;
-    void operator()(const LoadMapFd&);
-    void operator()(const Atomic&);
-    void operator()(const Mem&);
-    void operator()(const Packet&);
-    void operator()(const Un&);
-    void operator()(const Undefined&);
-    void operator()(const IncrementLoopCounter&);
+    [[nodiscard]]
+    std::optional<uint32_t> get_map_type(const Reg& map_fd_reg) const;
+    [[nodiscard]]
+    std::optional<uint32_t> get_map_inner_map_fd(const Reg& map_fd_reg) const;
+    [[nodiscard]]
+    interval_t get_map_key_size(const Reg& map_fd_reg) const;
+    [[nodiscard]]
+    interval_t get_map_value_size(const Reg& map_fd_reg) const;
+    [[nodiscard]]
+    interval_t get_map_max_entries(const Reg& map_fd_reg) const;
+
+    static std::optional<variable_t> get_type_offset_variable(const Reg& reg, int type);
+    [[nodiscard]]
+    std::optional<variable_t> get_type_offset_variable(const Reg& reg, const NumAbsDomain& inv) const;
+    [[nodiscard]]
+    std::optional<variable_t> get_type_offset_variable(const Reg& reg) const;
+
+    bool get_map_fd_range(const Reg& map_fd_reg, int32_t* start_fd, int32_t* end_fd) const;
+
+    /// Mapping from variables (including registers, types, offsets,
+    /// memory locations, etc.) to numeric intervals or relationships
+    /// to other variables.
+    NumAbsDomain m_inv;
+
+    /// Represents the stack as a memory region, i.e., an array of bytes,
+    /// allowing mapping to variable in the m_inv numeric domains
+    /// while dealing with overlapping byte ranges.
+    domains::array_domain_t stack;
+
+    TypeDomain type_inv;
+};
+
+class ebpf_checker final {
+    ebpf_domain_t& dom;
+    // shorthands:
+    NumAbsDomain& m_inv;
+    domains::array_domain_t& stack;
+    TypeDomain& type_inv;
+
+  public:
+    explicit ebpf_checker(ebpf_domain_t& dom) : dom(dom), m_inv(dom.m_inv), stack(dom.stack), type_inv(dom.type_inv) {}
 
     void operator()(const Assertion&);
 
@@ -82,14 +114,54 @@ class ebpf_domain_t final {
     void operator()(const ZeroCtxOffset&);
     void operator()(const BoundedLoopCount&);
 
-    void initialize_loop_counter(const label_t& label);
-    static ebpf_domain_t calculate_constant_limits();
+    typedef bool check_require_func_t(NumAbsDomain&, const linear_constraint_t&, std::string);
+    void set_require_check(std::function<check_require_func_t> f);
 
   private:
-    // private generic domain functions
-    void operator+=(const linear_constraint_t& cst);
-    void operator-=(variable_t var);
+    // memory check / load / store
+    void check_access_stack(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub) const;
+    void check_access_context(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub) const;
+    void check_access_packet(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub,
+                             std::optional<variable_t> packet_size) const;
+    void check_access_shared(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub,
+                             variable_t shared_region_size) const;
+    std::function<check_require_func_t> check_require{};
+    std::string current_assertion;
+    void require(NumAbsDomain& inv, const linear_constraint_t& cst, const std::string& s) const;
+};
 
+class ebpf_transformer final {
+    ebpf_domain_t& dom;
+    // shorthands:
+    NumAbsDomain& m_inv;
+    domains::array_domain_t& stack;
+    TypeDomain& type_inv;
+
+  public:
+    explicit ebpf_transformer(ebpf_domain_t& dom)
+        : dom(dom), m_inv(dom.m_inv), stack(dom.stack), type_inv(dom.type_inv) {}
+
+    // abstract transformers
+    void operator()(const Assume&);
+    void operator()(const Bin&);
+    void operator()(const Call&);
+    void operator()(const CallLocal&);
+    void operator()(const Callx&);
+    void operator()(const Exit&);
+    void operator()(const Jmp&) const;
+    void operator()(const LoadMapFd&);
+    void operator()(const Atomic&);
+    void operator()(const Mem&);
+    void operator()(const Packet&);
+    void operator()(const Un&);
+    void operator()(const Undefined&);
+    void operator()(const IncrementLoopCounter&);
+
+    void initialize_loop_counter(const label_t& label);
+
+    static ebpf_domain_t setup_entry(bool init_r1);
+
+  private:
     void assign(variable_t lhs, variable_t rhs);
     void assign(variable_t x, const linear_expression_t& e);
     void assign(variable_t x, int64_t e);
@@ -143,40 +215,14 @@ class ebpf_domain_t final {
     /// Forget everything about all offset variables for a given register.
     void havoc_offsets(const Reg& reg);
 
-    static std::optional<variable_t> get_type_offset_variable(const Reg& reg, int type);
-    [[nodiscard]]
-    std::optional<variable_t> get_type_offset_variable(const Reg& reg, const NumAbsDomain& inv) const;
-    [[nodiscard]]
-    std::optional<variable_t> get_type_offset_variable(const Reg& reg) const;
-
     void scratch_caller_saved_registers();
     void save_callee_saved_registers(const std::string& prefix);
     void restore_callee_saved_registers(const std::string& prefix);
     void havoc_subprogram_stack(const std::string& prefix);
-    [[nodiscard]]
-    std::optional<uint32_t> get_map_type(const Reg& map_fd_reg) const;
-    [[nodiscard]]
-    std::optional<uint32_t> get_map_inner_map_fd(const Reg& map_fd_reg) const;
-    [[nodiscard]]
-    interval_t get_map_key_size(const Reg& map_fd_reg) const;
-    [[nodiscard]]
-    interval_t get_map_value_size(const Reg& map_fd_reg) const;
-    [[nodiscard]]
-    interval_t get_map_max_entries(const Reg& map_fd_reg) const;
     void forget_packet_pointers();
     void do_load_mapfd(const Reg& dst_reg, int mapfd, bool maybe_null);
 
     void assign_valid_ptr(const Reg& dst_reg, bool maybe_null);
-
-    void require(NumAbsDomain& inv, const linear_constraint_t& cst, const std::string& s) const;
-
-    // memory check / load / store
-    void check_access_stack(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub) const;
-    void check_access_context(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub) const;
-    void check_access_packet(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub,
-                             std::optional<variable_t> packet_size) const;
-    void check_access_shared(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub,
-                             variable_t shared_region_size) const;
 
     void recompute_stack_numeric_size(NumAbsDomain& inv, const Reg& reg) const;
     void recompute_stack_numeric_size(NumAbsDomain& inv, variable_t type_variable) const;
@@ -193,26 +239,7 @@ class ebpf_domain_t final {
     void do_mem_store(const Mem& b, const linear_expression_t& val_type, const linear_expression_t& val_svalue,
                       const linear_expression_t& val_uvalue, const std::optional<reg_pack_t>& opt_val_reg);
 
-    friend std::ostream& operator<<(std::ostream& o, const ebpf_domain_t& dom);
-
     static void initialize_packet(ebpf_domain_t& inv);
-
-  private:
-    /// Mapping from variables (including registers, types, offsets,
-    /// memory locations, etc.) to numeric intervals or relationships
-    /// to other variables.
-    NumAbsDomain m_inv;
-
-    /// Represents the stack as a memory region, i.e., an array of bytes,
-    /// allowing mapping to variable in the m_inv numeric domains
-    /// while dealing with overlapping byte ranges.
-    domains::array_domain_t stack;
-
-    std::function<check_require_func_t> check_require{};
-    bool get_map_fd_range(const Reg& map_fd_reg, int32_t* start_fd, int32_t* end_fd) const;
-
-    TypeDomain type_inv;
-    std::string current_assertion;
 }; // end ebpf_domain_t
 
 } // namespace crab
