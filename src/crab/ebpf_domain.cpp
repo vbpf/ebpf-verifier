@@ -938,18 +938,12 @@ void ebpf_transformer::restore_callee_saved_registers(const std::string& prefix)
 }
 
 void ebpf_transformer::havoc_subprogram_stack(const std::string& prefix) {
-    // Calculate the call stack depth being returned from.  Since we're returning
-    // *to* the given prefix, the current call stack is 2 + the number of
-    // '/' separators because we need to account for the current frame and the root frame.
-    const int call_stack_depth = 2 + std::ranges::count(prefix, STACK_FRAME_DELIMITER);
-
     const variable_t r10_stack_offset = reg_pack(R10_STACK_POINTER).stack_offset;
     const auto intv = m_inv.eval_interval(r10_stack_offset);
     if (!intv.is_singleton()) {
         return;
     }
-    const int64_t stack_offset = intv.singleton()->cast_to<int64_t>();
-    const int32_t stack_start = stack_offset - EBPF_SUBPROGRAM_STACK_SIZE * call_stack_depth;
+    const int64_t stack_start = intv.singleton()->cast_to<int64_t>() - EBPF_SUBPROGRAM_STACK_SIZE;
     for (const data_kind_t kind : iterate_kinds()) {
         stack.havoc(m_inv, kind, stack_start, EBPF_SUBPROGRAM_STACK_SIZE);
     }
@@ -1207,15 +1201,15 @@ void ebpf_checker::operator()(const Assertion& assertion) {
     }
 }
 
-void ebpf_checker::check_access_stack(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub,
-                                      const int call_stack_depth) const {
+void ebpf_checker::check_access_stack(NumAbsDomain& inv, const linear_expression_t& lb,
+                                      const linear_expression_t& ub) const {
     using namespace crab::dsl_syntax;
     const variable_t r10_stack_offset = reg_pack(R10_STACK_POINTER).stack_offset;
     const auto interval = inv.eval_interval(r10_stack_offset);
     if (interval.is_singleton()) {
         const int64_t stack_offset = interval.singleton()->cast_to<int64_t>();
-        require(inv, lb >= stack_offset - EBPF_SUBPROGRAM_STACK_SIZE * call_stack_depth,
-                "Lower bound must be at least r10.stack_offset - EBPF_SUBPROGRAM_STACK_SIZE * call_stack_depth");
+        require(inv, lb >= stack_offset - EBPF_SUBPROGRAM_STACK_SIZE,
+                "Lower bound must be at least r10.stack_offset - EBPF_SUBPROGRAM_STACK_SIZE");
     }
     require(inv, ub <= EBPF_TOTAL_STACK_SIZE, "Upper bound must be at most EBPF_TOTAL_STACK_SIZE");
 }
@@ -1386,6 +1380,10 @@ void ebpf_transformer::operator()(const Exit& a) {
     }
     havoc_subprogram_stack(prefix);
     restore_callee_saved_registers(prefix);
+
+    // Restore r10.
+    constexpr Reg r10_reg{R10_STACK_POINTER};
+    add(r10_reg, EBPF_SUBPROGRAM_STACK_SIZE, 64);
 }
 
 void ebpf_transformer::operator()(const Jmp&) const {
@@ -1704,7 +1702,7 @@ void ebpf_checker::operator()(const ValidAccess& s) {
         }
         case T_STACK: {
             auto [lb, ub] = lb_ub_access_pair(s, reg.stack_offset);
-            check_access_stack(inv, lb, ub, s.call_stack_depth);
+            check_access_stack(inv, lb, ub);
             // if within bounds, it can never be null
             if (s.access_type == AccessType::read) {
                 // Require that the stack range contains numbers.
@@ -2253,6 +2251,10 @@ void ebpf_transformer::operator()(const CallLocal& call) {
         return;
     }
     save_callee_saved_registers(call.stack_frame_prefix);
+
+    // Update r10.
+    constexpr Reg r10_reg{R10_STACK_POINTER};
+    add(r10_reg, -EBPF_SUBPROGRAM_STACK_SIZE, 64);
 }
 
 void ebpf_transformer::operator()(const Callx& callx) {
