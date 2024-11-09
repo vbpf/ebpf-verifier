@@ -159,3 +159,4 @@ post:
   - r10.stack_offset=4096
 messages:
   - "0: Upper bound must be at most EBPF_TOTAL_STACK_SIZE (r2.type == number or r1.type == r2.type in {ctx, stack, packet})"
+  - "0: Lower bound must be at least r10.stack_offset - EBPF_SUBPROGRAM_STACK_SIZE (r2.type == number or r1.type == r2.type in {ctx, stack, packet})"
