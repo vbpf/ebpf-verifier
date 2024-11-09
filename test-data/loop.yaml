@@ -463,3 +463,61 @@ messages:
   - "1:3: Code is unreachable after 1:3"
   - "2: Loop counter is too large (pc[2] < 100000)"
   - "2:3: Code is unreachable after 2:3"
+
+---
+# Issue: https://github.com/vbpf/ebpf-verifier/issues/785
+# The verifier incorrectly assumes that the loop is infinite.
+test-case: Count down loop - incorrectly passes
+options: ["termination"]
+
+pre: []
+
+code:
+  <start>: |
+    r0 = 0
+    r1 = 10
+  <loop>: |
+    r1 -= 1
+    if r1 > 1 goto <loop>
+    exit
+
+post:
+  - pc[2]=[1, +oo]
+  - r0.svalue=0
+  - r0.type=number
+  - r0.uvalue=0
+  - r1.svalue=[0, 1]
+  - r1.type=number
+  - r1.uvalue=[0, 1]
+
+messages:
+  - "2: Loop counter is too large (pc[2] < 100000)"
+
+---
+test-case: Count up loop
+options: ["termination"]
+
+pre: []
+
+code:
+  <start>: |
+    r0 = 0
+    r1 = 0
+  <loop>: |
+    r1 += 1
+    if r1 < 10 goto <loop>
+    exit
+
+post:
+  - r0.svalue=0
+  - r0.type=number
+  - r0.uvalue=0
+  - r1.svalue=10
+  - r1.type=number
+  - r1.uvalue=10
+  - r1.svalue=r1.uvalue
+  - pc[2]=10
+  - pc[2]=r1.svalue
+  - pc[2]=r1.uvalue
+
+messages: []
