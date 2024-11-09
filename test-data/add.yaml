@@ -213,6 +213,7 @@ code:
     r2 = 2
     require [r2.type=number, r2.svalue=2, r2.uvalue=r2.svalue]
     r1 += r2
+    # Using 2 instead of 3 to validate that verification fails at an intermediate step.
     require [r1.type=number, r1.svalue=2, r1.uvalue=r1.svalue]
     r0 = r1
 
@@ -228,4 +229,4 @@ post:
   - r2.uvalue=2
 
 messages:
-  - "3: Concrete invariants do not match abstract invariants"
+  - "4: Concrete invariants do not match abstract invariants"

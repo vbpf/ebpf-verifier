@@ -228,7 +228,6 @@ InstructionOrConstraintsSet parse_instruction(const std::string& line,
     if (regex_match(text, m, regex(REQUIRE))) {
         std::string constraints = m[1];
         std::set<std::string> constraint_set;
-        std::vector<crab::interval_t> numeric_ranges;
         std::regex re(R"(\s*,\s*)");
         std::sregex_token_iterator first{constraints.begin(), constraints.end(), re, -1}, last;
         for (; first != last; ++first) {
