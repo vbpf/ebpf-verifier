@@ -17,7 +17,7 @@ inline std::function<int16_t(label_t)> label_to_offset16(const pc_t pc) {
         const int64_t offset = label.from - gsl::narrow<int64_t>(pc) - 1;
         const bool is16 =
             std::numeric_limits<int16_t>::min() <= offset && offset <= std::numeric_limits<int16_t>::max();
-        return is16 ? gsl::narrow<int16_t>(offset) : 0;
+        return gsl::narrow<int16_t>(is16 ? offset : 0);
     };
 }
 
