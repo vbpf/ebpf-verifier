@@ -594,4 +594,4 @@ post:
   - s[511].uvalue=0
 
 messages:
-  - "0: Lower bound must be at least r10.stack_offset - EBPF_SUBPROGRAM_STACK_SIZE * call_stack_depth (valid_access(r10.offset-513, width=1) for write)"
+  - "0: Lower bound must be at least r10.stack_offset - EBPF_SUBPROGRAM_STACK_SIZE (valid_access(r10.offset-513, width=1) for write)"
