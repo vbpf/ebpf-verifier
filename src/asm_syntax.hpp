@@ -23,6 +23,49 @@ struct label_t {
     explicit label_t(const int index, const int to = -1, std::string stack_frame_prefix = {}) noexcept
         : from(index), to(to), stack_frame_prefix(std::move(stack_frame_prefix)) {}
 
+    /**
+     * @brief Construct a new label t object from a string.
+     *
+     * @param[in] string_label The string representation of the label.
+     * @return None (constructor)
+     *
+     * @throw std::invalid_argument The label format is invalid.
+     * @throw std::out_of_range The label value causes numeric overflow.
+     *
+     * Format: [prefix/]from[:to]
+     * - prefix: Optional stack frame prefix
+     * - from: Source instruction number
+     * - to: Optional jump target (-1 means next instruction)
+     *
+     * Example labels:
+     * "2:-1" - a label which falls through to the next instruction.
+     * "2:5" - a label which jumps to instruction 5.
+     * "2:-1/5:-1" - a label which falls through to the next instruction, with a stack frame prefix denoting where the
+     * label was called.
+     */
+    explicit label_t(std::string_view string_label) {
+        auto pos = string_label.find(STACK_FRAME_DELIMITER);
+        if (pos != std::string_view::npos) {
+            stack_frame_prefix = std::string(string_label.substr(0, pos));
+            string_label = string_label.substr(pos + 1);
+        }
+
+        pos = string_label.find(':');
+        try {
+            if (pos != std::string_view::npos) {
+                from = std::stoi(std::string(string_label.substr(0, pos)));
+                to = std::stoi(std::string(string_label.substr(pos + 1)));
+            } else {
+                from = std::stoi(std::string(string_label));
+                to = -1;
+            }
+        } catch (const std::invalid_argument& e) {
+            throw std::invalid_argument("Invalid label format: " + std::string(string_label));
+        } catch (const std::out_of_range& e) {
+            throw std::out_of_range("Label value out of range: " + std::string(string_label));
+        }
+    }
+
     static label_t make_jump(const label_t& src_label, const label_t& target_label) {
         return label_t{src_label.from, target_label.from, target_label.stack_frame_prefix};
     }
@@ -315,11 +358,48 @@ struct IncrementLoopCounter {
     bool operator==(const IncrementLoopCounter&) const = default;
 };
 
+// Helper metafunction to append a type to a variant
+template <typename Variant, typename NewType>
+struct append_to_variant;
+
+template <typename... Types, typename NewType>
+struct append_to_variant<std::variant<Types...>, NewType> {
+    using type = std::variant<Types..., NewType>;
+};
+
+// Helper metafunction to check if a type is in a variant
+template <typename Variant, typename T>
+struct is_type_in_variant;
+
+template <typename T, typename... Types>
+struct is_type_in_variant<std::variant<Types...>, T> : std::disjunction<std::is_same<T, Types>...> {};
+
+// Function to convert ExtendedVariant to OriginalVariant if it doesn't contain the new type
+template <typename OriginalVariant, typename ExtendedVariant>
+std::optional<OriginalVariant> convert_to_original(const ExtendedVariant& extendedVariant) {
+    std::optional<OriginalVariant> result;
+
+    std::visit(
+        [&result](auto&& arg) {
+            using T = std::decay_t<decltype(arg)>;
+            if constexpr (is_type_in_variant<OriginalVariant, T>::value) {
+                result = arg;
+            }
+        },
+        extendedVariant);
+    return result;
+}
+
 using Instruction = std::variant<Undefined, Bin, Un, LoadMapFd, Call, CallLocal, Callx, Exit, Jmp, Mem, Packet, Atomic,
                                  Assume, IncrementLoopCounter>;
 
+using ConstraintsSet = std::set<std::string>;
+using InstructionOrConstraintsSet = append_to_variant<Instruction, ConstraintsSet>::type;
 using LabeledInstruction = std::tuple<label_t, Instruction, std::optional<btf_line_info_t>>;
+using LabeledConstraints = std::tuple<label_t, ConstraintsSet>;
 using InstructionSeq = std::vector<LabeledInstruction>;
+using ConstraintsSeq = std::vector<LabeledConstraints>;
+using InstructionAndConstraintsSeq = std::tuple<InstructionSeq, ConstraintsSeq>;
 
 /// Condition check whether something is a valid size.
 struct ValidSize {

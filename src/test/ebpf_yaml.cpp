@@ -137,7 +137,8 @@ static RawTestCase parse_case(const YAML::Node& case_node) {
     };
 }
 
-static InstructionSeq raw_cfg_to_instruction_seq(const vector<std::tuple<string, vector<string>>>& raw_blocks) {
+static InstructionAndConstraintsSeq
+raw_cfg_to_instruction_seq(const vector<std::tuple<string, vector<string>>>& raw_blocks) {
     std::map<string, crab::label_t> label_name_to_label;
 
     int label_index = 0;
@@ -148,11 +149,21 @@ static InstructionSeq raw_cfg_to_instruction_seq(const vector<std::tuple<string,
     }
 
     InstructionSeq res;
+    ConstraintsSeq constraints;
     label_index = 0;
     for (const auto& [label_name, raw_block] : raw_blocks) {
         for (const string& line : raw_block) {
             try {
-                const Instruction& ins = parse_instruction(line, label_name_to_label);
+                const InstructionOrConstraintsSet& ins_or_constraints = parse_instruction(line, label_name_to_label);
+                if (std::holds_alternative<ConstraintsSet>(ins_or_constraints)) {
+                    constraints.emplace_back(label_index, std::get<ConstraintsSet>(ins_or_constraints));
+                    continue;
+                }
+                auto ins_opt = convert_to_original<Instruction>(ins_or_constraints);
+                if (!ins_opt) {
+                    continue;
+                }
+                const Instruction& ins = *ins_opt;
                 if (std::holds_alternative<Undefined>(ins)) {
                     std::cout << "text:" << line << "; ins: " << ins << "\n";
                 }
@@ -164,7 +175,7 @@ static InstructionSeq raw_cfg_to_instruction_seq(const vector<std::tuple<string,
             label_index++;
         }
     }
-    return res;
+    return {res, constraints};
 }
 
 static ebpf_verifier_options_t raw_options_to_options(const std::set<string>& raw_options) {
@@ -208,12 +219,16 @@ static ebpf_verifier_options_t raw_options_to_options(const std::set<string>& ra
 }
 
 static TestCase read_case(const RawTestCase& raw_case) {
-    return TestCase{.name = raw_case.test_case,
-                    .options = raw_options_to_options(raw_case.options),
-                    .assumed_pre_invariant = read_invariant(raw_case.pre),
-                    .instruction_seq = raw_cfg_to_instruction_seq(raw_case.raw_blocks),
-                    .expected_post_invariant = read_invariant(raw_case.post),
-                    .expected_messages = raw_case.messages};
+    auto instruction_seq_and_constraints = raw_cfg_to_instruction_seq(raw_case.raw_blocks);
+    return TestCase{
+        .name = raw_case.test_case,
+        .options = raw_options_to_options(raw_case.options),
+        .assumed_pre_invariant = read_invariant(raw_case.pre),
+        .instruction_seq = std::get<0>(instruction_seq_and_constraints),
+        .expected_post_invariant = read_invariant(raw_case.post),
+        .expected_messages = raw_case.messages,
+        .invariants_to_check = std::get<1>(instruction_seq_and_constraints),
+    };
 }
 
 static vector<TestCase> read_suite(const string& path) {
@@ -254,6 +269,10 @@ std::optional<Failure> run_yaml_test_case(TestCase test_case, bool debug) {
         test_case.options.cfg_opts.simplify = false;
     }
 
+    if (!test_case.invariants_to_check.empty()) {
+        test_case.options.store_pre_invariants = true;
+    }
+
     ebpf_context_descriptor_t context_descriptor{64, 0, 4, -1};
     EbpfProgramType program_type = make_program_type(test_case.name, &context_descriptor);
 
@@ -263,6 +282,25 @@ std::optional<Failure> run_yaml_test_case(TestCase test_case, bool debug) {
     const auto& [actual_last_invariant, result] = ebpf_analyze_program_for_test(
         ss, test_case.instruction_seq, test_case.assumed_pre_invariant, info, test_case.options);
     std::set<string> actual_messages = extract_messages(ss.str());
+
+    for (auto& [label, expected_invariant] : test_case.invariants_to_check) {
+        ss = {};
+        ss << label;
+        std::string string_label = ss.str();
+        ss = {};
+
+        try {
+            if (!ebpf_check_constraints_at_label(ss, string_label, expected_invariant)) {
+                // If debug is enabled, print the output of ebpf_check_constraints_at_label.
+                if (debug) {
+                    std::cout << ss.str();
+                }
+                actual_messages.insert(string_label + ": Concrete invariants do not match abstract invariants");
+            }
+        } catch (const std::exception& e) {
+            actual_messages.insert(string_label + ": Exception occurred during invariant check");
+        }
+    }
 
     if (actual_last_invariant == test_case.expected_post_invariant && actual_messages == test_case.expected_messages) {
         return {};

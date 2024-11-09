@@ -14,6 +14,7 @@ struct TestCase {
     InstructionSeq instruction_seq;
     string_invariant expected_post_invariant;
     std::set<std::string> expected_messages;
+    ConstraintsSeq invariants_to_check;
 };
 
 void foreach_suite(const std::string& path, const std::function<void(const TestCase&)>& f);
