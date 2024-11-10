@@ -124,7 +124,7 @@ int main(int argc, char** argv) {
         ->expected(0, _conformance_groups.size())
         ->check(CLI::IsMember(_get_conformance_group_names()));
 
-    app.add_flag("--simplify,!--no-simplify", ebpf_verifier_options.cfg_opts.simplify,
+    app.add_flag("--simplify,!--no-simplify", ebpf_verifier_options.simplify,
                  "Simplify the CFG before analysis by merging chains of instructions into a single basic block. "
                  "Default: enabled")
         ->group("Verbosity");
