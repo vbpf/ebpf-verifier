@@ -71,7 +71,13 @@ class interleaved_fwd_fixpoint_iterator_t final {
         const basic_block_t& bb = _cfg.get_node(label);
 
         for (const GuardedInstruction& ins : bb) {
-            std::visit(ebpf_transformer{pre}, ins.cmd);
+            if (thread_local_options.assume_assertions) {
+                for (const auto& assertion : ins.preconditions) {
+                    // avoid redundant errors
+                    ebpf_domain_assume(pre, assertion);
+                }
+            }
+            ebpf_domain_transform(pre, ins.cmd);
         };
         _post[label] = std::move(pre);
     }
@@ -133,7 +139,7 @@ std::pair<invariant_table_t, invariant_table_t> run_forward_analyzer(const cfg_t
         // during program verification.
         // TODO: Consider making this an instruction instead of an explicit call.
         analyzer._wto.for_each_loop_head(
-            [&](const label_t& label) { ebpf_transformer{entry_inv}.initialize_loop_counter(label); });
+            [&](const label_t& label) { ebpf_domain_initialize_loop_counter(entry_inv, label); });
     }
     analyzer.set_pre(cfg.entry_label(), entry_inv);
     for (const auto& component : analyzer._wto) {
