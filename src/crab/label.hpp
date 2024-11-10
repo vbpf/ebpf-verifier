@@ -3,7 +3,10 @@
 #pragma once
 
 #include <algorithm>
+#include <cinttypes>
 #include <climits>
+#include <functional>
+#include <limits>
 #include <ostream>
 #include <string>
 #include <utility>
@@ -61,7 +64,31 @@ struct label_t {
 inline const label_t label_t::entry{-1};
 inline const label_t label_t::exit{INT_MAX};
 
-} // namespace crab
+std::ostream& operator<<(std::ostream& os, const label_t& label);
+std::string to_string(label_t const& label);
 
-std::ostream& operator<<(std::ostream& os, const crab::label_t& label);
-std::string to_string(crab::label_t const& label);
+// cpu=v4 supports 32-bit PC offsets so we need a large enough type.
+using pc_t = uint32_t;
+
+// We use a 16-bit offset whenever it fits in 16 bits.
+inline std::function<int16_t(label_t)> label_to_offset16(const pc_t pc) {
+    return [=](const label_t& label) {
+        const int64_t offset = label.from - gsl::narrow<int64_t>(pc) - 1;
+        const bool is16 =
+            std::numeric_limits<int16_t>::min() <= offset && offset <= std::numeric_limits<int16_t>::max();
+        return gsl::narrow<int16_t>(is16 ? offset : 0);
+    };
+}
+
+// We use the JA32 opcode with the offset in 'imm' when the offset
+// of an unconditional jump doesn't fit in an int16_t.
+inline std::function<int32_t(label_t)> label_to_offset32(const pc_t pc) {
+    return [=](const label_t& label) {
+        const int64_t offset = label.from - gsl::narrow<int64_t>(pc) - 1;
+        const bool is16 =
+            std::numeric_limits<int16_t>::min() <= offset && offset <= std::numeric_limits<int16_t>::max();
+        return is16 ? 0 : gsl::narrow<int32_t>(offset);
+    };
+}
+
+} // namespace crab

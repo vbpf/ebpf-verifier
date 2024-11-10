@@ -20,8 +20,6 @@
 #include "crab_verifier.hpp"
 #include "string_constraints.hpp"
 
-#include <boost/fusion/sequence/intrinsic/value_at.hpp>
-
 using crab::ebpf_domain_t;
 using std::string;
 

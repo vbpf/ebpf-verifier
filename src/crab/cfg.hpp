@@ -37,7 +37,7 @@ class value_t final {
 
   private:
     label_t m_label;
-    GuardedInstruction m_instruction;
+    GuardedInstruction m_instruction{.cmd = Undefined{}};
     label_vec_t m_prev, m_next;
 
   public:
@@ -484,60 +484,11 @@ class basic_block_t final {
     void swap_instructions(stmt_list_t& ts) { std::swap(m_ts, ts); }
 };
 
-// Viewing basic_block_t with all statements reversed. Useful for
-// backward analysis.
-class basic_block_rev_t final {
-  public:
-    using iterator = basic_block_t::reverse_iterator;
-    using const_iterator = basic_block_t::const_reverse_iterator;
+void print_dot(const cfg_t& cfg, std::ostream& out);
+void print_dot(const cfg_t& cfg, const std::string& outfile);
 
-  public:
-    basic_block_t& _bb;
-
-    explicit basic_block_rev_t(basic_block_t& bb) : _bb(bb) {}
-
-    [[nodiscard]]
-    label_t label() const {
-        return _bb.label();
-    }
-
-    iterator begin() { return _bb.rbegin(); }
-
-    iterator end() { return _bb.rend(); }
-
-    [[nodiscard]]
-    const_iterator begin() const {
-        return _bb.rbegin();
-    }
-
-    [[nodiscard]]
-    const_iterator end() const {
-        return _bb.rend();
-    }
-
-    [[nodiscard]]
-    std::size_t size() const {
-        return gsl::narrow<size_t>(std::distance(begin(), end()));
-    }
-};
-
-inline void cfg_t::remove_unreachable_blocks() {
-    visited_t alive, dead;
-    mark_alive_blocks(entry_label(), *this, alive);
-
-    for (const auto& label : labels()) {
-        if (!alive.contains(label)) {
-            dead.insert(label);
-        }
-    }
-
-    if (dead.contains(exit_label())) {
-        CRAB_ERROR("Exit block must be reachable");
-    }
-    for (const auto& _label : dead) {
-        remove(_label);
-    }
-}
+std::ostream& operator<<(std::ostream& o, const value_t& value);
+std::ostream& operator<<(std::ostream& o, const cfg_t& cfg);
 
 } // end namespace crab
 
@@ -559,10 +510,3 @@ cfg_t prepare_cfg(const InstructionSeq& prog, const program_info& info, const pr
 
 void explicate_assertions(cfg_t& cfg, const program_info& info);
 std::vector<Assertion> get_assertions(Instruction ins, const program_info& info, const std::optional<label_t>& label);
-
-void print_dot(const cfg_t& cfg, std::ostream& out);
-void print_dot(const cfg_t& cfg, const std::string& outfile);
-
-std::ostream& operator<<(std::ostream& o, const basic_block_t& bb);
-std::ostream& operator<<(std::ostream& o, const crab::value_t& value);
-std::ostream& operator<<(std::ostream& o, const cfg_t& cfg);

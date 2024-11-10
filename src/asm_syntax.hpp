@@ -2,11 +2,8 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 
-#include <functional>
-#include <limits>
 #include <optional>
 #include <ostream>
-#include <ranges>
 #include <string>
 #include <tuple>
 #include <utility>
@@ -362,42 +359,6 @@ struct GuardedInstruction {
     bool operator==(const GuardedInstruction&) const = default;
 };
 
-// cpu=v4 supports 32-bit PC offsets so we need a large enough type.
-using pc_t = uint32_t;
-
-} // namespace asm_syntax
-
-using namespace asm_syntax;
-
-// We use a 16-bit offset whenever it fits in 16 bits.
-inline std::function<int16_t(label_t)> label_to_offset16(const pc_t pc) {
-    return [=](const label_t& label) {
-        const int64_t offset = label.from - gsl::narrow<int64_t>(pc) - 1;
-        const bool is16 =
-            std::numeric_limits<int16_t>::min() <= offset && offset <= std::numeric_limits<int16_t>::max();
-        return gsl::narrow<int16_t>(is16 ? offset : 0);
-    };
-}
-
-// We use the JA32 opcode with the offset in 'imm' when the offset
-// of an unconditional jump doesn't fit in an int16_t.
-inline std::function<int32_t(label_t)> label_to_offset32(const pc_t pc) {
-    return [=](const label_t& label) {
-        const int64_t offset = label.from - gsl::narrow<int64_t>(pc) - 1;
-        const bool is16 =
-            std::numeric_limits<int16_t>::min() <= offset && offset <= std::numeric_limits<int16_t>::max();
-        return is16 ? 0 : gsl::narrow<int32_t>(offset);
-    };
-}
-
-std::ostream& operator<<(std::ostream& os, const btf_line_info_t& line_info);
-
-void print(const InstructionSeq& insts, std::ostream& out, const std::optional<const label_t>& label_to_print,
-           bool print_line_info = false);
-
-std::ostream& operator<<(std::ostream& os, const label_t& label);
-std::string to_string(label_t const& label);
-
 std::ostream& operator<<(std::ostream& os, Instruction const& ins);
 std::string to_string(Instruction const& ins);
 
@@ -415,6 +376,14 @@ inline std::ostream& operator<<(std::ostream& os, Value const& a) {
 
 std::ostream& operator<<(std::ostream& os, const Assertion& a);
 std::string to_string(const Assertion& constraint);
+
+void print(const InstructionSeq& insts, std::ostream& out, const std::optional<const label_t>& label_to_print,
+           bool print_line_info = false);
+
+} // namespace asm_syntax
+
+using namespace asm_syntax;
+using crab::pc_t;
 
 template <class... Ts>
 struct overloaded : Ts... {

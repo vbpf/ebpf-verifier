@@ -11,6 +11,7 @@
 #include "crab/interval.hpp"
 #include "crab/type_encoding.hpp"
 #include "crab/variable.hpp"
+#include "crab_utils/num_big.hpp"
 #include "helpers.hpp"
 #include "platform.hpp"
 #include "spec_type_descriptors.hpp"
@@ -20,6 +21,113 @@ using std::optional;
 using std::string;
 using std::vector;
 
+namespace crab {
+
+std::string number_t::to_string() const { return _n.str(); }
+
+std::string interval_t::to_string() const {
+    std::ostringstream s;
+    s << *this;
+    return s.str();
+}
+
+std::ostream& operator<<(std::ostream& os, const label_t& label) {
+    if (label == label_t::entry) {
+        return os << "entry";
+    }
+    if (label == label_t::exit) {
+        return os << "exit";
+    }
+    if (!label.stack_frame_prefix.empty()) {
+        os << label.stack_frame_prefix << STACK_FRAME_DELIMITER;
+    }
+    os << label.from;
+    if (label.to != -1) {
+        os << ":" << label.to;
+    }
+    if (!label.special_label.empty()) {
+        os << " (" << label.special_label << ")";
+    }
+    return os;
+}
+
+string to_string(label_t const& label) {
+    std::stringstream str;
+    str << label;
+    return str.str();
+}
+
+void print_dot(const cfg_t& cfg, std::ostream& out) {
+    out << "digraph program {\n";
+    out << "    node [shape = rectangle];\n";
+    for (const auto& label : cfg.labels()) {
+        out << "    \"" << label << "\"[xlabel=\"" << label << "\",label=\"";
+
+        const auto& value = cfg.get_node(label);
+        const auto& ins = value.instruction();
+        for (const auto& pre : ins.preconditions) {
+            out << "assert " << pre << "\\l";
+        }
+        out << ins.cmd << "\\l";
+
+        out << "\"];\n";
+        for (const label_t& next : value.next_labels_set()) {
+            out << "    \"" << label << "\" -> \"" << next << "\";\n";
+        }
+        out << "\n";
+    }
+    out << "}\n";
+}
+
+void print_dot(const cfg_t& cfg, const std::string& outfile) {
+    std::ofstream out{outfile};
+    if (out.fail()) {
+        throw std::runtime_error(std::string("Could not open file ") + outfile);
+    }
+    print_dot(cfg, out);
+}
+
+std::ostream& operator<<(std::ostream& o, const value_t& value) {
+    o << value.label() << ":\n";
+    const auto ins = value.instruction();
+    for (const auto& pre : ins.preconditions) {
+        o << "  "
+          << "assert " << pre << ";\n";
+    }
+    o << "  " << ins.cmd << ";\n";
+    auto [it, et] = value.next_labels();
+    if (it != et) {
+        o << "  "
+          << "goto ";
+        while (it != et) {
+            o << *it;
+            ++it;
+            if (it == et) {
+                o << ";";
+            } else {
+                o << ",";
+            }
+        }
+    }
+    o << "\n";
+    return o;
+}
+
+std::ostream& operator<<(std::ostream& o, const cfg_t& cfg) {
+    for (const label_t& label : cfg.sorted_labels()) {
+        o << cfg.get_node(label);
+        o << "edges to:";
+        for (const label_t& next_label : cfg.next_nodes(label)) {
+            o << " " << next_label;
+        }
+        o << "\n";
+    }
+    return o;
+}
+
+} // namespace crab
+
+namespace asm_syntax {
 std::ostream& operator<<(std::ostream& os, const ArgSingle::Kind kind) {
     switch (kind) {
     case ArgSingle::Kind::ANYTHING: return os << "uint64_t";
@@ -354,32 +462,6 @@ struct CommandPrinterVisitor {
 };
 // ReSharper restore CppMemberFunctionMayBeConst
 
-std::ostream& operator<<(std::ostream& os, const label_t& label) {
-    if (label == label_t::entry) {
-        return os << "entry";
-    }
-    if (label == label_t::exit) {
-        return os << "exit";
-    }
-    if (!label.stack_frame_prefix.empty()) {
-        os << label.stack_frame_prefix << STACK_FRAME_DELIMITER;
-    }
-    os << label.from;
-    if (label.to != -1) {
-        os << ":" << label.to;
-    }
-    if (!label.special_label.empty()) {
-        os << " (" << label.special_label << ")";
-    }
-    return os;
-}
-
-string to_string(label_t const& label) {
-    std::stringstream str;
-    str << label;
-    return str.str();
-}
-
 std::ostream& operator<<(std::ostream& os, Instruction const& ins) {
     std::visit(CommandPrinterVisitor{os}, ins);
     return os;
@@ -452,7 +534,7 @@ void print(const InstructionSeq& insts, std::ostream& out, const std::optional<c
             }
             if (const auto jmp = std::get_if<Jmp>(&ins)) {
                 if (!pc_of_label.contains(jmp->target)) {
-                    throw std::runtime_error(string("Cannot find label ") + to_string(jmp->target));
+                    throw std::runtime_error(string("Cannot find label ") + crab::to_string(jmp->target));
                 }
                 const pc_t target_pc = pc_of_label.at(jmp->target);
                 visitor(*jmp, target_pc - static_cast<int>(pc) - 1);
@@ -464,6 +546,8 @@ void print(const InstructionSeq& insts, std::ostream& out, const std::optional<c
         pc += size(ins);
     }
 }
+
+} // namespace asm_syntax
 
 std::ostream& operator<<(std::ostream& o, const EbpfMapDescriptor& desc) {
     return o << "("
@@ -483,84 +567,8 @@ void print_map_descriptors(const std::vector<EbpfMapDescriptor>& descriptors, st
     }
 }
 
-void print_dot(const cfg_t& cfg, std::ostream& out) {
-    out << "digraph program {\n";
-    out << "    node [shape = rectangle];\n";
-    for (const auto& label : cfg.labels()) {
-        out << "    \"" << label << "\"[xlabel=\"" << label << "\",label=\"";
-
-        const auto& value = cfg.get_node(label);
-        const auto& ins = value.instruction();
-        for (const auto& pre : ins.preconditions) {
-            out << "assert " << pre << "\\l";
-        }
-        out << ins.cmd << "\\l";
-
-        out << "\"];\n";
-        for (const label_t& next : value.next_labels_set()) {
-            out << "    \"" << label << "\" -> \"" << next << "\";\n";
-        }
-        out << "\n";
-    }
-    out << "}\n";
-}
-
-void print_dot(const cfg_t& cfg, const std::string& outfile) {
-    std::ofstream out{outfile};
-    if (out.fail()) {
-        throw std::runtime_error(std::string("Could not open file ") + outfile);
-    }
-    print_dot(cfg, out);
-}
-
-std::ostream& operator<<(std::ostream& o, const crab::value_t& value) {
-    o << value.label() << ":\n";
-    const auto ins = value.instruction();
-    for (const auto& pre : ins.preconditions) {
-        o << "  "
-          << "assert " << pre << ";\n";
-    }
-    o << "  " << ins.cmd << ";\n";
-    auto [it, et] = value.next_labels();
-    if (it != et) {
-        o << "  "
-          << "goto ";
-        while (it != et) {
-            o << *it;
-            ++it;
-            if (it == et) {
-                o << ";";
-            } else {
-                o << ",";
-            }
-        }
-    }
-    o << "\n";
-    return o;
-}
-
-std::ostream& operator<<(std::ostream& o, const cfg_t& cfg) {
-    for (const label_t& label : cfg.sorted_labels()) {
-        o << cfg.get_node(label);
-        o << "edges to:";
-        for (const label_t& next_label : cfg.next_nodes(label)) {
-            o << " " << next_label;
-        }
-        o << "\n";
-    }
-    return o;
-}
-
 std::ostream& operator<<(std::ostream& os, const btf_line_info_t& line_info) {
     os << "; " << line_info.file_name << ":" << line_info.line_number << "\n";
     os << "; " << line_info.source_line << "\n";
     return os;
-}
-
-std::string crab::number_t::to_string() const { return _n.str(); }
-
-std::string crab::interval_t::to_string() const {
-    std::ostringstream s;
-    s << *this;
-    return s.str();
 }

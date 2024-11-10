@@ -292,7 +292,7 @@ struct MarshalVisitor {
 };
 
 vector<ebpf_inst> marshal(const Instruction& ins, const pc_t pc) {
-    return std::visit(MarshalVisitor{label_to_offset16(pc), label_to_offset32(pc)}, ins);
+    return std::visit(MarshalVisitor{crab::label_to_offset16(pc), crab::label_to_offset32(pc)}, ins);
 }
 
 static int size(const Instruction& inst) {

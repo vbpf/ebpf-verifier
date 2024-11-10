@@ -7,6 +7,7 @@
 #include <optional>
 #include <utility>
 
+#include "asm_syntax.hpp"
 #include "asm_unmarshal.hpp"
 #include "config.hpp"
 #include "crab/array_domain.hpp"
