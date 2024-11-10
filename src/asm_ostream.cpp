@@ -364,10 +364,10 @@ std::ostream& operator<<(std::ostream& os, const label_t& label) {
     if (!label.stack_frame_prefix.empty()) {
         os << label.stack_frame_prefix << STACK_FRAME_DELIMITER;
     }
-    if (label.to == -1) {
-        return os << label.from;
+    os << label.from;
+    if (label.to != -1) {
+        os << ":" << label.to;
     }
-    os << label.from << ":" << label.to;
     if (!label.special_label.empty()) {
         os << " (" << label.special_label << ")";
     }

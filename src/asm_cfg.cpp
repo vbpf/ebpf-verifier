@@ -223,6 +223,26 @@ static cfg_t instruction_seq_to_cfg(const InstructionSeq& insts, const bool must
     return cfg;
 }
 
+cfg_t prepare_cfg(const InstructionSeq& prog, const program_info& info, const prepare_cfg_options& options) {
+    // Convert the instruction sequence to a deterministic control-flow graph.
+    cfg_t cfg = instruction_seq_to_cfg(prog, options.must_have_exit);
+
+    // Detect loops using Weak Topological Ordering (WTO) and insert counters at loop entry points. WTO provides a
+    // hierarchical decomposition of the CFG that identifies all strongly connected components (cycles) and their entry
+    // points. These entry points serve as natural locations for loop counters that help verify program termination.
+    if (options.check_for_termination) {
+        const wto_t wto{cfg};
+        wto.for_each_loop_head([&](const label_t& label) -> void {
+            cfg.insert_after(label, label_t::make_increment_counter(label), IncrementLoopCounter{label});
+        });
+    }
+
+    // Annotate the CFG by adding in assertions before every memory instruction.
+    explicate_assertions(cfg, info);
+
+    return cfg;
+}
+
 template <typename T>
 static vector<label_t> unique(const std::pair<T, T>& be) {
     vector<label_t> res;
@@ -310,24 +330,4 @@ std::map<std::string, int> collect_stats(const cfg_t& cfg) {
         }
     }
     return res;
-}
-
-cfg_t prepare_cfg(const InstructionSeq& prog, const program_info& info, const prepare_cfg_options& options) {
-    // Convert the instruction sequence to a deterministic control-flow graph.
-    cfg_t cfg = instruction_seq_to_cfg(prog, options.must_have_exit);
-
-    // Detect loops using Weak Topological Ordering (WTO) and insert counters at loop entry points. WTO provides a
-    // hierarchical decomposition of the CFG that identifies all strongly connected components (cycles) and their entry
-    // points. These entry points serve as natural locations for loop counters that help verify program termination.
-    if (options.check_for_termination) {
-        const wto_t wto{cfg};
-        wto.for_each_loop_head([&](const label_t& label) -> void {
-            cfg.insert_after(label, label_t::make_increment_counter(label), IncrementLoopCounter{label});
-        });
-    }
-
-    // Annotate the CFG by adding in assertions before every memory instruction.
-    explicate_assertions(cfg, info);
-
-    return cfg;
 }

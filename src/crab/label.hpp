@@ -3,6 +3,7 @@
 #pragma once
 
 #include <algorithm>
+#include <climits>
 #include <ostream>
 #include <string>
 #include <utility>
@@ -58,7 +59,7 @@ struct label_t {
 };
 
 inline const label_t label_t::entry{-1};
-inline const label_t label_t::exit{-2};
+inline const label_t label_t::exit{INT_MAX};
 
 } // namespace crab
 

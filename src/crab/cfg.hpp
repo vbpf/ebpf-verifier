@@ -213,18 +213,21 @@ class cfg_t final {
 
     // --- End ikos fixpoint API
 
-    value_t& insert_before(const label_t& next_label, const label_t& new_label, const Instruction& _ins) {
-        value_t& res = insert(new_label, GuardedInstruction{.cmd = _ins});
-        for (const label_t& prev : prev_nodes(next_label)) {
-            get_node(prev) >> res;
-            res >> get_node(next_label);
-        }
-        return res;
-    }
-
     value_t& insert_after(const label_t& prev_label, const label_t& new_label, const Instruction& _ins) {
         value_t& res = insert(new_label, GuardedInstruction{.cmd = _ins});
-        for (const label_t& next : next_nodes(prev_label)) {
+        value_t& prev = get_node(prev_label);
+        std::vector<label_t> nexts;
+        for (const label_t& next : prev.next_labels_set()) {
+            nexts.push_back(next);
+        }
+        prev.m_next.clear();
+
+        std::vector<label_t> prevs;
+        for (const label_t& next_label : nexts) {
+            get_node(next_label).m_prev.erase(prev_label);
+        }
+
+        for (const label_t& next : nexts) {
             get_node(prev_label) >> res;
             res >> get_node(next);
         }
