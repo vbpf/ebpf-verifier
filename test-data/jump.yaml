@@ -760,10 +760,7 @@ code:
   <exit>: |
     exit
 
-post:
-  - r1.ctx_offset=0
-  - r1.svalue=[1, 2147418112]
-  - r1.type=ctx
+post: []
 
 messages:
   - "0:1: Code is unreachable after 0:1"
@@ -785,10 +782,7 @@ code:
   <exit>: |
     exit
 
-post:
-  - r1.ctx_offset=0
-  - r1.svalue=[1, 2147418112]
-  - r1.type=ctx
+post: []
 
 messages:
   - "2: Code is unreachable after 2"
@@ -809,10 +803,7 @@ code:
   <exit>: |
     exit
 
-post:
-  - r1.ctx_offset=0
-  - r1.svalue=[1, 2147418112]
-  - r1.type=ctx
+post: []
 
 messages:
   - "2: Code is unreachable after 2"
@@ -887,11 +878,7 @@ code:
   <exit>: |
     exit
 
-post:
-  - r1.ctx_offset=0
-  - r1.svalue=[1, 2147418112]
-  - r1.type=ctx
-  - r1.uvalue=[1, +oo]
+post: []
 
 messages:
   - "0:1: Code is unreachable after 0:1"
@@ -913,11 +900,7 @@ code:
   <exit>: |
     exit
 
-post:
-  - r1.ctx_offset=0
-  - r1.svalue=[1, 2147418112]
-  - r1.type=ctx
-  - r1.uvalue=[0, +oo]
+post: []
 
 messages:
   - "0:1: Code is unreachable after 0:1"
@@ -939,17 +922,10 @@ code:
   <exit>: |
     exit
 
-post:
-  - r0.svalue=1
-  - r0.type=number
-  - r0.uvalue=1
-  - r1.ctx_offset=0
-  - r1.svalue=[1, 2147418112]
-  - r1.type=ctx
+post: []
 
 messages:
   - "0: Code is unreachable after 0"
-  - "0:2: Code is unreachable after 0:2"
   - "0: Invalid type (r1.type == number)"
 
 ---
@@ -967,18 +943,11 @@ code:
   <exit>: |
     exit
 
-post:
-  - r0.svalue=1
-  - r0.type=number
-  - r0.uvalue=1
-  - r1.ctx_offset=0
-  - r1.svalue=[1, 2147418112]
-  - r1.type=ctx
+post: []
 
 messages:
   - "0: Code is unreachable after 0"
   - "0: Invalid type (r1.type == number)"
-  - "0:2: Code is unreachable after 0:2"
 
 ---
 test-case: JSGT with imm 0 and pointer
@@ -995,17 +964,11 @@ code:
   <exit>: |
     exit
 
-post:
-  - r1.ctx_offset=0
-  - r1.svalue=[1, 2147418112]
-  - r1.type=ctx
+post: []
 
 messages:
   - "0: Code is unreachable after 0"
   - "0: Invalid type (r1.type == number)"
-  - "0:1: Code is unreachable after 0:1"
-  - "2: Code is unreachable after 2"
-  - "2: Invalid type (r0.type == number)"
 
 ---
 test-case: JSGE with imm 0 and pointer
@@ -1022,17 +985,11 @@ code:
   <exit>: |
     exit
 
-post:
-  - r1.ctx_offset=0
-  - r1.svalue=[1, 2147418112]
-  - r1.type=ctx
+post: []
 
 messages:
   - "0: Code is unreachable after 0"
   - "0: Invalid type (r1.type == number)"
-  - "0:1: Code is unreachable after 0:1"
-  - "2: Code is unreachable after 2"
-  - "2: Invalid type (r0.type == number)"
 
 ---
 test-case: JEQ32 with imm 0 and pointer
@@ -1049,18 +1006,11 @@ code:
   <exit>: |
     exit
 
-post:
-  - r0.svalue=1
-  - r0.type=number
-  - r0.uvalue=1
-  - r1.ctx_offset=0
-  - r1.svalue=[1, 2147418112]
-  - r1.type=ctx
+post: []
 
 messages:
   - "0: Code is unreachable after 0"
   - "0: Invalid type (r1.type == number)"
-  - "0:2: Code is unreachable after 0:2"
 
 ---
 test-case: JNE32 with imm 0 and pointer
@@ -1077,17 +1027,11 @@ code:
   <exit>: |
     exit
 
-post:
-  - r1.ctx_offset=0
-  - r1.svalue=[1, 2147418112]
-  - r1.type=ctx
+post: []
 
 messages:
   - "0: Code is unreachable after 0"
   - "0: Invalid type (r1.type == number)"
-  - "0:1: Code is unreachable after 0:1"
-  - "2: Code is unreachable after 2"
-  - "2: Invalid type (r0.type == number)"
 
 ---
 test-case: JSET32 with imm 0 and pointer
@@ -1104,16 +1048,11 @@ code:
   <exit>: |
     exit
 
-post:
-  - r1.ctx_offset=0
-  - r1.svalue=[1, 2147418112]
-  - r1.type=ctx
+post: []
 
 messages:
   - "0: Code is unreachable after 0"
   - "0: Invalid type (r1.type == number)"
-  - "2: Code is unreachable after 2"
-  - "2: Invalid type (r0.type == number)"
 
 ---
 test-case: JNSET32 with imm 0 and pointer
@@ -1130,16 +1069,11 @@ code:
   <exit>: |
     exit
 
-post:
-  - r1.ctx_offset=0
-  - r1.svalue=[1, 2147418112]
-  - r1.type=ctx
+post: []
 
 messages:
   - "0: Code is unreachable after 0"
   - "0: Invalid type (r1.type == number)"
-  - "2: Code is unreachable after 2"
-  - "2: Invalid type (r0.type == number)"
 
 ---
 test-case: JLT32 with imm 0 and pointer
@@ -1156,18 +1090,11 @@ code:
   <exit>: |
     exit
 
-post:
-  - r0.svalue=1
-  - r0.type=number
-  - r0.uvalue=1
-  - r1.ctx_offset=0
-  - r1.svalue=[1, 2147418112]
-  - r1.type=ctx
+post: []
 
 messages:
   - "0: Code is unreachable after 0"
   - "0: Invalid type (r1.type == number)"
-  - "0:2: Code is unreachable after 0:2"
 
 ---
 test-case: JLE32 with imm 0 and pointer
@@ -1184,16 +1111,11 @@ code:
   <exit>: |
     exit
 
-post:
-  - r1.ctx_offset=0
-  - r1.svalue=[1, 2147418112]
-  - r1.type=ctx
+post: []
 
 messages:
   - "0: Code is unreachable after 0"
   - "0: Invalid type (r1.type == number)"
-  - "2: Code is unreachable after 2"
-  - "2: Invalid type (r0.type == number)"
 
 ---
 test-case: JGT32 with imm 0 and pointer
@@ -1210,16 +1132,11 @@ code:
   <exit>: |
     exit
 
-post:
-  - r1.ctx_offset=0
-  - r1.svalue=[1, 2147418112]
-  - r1.type=ctx
+post: []
 
 messages:
   - "0: Code is unreachable after 0"
   - "0: Invalid type (r1.type == number)"
-  - "2: Code is unreachable after 2"
-  - "2: Invalid type (r0.type == number)"
 
 ---
 test-case: JGE32 with imm 0 and pointer
@@ -1236,17 +1153,11 @@ code:
   <exit>: |
     exit
 
-post:
-  - r1.ctx_offset=0
-  - r1.svalue=[1, 2147418112]
-  - r1.type=ctx
+post: []
 
 messages:
   - "0: Code is unreachable after 0"
   - "0: Invalid type (r1.type == number)"
-  - "0:1: Code is unreachable after 0:1"
-  - "2: Code is unreachable after 2"
-  - "2: Invalid type (r0.type == number)"
 
 ---
 test-case: JSLT32 with imm 0 and pointer
@@ -1263,18 +1174,11 @@ code:
   <exit>: |
     exit
 
-post:
-  - r0.svalue=1
-  - r0.type=number
-  - r0.uvalue=1
-  - r1.ctx_offset=0
-  - r1.svalue=[1, 2147418112]
-  - r1.type=ctx
+post: []
 
 messages:
   - "0: Code is unreachable after 0"
   - "0: Invalid type (r1.type == number)"
-  - "0:2: Code is unreachable after 0:2"
 
 ---
 test-case: JSLE32 with imm 0 and pointer
@@ -1291,18 +1195,11 @@ code:
   <exit>: |
     exit
 
-post:
-  - r0.svalue=1
-  - r0.type=number
-  - r0.uvalue=1
-  - r1.ctx_offset=0
-  - r1.svalue=[1, 2147418112]
-  - r1.type=ctx
+post: []
 
 messages:
   - "0: Code is unreachable after 0"
   - "0: Invalid type (r1.type == number)"
-  - "0:2: Code is unreachable after 0:2"
 
 ---
 test-case: JSGT32 with imm 0 and pointer
@@ -1319,17 +1216,11 @@ code:
   <exit>: |
     exit
 
-post:
-  - r1.ctx_offset=0
-  - r1.svalue=[1, 2147418112]
-  - r1.type=ctx
+post: []
 
 messages:
   - "0: Code is unreachable after 0"
   - "0: Invalid type (r1.type == number)"
-  - "0:1: Code is unreachable after 0:1"
-  - "2: Code is unreachable after 2"
-  - "2: Invalid type (r0.type == number)"
 
 ---
 test-case: JSGE32 with imm 0 and pointer
@@ -1346,14 +1237,8 @@ code:
   <exit>: |
     exit
 
-post:
-  - r1.ctx_offset=0
-  - r1.svalue=[1, 2147418112]
-  - r1.type=ctx
+post: []
 
 messages:
   - "0: Code is unreachable after 0"
   - "0: Invalid type (r1.type == number)"
-  - "0:1: Code is unreachable after 0:1"
-  - "2: Code is unreachable after 2"
-  - "2: Invalid type (r0.type == number)"
