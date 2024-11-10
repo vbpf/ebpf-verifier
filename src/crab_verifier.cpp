@@ -60,21 +60,19 @@ static checks_db generate_report(const cfg_t& cfg, const crab::invariant_table_t
                                  const crab::invariant_table_t& post_invariants) {
     checks_db m_db;
     for (const label_t& label : cfg.sorted_labels()) {
-        const basic_block_t& bb = cfg.get_node(label);
         ebpf_domain_t from_inv{pre_invariants.at(label)};
         const bool pre_bot = from_inv.is_bottom();
 
-        for (const GuardedInstruction& ins : bb) {
-            for (const Assertion& assertion : ins.preconditions) {
-                for (const auto& warning : ebpf_domain_check(from_inv, label, assertion)) {
-                    m_db.add_warning(label, warning);
-                }
+        const GuardedInstruction& instruction = cfg.at(label);
+        for (const Assertion& assertion : instruction.preconditions) {
+            for (const auto& warning : ebpf_domain_check(from_inv, label, assertion)) {
+                m_db.add_warning(label, warning);
             }
-            ebpf_domain_transform(from_inv, ins.cmd);
         }
+        ebpf_domain_transform(from_inv, instruction.cmd);
 
         if (!pre_bot && from_inv.is_bottom()) {
-            m_db.add_unreachable(label, std::string("Code is unreachable after ") + to_string(bb.label()));
+            m_db.add_unreachable(label, std::string("Code is unreachable after ") + to_string(label));
         }
     }
 

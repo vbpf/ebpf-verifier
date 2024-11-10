@@ -12,11 +12,11 @@ code:
   <start>: |
     r0 += r3
 
-post: []
+post:
+  - "r0.type=uninit"
 
 messages:
   - "0: Invalid type (r3.type in {number, ctx, stack, packet, shared})"
-  - "CRAB ERROR: Cannot convert bottom to tuple"
 
 ---
 test-case: subtraction of a number and an uninitialized register

@@ -68,17 +68,16 @@ class interleaved_fwd_fixpoint_iterator_t final {
     void set_pre(const label_t& label, const ebpf_domain_t& v) { _pre[label] = v; }
 
     void transform_to_post(const label_t& label, ebpf_domain_t pre) {
-        const basic_block_t& bb = _cfg.get_node(label);
+        const GuardedInstruction& ins = _cfg.at(label);
 
-        for (const GuardedInstruction& ins : bb) {
-            if (thread_local_options.assume_assertions) {
-                for (const auto& assertion : ins.preconditions) {
-                    // avoid redundant errors
-                    ebpf_domain_assume(pre, assertion);
-                }
+        if (thread_local_options.assume_assertions) {
+            for (const auto& assertion : ins.preconditions) {
+                // avoid redundant errors
+                ebpf_domain_assume(pre, assertion);
             }
-            ebpf_domain_transform(pre, ins.cmd);
-        };
+        }
+        ebpf_domain_transform(pre, ins.cmd);
+
         _post[label] = std::move(pre);
     }
 

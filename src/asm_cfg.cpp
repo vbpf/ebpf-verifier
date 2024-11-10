@@ -18,11 +18,34 @@ using std::string;
 using std::to_string;
 using std::vector;
 
-static optional<label_t> get_jump(Instruction ins) {
-    if (const auto pins = std::get_if<Jmp>(&ins)) {
-        return pins->target;
+/// Get the inverse of a given comparison operation.
+static Condition::Op reverse(const Condition::Op op) {
+    switch (op) {
+    case Condition::Op::EQ: return Condition::Op::NE;
+    case Condition::Op::NE: return Condition::Op::EQ;
+
+    case Condition::Op::GE: return Condition::Op::LT;
+    case Condition::Op::LT: return Condition::Op::GE;
+
+    case Condition::Op::SGE: return Condition::Op::SLT;
+    case Condition::Op::SLT: return Condition::Op::SGE;
+
+    case Condition::Op::LE: return Condition::Op::GT;
+    case Condition::Op::GT: return Condition::Op::LE;
+
+    case Condition::Op::SLE: return Condition::Op::SGT;
+    case Condition::Op::SGT: return Condition::Op::SLE;
+
+    case Condition::Op::SET: return Condition::Op::NSET;
+    case Condition::Op::NSET: return Condition::Op::SET;
     }
+    assert(false);
     return {};
+}
+
+/// Get the inverse of a given comparison condition.
+static Condition reverse(const Condition& cond) {
+    return {.op = reverse(cond.op), .left = cond.left, .right = cond.right, .is64 = cond.is64};
 }
 
 static bool has_fall(const Instruction& ins) {
@@ -44,17 +67,15 @@ static void add_cfg_nodes(cfg_t& cfg, const label_t& caller_label, const label_t
     bool first = true;
 
     // Get the label of the node to go to on returning from the macro.
-    basic_block_t& exit_to_node = cfg.get_node(cfg.next_nodes(caller_label).front());
+    crab::value_t& exit_to_node = cfg.get_node(cfg.next_nodes(caller_label).front());
 
     // Construct the variable prefix to use for the new stack frame,
     // and store a copy in the CallLocal instruction since the instruction-specific
     // labels may only exist until the CFG is simplified.
-    basic_block_t& caller_node = cfg.get_node(caller_label);
+    crab::value_t& caller_node = cfg.get_node(caller_label);
     const std::string stack_frame_prefix = to_string(caller_label);
-    for (auto& inst : caller_node) {
-        if (const auto pcall = std::get_if<CallLocal>(&inst.cmd)) {
-            pcall->stack_frame_prefix = stack_frame_prefix;
-        }
+    if (const auto pcall = std::get_if<CallLocal>(&caller_node.instruction().cmd)) {
+        pcall->stack_frame_prefix = stack_frame_prefix;
     }
 
     // Walk the transitive closure of CFG nodes starting at entry_label and ending at
@@ -71,15 +92,13 @@ static void add_cfg_nodes(cfg_t& cfg, const label_t& caller_label, const label_t
 
         // Clone the macro block into a new block with the new stack frame prefix.
         const label_t label{macro_label.from, macro_label.to, stack_frame_prefix};
-        auto& bb = cfg.insert(label);
-        for (auto inst : cfg.get_node(macro_label)) {
-            if (const auto pexit = std::get_if<Exit>(&inst.cmd)) {
-                pexit->stack_frame_prefix = label.stack_frame_prefix;
-            } else if (const auto pcall = std::get_if<Call>(&inst.cmd)) {
-                pcall->stack_frame_prefix = label.stack_frame_prefix;
-            }
-            bb.insert(inst);
+        auto inst = cfg.at(macro_label);
+        if (const auto pexit = std::get_if<Exit>(&inst.cmd)) {
+            pexit->stack_frame_prefix = label.stack_frame_prefix;
+        } else if (const auto pcall = std::get_if<Call>(&inst.cmd)) {
+            pcall->stack_frame_prefix = label.stack_frame_prefix;
         }
+        crab::value_t& bb = cfg.insert(label, inst.cmd);
 
         if (first) {
             // Add an edge from the caller to the new block.
@@ -121,14 +140,12 @@ static void add_cfg_nodes(cfg_t& cfg, const label_t& caller_label, const label_t
     string caller_label_str = to_string(caller_label);
     const long stack_frame_depth = std::ranges::count(caller_label_str, STACK_FRAME_DELIMITER) + 2;
     for (const auto& macro_label : seen_labels) {
-        for (const label_t label(macro_label.from, macro_label.to, caller_label_str);
-             const auto& inst : cfg.get_node(label)) {
-            if (const auto pins = std::get_if<CallLocal>(&inst.cmd)) {
-                if (stack_frame_depth >= MAX_CALL_STACK_FRAMES) {
-                    throw std::runtime_error{"too many call stack frames"};
-                }
-                add_cfg_nodes(cfg, label, pins->target);
+        const label_t label(macro_label.from, macro_label.to, caller_label_str);
+        if (const auto pins = std::get_if<CallLocal>(&cfg.at(label).cmd)) {
+            if (stack_frame_depth >= MAX_CALL_STACK_FRAMES) {
+                throw std::runtime_error{"too many call stack frames"};
             }
+            add_cfg_nodes(cfg, label, pins->target);
         }
     }
 }
@@ -136,44 +153,67 @@ static void add_cfg_nodes(cfg_t& cfg, const label_t& caller_label, const label_t
 /// Convert an instruction sequence to a control-flow graph (CFG).
 static cfg_t instruction_seq_to_cfg(const InstructionSeq& insts, const bool must_have_exit) {
     cfg_t cfg;
-    std::optional<label_t> falling_from = {};
-    bool first = true;
+
+    // First add all instructions to the CFG without connecting
+    for (const auto& [label, inst, _] : insts) {
+        if (std::holds_alternative<Undefined>(inst)) {
+            continue;
+        }
+        cfg.insert(label, inst);
+    }
+
+    if (insts.size() == 0) {
+        throw std::invalid_argument{"empty instruction sequence"};
+    } else {
+        const auto& [label, inst, _0] = insts[0];
+        cfg.get_node(cfg.entry_label()) >> cfg.get_node(label);
+    }
 
     // Do a first pass ignoring all function macro calls.
-    for (const auto& [label, inst, _] : insts) {
+    for (size_t i = 0; i < insts.size(); i++) {
+        const auto& [label, inst, _0] = insts[i];
 
         if (std::holds_alternative<Undefined>(inst)) {
             continue;
         }
+        auto& value = cfg.get_node(label);
 
-        auto& bb = cfg.insert(label);
-
-        if (first) {
-            first = false;
-            cfg.get_node(cfg.entry_label()) >> bb;
-        }
-
-        bb.insert({.cmd = inst});
-        if (falling_from) {
-            cfg.get_node(*falling_from) >> bb;
-            falling_from = {};
-        }
-        if (has_fall(inst)) {
-            falling_from = label;
-        }
-        if (auto jump_target = get_jump(inst)) {
-            bb >> cfg.insert(*jump_target);
-        }
-
-        if (std::holds_alternative<Exit>(inst)) {
-            bb >> cfg.get_node(cfg.exit_label());
-        }
-    }
-    if (falling_from) {
-        if (must_have_exit) {
-            throw std::invalid_argument{"fallthrough in last instruction"};
+        label_t fallthrough{cfg.exit_label()};
+        if (i + 1 < insts.size()) {
+            fallthrough = std::get<0>(insts[i + 1]);
         } else {
-            cfg.get_node(*falling_from) >> cfg.get_node(cfg.exit_label());
+            if (has_fall(inst) && must_have_exit) {
+                throw std::invalid_argument{"fallthrough in last instruction"};
+            }
+        }
+        if (const auto jmp = std::get_if<Jmp>(&inst)) {
+            if (const auto cond = jmp->cond) {
+                label_t target_label = jmp->target;
+                if (target_label == fallthrough) {
+                    value >> cfg.get_node(fallthrough);
+                    continue;
+                }
+
+                vector<std::tuple<label_t, Condition>> jumps{
+                    {target_label, *cond},
+                    {fallthrough, reverse(*cond)},
+                };
+                for (const auto& [next_label, cond1] : jumps) {
+                    label_t jump_label = label_t::make_jump(label, next_label);
+                    crab::value_t& jump_node = cfg.insert(jump_label, Assume{.cond = cond1, .is_explicit = false});
+                    value >> jump_node;
+                    jump_node >> cfg.get_node(next_label);
+                }
+            } else {
+                value >> cfg.get_node(jmp->target);
+            }
+        } else {
+            if (has_fall(inst)) {
+                value >> cfg.get_node(fallthrough);
+            }
+        }
+        if (std::holds_alternative<Exit>(inst)) {
+            value >> cfg.get_node(cfg.exit_label());
         }
     }
 
@@ -189,87 +229,30 @@ static cfg_t instruction_seq_to_cfg(const InstructionSeq& insts, const bool must
     return cfg;
 }
 
-/// Get the inverse of a given comparison operation.
-static Condition::Op reverse(const Condition::Op op) {
-    switch (op) {
-    case Condition::Op::EQ: return Condition::Op::NE;
-    case Condition::Op::NE: return Condition::Op::EQ;
+cfg_t prepare_cfg(const InstructionSeq& prog, const program_info& info, const prepare_cfg_options& options) {
+    // Convert the instruction sequence to a deterministic control-flow graph.
+    cfg_t cfg = instruction_seq_to_cfg(prog, options.must_have_exit);
 
-    case Condition::Op::GE: return Condition::Op::LT;
-    case Condition::Op::LT: return Condition::Op::GE;
-
-    case Condition::Op::SGE: return Condition::Op::SLT;
-    case Condition::Op::SLT: return Condition::Op::SGE;
-
-    case Condition::Op::LE: return Condition::Op::GT;
-    case Condition::Op::GT: return Condition::Op::LE;
-
-    case Condition::Op::SLE: return Condition::Op::SGT;
-    case Condition::Op::SGT: return Condition::Op::SLE;
-
-    case Condition::Op::SET: return Condition::Op::NSET;
-    case Condition::Op::NSET: return Condition::Op::SET;
+    // Detect loops using Weak Topological Ordering (WTO) and insert counters at loop entry points. WTO provides a
+    // hierarchical decomposition of the CFG that identifies all strongly connected components (cycles) and their entry
+    // points. These entry points serve as natural locations for loop counters that help verify program termination.
+    if (options.check_for_termination) {
+        const wto_t wto{cfg};
+        wto.for_each_loop_head([&](const label_t& label) -> void {
+            cfg.insert_after(label, label_t::make_increment_counter(label), IncrementLoopCounter{label});
+        });
     }
-    assert(false);
-    return {};
-}
 
-/// Get the inverse of a given comparison condition.
-static Condition reverse(const Condition& cond) {
-    return {.op = reverse(cond.op), .left = cond.left, .right = cond.right, .is64 = cond.is64};
+    // Annotate the CFG by adding in assertions before every memory instruction.
+    explicate_assertions(cfg, info);
+
+    return cfg;
 }
 
 template <typename T>
 static vector<label_t> unique(const std::pair<T, T>& be) {
     vector<label_t> res;
     std::unique_copy(be.first, be.second, std::back_inserter(res));
-    return res;
-}
-
-/// Get a non-deterministic version of a control-flow graph,
-/// i.e., where instead of using if/else, both branches are taken
-/// simultaneously, and are replaced by Assume instructions
-/// immediately after the branch.
-static cfg_t to_nondet(const cfg_t& cfg) {
-    cfg_t res;
-    for (const auto& [this_label, bb] : cfg) {
-        basic_block_t& newbb = res.insert(this_label);
-
-        for (const auto& ins : bb) {
-            newbb.insert(ins);
-        }
-
-        for (const label_t& prev_label : bb.prev_blocks_set()) {
-            bool is_one = cfg.get_node(prev_label).next_blocks_set().size() > 1;
-            basic_block_t& pbb = res.insert(is_one ? label_t::make_jump(prev_label, this_label) : prev_label);
-            pbb >> newbb;
-        }
-        // note the special case where we jump to fallthrough
-        auto nextlist = bb.next_blocks_set();
-        if (nextlist.size() == 2) {
-            label_t mid_label = this_label;
-            auto jmp = std::get<Jmp>(bb.rbegin()->cmd);
-
-            nextlist.erase(jmp.target);
-            label_t fallthrough = *nextlist.begin();
-
-            vector<std::tuple<label_t, Condition>> jumps{
-                {jmp.target, *jmp.cond},
-                {fallthrough, reverse(*jmp.cond)},
-            };
-            for (const auto& [next_label, cond1] : jumps) {
-                label_t jump_label = label_t::make_jump(mid_label, next_label);
-                basic_block_t& jump_bb = res.insert(jump_label);
-                jump_bb.insert({.cmd = Assume{cond1}});
-                newbb >> jump_bb;
-                jump_bb >> res.insert(next_label);
-            }
-        } else {
-            for (const auto& label : nextlist) {
-                newbb >> res.insert(label);
-            }
-        }
-    }
     return res;
 }
 
@@ -329,62 +312,28 @@ std::map<std::string, int> collect_stats(const cfg_t& cfg) {
     }
     for (const auto& this_label : cfg.labels()) {
         res["basic_blocks"]++;
-        basic_block_t const& bb = cfg.get_node(this_label);
-
-        for (const auto& ins : bb) {
-            if (const auto pins = std::get_if<LoadMapFd>(&ins.cmd)) {
-                if (pins->mapfd == -1) {
-                    res["map_in_map"] = 1;
-                }
+        const crab::value_t& value = cfg.get_node(this_label);
+        const auto cmd = value.instruction().cmd;
+        if (const auto pins = std::get_if<LoadMapFd>(&cmd)) {
+            if (pins->mapfd == -1) {
+                res["map_in_map"] = 1;
             }
-            if (const auto pins = std::get_if<Call>(&ins.cmd)) {
-                if (pins->reallocate_packet) {
-                    res["reallocate"] = 1;
-                }
-            }
-            if (const auto pins = std::get_if<Bin>(&ins.cmd)) {
-                res[pins->is64 ? "arith64" : "arith32"]++;
-            }
-            res[instype(ins.cmd)]++;
         }
-        if (unique(bb.prev_blocks()).size() > 1) {
+        if (const auto pins = std::get_if<Call>(&cmd)) {
+            if (pins->reallocate_packet) {
+                res["reallocate"] = 1;
+            }
+        }
+        if (const auto pins = std::get_if<Bin>(&cmd)) {
+            res[pins->is64 ? "arith64" : "arith32"]++;
+        }
+        res[instype(cmd)]++;
+        if (unique(value.prev_labels()).size() > 1) {
             res["joins"]++;
         }
-        if (unique(bb.prev_blocks()).size() > 1) {
+        if (unique(value.prev_labels()).size() > 1) {
             res["jumps"]++;
         }
     }
     return res;
-}
-
-cfg_t prepare_cfg(const InstructionSeq& prog, const program_info& info, const prepare_cfg_options& options) {
-    // Convert the instruction sequence to a deterministic control-flow graph.
-    cfg_t det_cfg = instruction_seq_to_cfg(prog, options.must_have_exit);
-
-    // Detect loops using Weak Topological Ordering (WTO) and insert counters at loop entry points. WTO provides a
-    // hierarchical decomposition of the CFG that identifies all strongly connected components (cycles) and their entry
-    // points. These entry points serve as natural locations for loop counters that help verify program termination.
-    if (options.check_for_termination) {
-        const wto_t wto(det_cfg);
-        wto.for_each_loop_head(
-            [&](const label_t& label) { det_cfg.get_node(label).insert_front({.cmd = IncrementLoopCounter{label}}); });
-    }
-
-    // Annotate the CFG by adding in assertions before every memory instruction.
-    explicate_assertions(det_cfg, info);
-
-    // Translate conditional jumps to non-deterministic jumps.
-    cfg_t cfg = to_nondet(det_cfg);
-
-    // Except when debugging, combine chains of instructions into
-    // basic blocks where possible, i.e., into a range of instructions
-    // where there is a single entry point and a single exit point.
-    // An abstract interpreter will keep values at every basic block,
-    // so the fewer basic blocks we have, the less information it has to
-    // keep track of.
-    if (options.simplify) {
-        cfg.simplify();
-    }
-
-    return cfg;
 }

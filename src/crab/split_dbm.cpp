@@ -1143,9 +1143,8 @@ string_invariant SplitDBM::to_set() const {
         if (!this->g.elem(0, v) && !this->g.elem(v, 0)) {
             continue;
         }
-        interval_t v_out =
-            interval_t(this->g.elem(v, 0) ? -number_t(this->g.edge_val(v, 0)) : extended_number::minus_infinity(),
-                       this->g.elem(0, v) ? number_t(this->g.edge_val(0, v)) : extended_number::plus_infinity());
+        interval_t v_out{this->g.elem(v, 0) ? -number_t(this->g.edge_val(v, 0)) : extended_number::minus_infinity(),
+                         this->g.elem(0, v) ? number_t(this->g.edge_val(0, v)) : extended_number::plus_infinity()};
         assert(!v_out.is_bottom());
 
         variable_t variable = *this->rev_map[v];
@@ -1153,7 +1152,7 @@ string_invariant SplitDBM::to_set() const {
         std::stringstream elem;
         elem << variable;
         if (variable.is_type()) {
-            auto [lb, ub] = v_out.bound(T_MIN, T_MAX);
+            auto [lb, ub] = v_out.bound(T_UNINIT, T_MAX);
             if (lb == ub) {
                 if (variable.is_in_stack() && lb == T_NUM) {
                     // no need to show this
@@ -1206,8 +1205,7 @@ string_invariant SplitDBM::to_set() const {
 std::ostream& operator<<(std::ostream& o, const SplitDBM& dom) { return o << dom.to_set(); }
 
 bool SplitDBM::eval_expression_overflow(const linear_expression_t& e, Weight& out) const {
-    [[maybe_unused]]
-    const bool overflow = convert_NtoW_overflow(e.constant_term(), out);
+    [[maybe_unused]] const bool overflow = convert_NtoW_overflow(e.constant_term(), out);
     assert(!overflow);
     for (const auto& [variable, coefficient] : e.variable_terms()) {
         Weight coef;

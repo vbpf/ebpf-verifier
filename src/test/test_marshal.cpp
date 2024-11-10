@@ -3,7 +3,6 @@
 #include <catch2/catch_all.hpp>
 
 #include "asm_marshal.hpp"
-#include "asm_ostream.hpp"
 #include "asm_unmarshal.hpp"
 
 // Below we define a tample of instruction templates that specify

@@ -6,7 +6,7 @@
 
 #define CONFORMANCE_TEST_PATH "external/bpf_conformance/tests/"
 
-static void test_conformance(const std::string& filename, bpf_conformance_test_result_t expected_result,
+static void test_conformance(const std::string& filename, const bpf_conformance_test_result_t& expected_result,
                              const std::string& expected_reason) {
     std::vector<std::filesystem::path> test_files = {CONFORMANCE_TEST_PATH + filename};
     boost::filesystem::path test_path = boost::dll::program_location();

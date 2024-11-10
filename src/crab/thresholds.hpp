@@ -58,7 +58,7 @@ class wto_thresholds_t final {
     // the top of the stack is the current wto head
     std::vector<label_t> m_stack;
 
-    void get_thresholds(const basic_block_t& bb, thresholds_t& thresholds) const;
+    void get_thresholds(const value_t& bb, thresholds_t& thresholds) const;
 
   public:
     wto_thresholds_t(cfg_t& cfg, const size_t max_size) : m_cfg(cfg), m_max_size(max_size) {}
