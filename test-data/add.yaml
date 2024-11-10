@@ -175,3 +175,58 @@ post:
   - r7.packet_offset-r7.uvalue<=-7
   - r7.svalue-r7.packet_offset<=11
   - r7.uvalue-r7.packet_offset<=11
+
+---
+test-case: check concrete state
+
+pre: ["r0.type=number", "r0.svalue=0", "r0.uvalue=0", r1.type=number, r1.svalue=0, r1.uvalue=0, r2.type=number, r2.svalue=0, r2.uvalue=0]
+
+code:
+  <start>: |
+    r1 = 1
+    require [r1.type=number, r1.svalue=1, r1.uvalue=r1.svalue]
+    r2 = 2
+    require [r2.type=number, r2.svalue=2, r2.uvalue=r2.svalue]
+    r1 += r2
+    require [r1.type=number, r1.svalue=3, r1.uvalue=r1.svalue]
+    r0 = r1
+
+post:
+  - r0.type=number
+  - r0.uvalue=3
+  - r0.svalue=3
+  - r1.type=number
+  - r1.svalue=3
+  - r1.uvalue=3
+  - r2.type=number
+  - r2.svalue=2
+  - r2.uvalue=2
+---
+test-case: check concrete state - negative
+
+pre: ["r0.type=number", "r0.svalue=0", "r0.uvalue=0", r1.type=number, r1.svalue=0, r1.uvalue=0, r2.type=number, r2.svalue=0, r2.uvalue=0]
+
+code:
+  <start>: |
+    r1 = 1
+    require [r1.type=number, r1.svalue=1, r1.uvalue=r1.svalue]
+    r2 = 2
+    require [r2.type=number, r2.svalue=2, r2.uvalue=r2.svalue]
+    r1 += r2
+    # Using 2 instead of 3 to validate that verification fails at an intermediate step.
+    require [r1.type=number, r1.svalue=2, r1.uvalue=r1.svalue]
+    r0 = r1
+
+post:
+  - r0.type=number
+  - r0.uvalue=3
+  - r0.svalue=3
+  - r1.type=number
+  - r1.svalue=3
+  - r1.uvalue=3
+  - r2.type=number
+  - r2.svalue=2
+  - r2.uvalue=2
+
+messages:
+  - "4: Concrete invariants do not match abstract invariants"

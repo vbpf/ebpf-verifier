@@ -37,6 +37,9 @@ struct ebpf_verifier_options_t {
 
     // Print the BTF types in JSON format.
     bool dump_btf_types_json = false;
+
+    // Store pre-invariants for use in ebpf_check_constraints_at_label and ebpf_get_invariants_at_label.
+    bool store_pre_invariants = false;
 };
 
 struct ebpf_verifier_stats_t {

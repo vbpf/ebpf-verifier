@@ -54,6 +54,9 @@ using crab::number_t;
 #define DOT "[.]"
 #define TYPE R"_(\s*(shared|number|packet|stack|ctx|map_fd|map_fd_programs)\s*)_"
 
+// regex to match "require [assertion1, assertion2, ...]"
+#define REQUIRE R"_(\s*require\s*\[\s*(.*?)\s*\]\s*)_"
+
 static const std::map<std::string, Bin::Op> str_to_binop = {
     {"", Bin::Op::MOV},        {"+", Bin::Op::ADD},   {"-", Bin::Op::SUB},     {"*", Bin::Op::MUL},
     {"/", Bin::Op::UDIV},      {"%", Bin::Op::UMOD},  {"|", Bin::Op::OR},      {"&", Bin::Op::AND},
@@ -133,7 +136,8 @@ static Deref deref(const std::string& width, const std::string& basereg, const s
     };
 }
 
-Instruction parse_instruction(const std::string& line, const std::map<std::string, label_t>& label_name_to_label) {
+InstructionOrConstraintsSet parse_instruction(const std::string& line,
+                                              const std::map<std::string, label_t>& label_name_to_label) {
     // treat ";" as a comment
     std::string text = line.substr(0, line.find(';'));
     const size_t end = text.find_last_not_of(' ');
@@ -221,6 +225,16 @@ Instruction parse_instruction(const std::string& line, const std::map<std::strin
         }
         return res;
     }
+    if (regex_match(text, m, regex(REQUIRE))) {
+        std::string constraints = m[1];
+        std::set<std::string> constraint_set;
+        std::regex re(R"(\s*,\s*)");
+        std::sregex_token_iterator first{constraints.begin(), constraints.end(), re, -1}, last;
+        for (; first != last; ++first) {
+            constraint_set.insert(*first);
+        }
+        return constraint_set;
+    }
     return Undefined{0};
 }
 
@@ -246,7 +260,13 @@ static InstructionSeq parse_program(std::istream& is) {
         if (line.empty()) {
             continue;
         }
-        Instruction ins = parse_instruction(line, {});
+        auto ins_or_constraints = parse_instruction(line, {});
+
+        if (std::holds_alternative<ConstraintsSet>(ins_or_constraints)) {
+            continue;
+        }
+
+        Instruction ins = convert_to_original<Instruction>(ins_or_constraints).value_or(Undefined{0});
         if (std::holds_alternative<Undefined>(ins)) {
             continue;
         }
