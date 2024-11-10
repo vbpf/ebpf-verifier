@@ -470,16 +470,15 @@ void print_dot(const cfg_t& cfg, std::ostream& out) {
     for (const auto& label : cfg.labels()) {
         out << "    \"" << label << "\"[xlabel=\"" << label << "\",label=\"";
 
-        const auto& bb = cfg.get_node(label);
-        for (const auto& ins : bb) {
-            for (const auto& pre : ins.preconditions) {
-                out << "assert " << pre << "\\l";
-            }
-            out << ins.cmd << "\\l";
+        const auto& value = cfg.get_node(label);
+        const auto& ins = value.instruction();
+        for (const auto& pre : ins.preconditions) {
+            out << "assert " << pre << "\\l";
         }
+        out << ins.cmd << "\\l";
 
         out << "\"];\n";
-        for (const label_t& next : bb.next_blocks_set()) {
+        for (const label_t& next : value.next_labels_set()) {
             out << "    \"" << label << "\" -> \"" << next << "\";\n";
         }
         out << "\n";
@@ -495,16 +494,15 @@ void print_dot(const cfg_t& cfg, const std::string& outfile) {
     print_dot(cfg, out);
 }
 
-std::ostream& operator<<(std::ostream& o, const basic_block_t& bb) {
-    o << bb.label() << ":\n";
-    for (const auto& s : bb) {
-        for (const auto& pre : s.preconditions) {
-            o << "  "
-              << "assert " << pre << ";\n";
-        }
-        o << "  " << s.cmd << ";\n";
+std::ostream& operator<<(std::ostream& o, const crab::value_t& value) {
+    o << value.label() << ":\n";
+    const auto ins = value.instruction();
+    for (const auto& pre : ins.preconditions) {
+        o << "  "
+          << "assert " << pre << ";\n";
     }
-    auto [it, et] = bb.next_blocks();
+    o << "  " << ins.cmd << ";\n";
+    auto [it, et] = value.next_labels();
     if (it != et) {
         o << "  "
           << "goto ";
@@ -519,23 +517,6 @@ std::ostream& operator<<(std::ostream& o, const basic_block_t& bb) {
         }
     }
     o << "\n";
-    return o;
-}
-
-std::ostream& operator<<(std::ostream& o, const crab::basic_block_rev_t& bb) {
-    o << bb.label() << ":\n";
-    for (const auto& s : bb) {
-        for (const auto& pre : s.preconditions) {
-            o << "  "
-              << "assert " << pre << ";\n";
-        }
-        o << "  " << s.cmd << ";\n";
-    }
-    o << "--> [";
-    for (const label_t& label : bb.next_blocks_set()) {
-        o << label << ";";
-    }
-    o << "]\n";
     return o;
 }
 

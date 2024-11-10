@@ -77,6 +77,10 @@ struct label_t {
         }
         return os << label.from << ":" << label.to;
     }
+    static label_t increment_counter_label(const label_t& label) {
+        // XXX: This is a hack to increment the loop counter.
+        return label_t{-label.from, -label.to, label.stack_frame_prefix};
+    }
 
     static const label_t entry;
     static const label_t exit;
@@ -307,6 +311,10 @@ struct Undefined {
 /// the branch and before each jump target.
 struct Assume {
     Condition cond;
+
+    // True if the condition is explicitly written in the program (for tests).
+    bool is_explicit{};
+
     constexpr bool operator==(const Assume&) const = default;
 };
 

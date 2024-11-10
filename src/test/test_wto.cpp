@@ -12,22 +12,22 @@ TEST_CASE("wto figure 1", "[wto]") {
 
     // Add nodes.
     for (int i = 1; i <= 8; i++) {
-        cfg.insert(label_t(i));
+        cfg.insert(label_t{i}, Undefined{});
     }
 
     // Add edges.
-    cfg.get_node(label_t::entry) >> cfg.get_node(label_t(1));
-    cfg.get_node(label_t(1)) >> cfg.get_node(label_t(2));
-    cfg.get_node(label_t(2)) >> cfg.get_node(label_t(3));
-    cfg.get_node(label_t(3)) >> cfg.get_node(label_t(4));
-    cfg.get_node(label_t(4)) >> cfg.get_node(label_t(5));
-    cfg.get_node(label_t(4)) >> cfg.get_node(label_t(7));
-    cfg.get_node(label_t(5)) >> cfg.get_node(label_t(6));
-    cfg.get_node(label_t(6)) >> cfg.get_node(label_t(5));
-    cfg.get_node(label_t(6)) >> cfg.get_node(label_t(7));
-    cfg.get_node(label_t(7)) >> cfg.get_node(label_t(3));
-    cfg.get_node(label_t(7)) >> cfg.get_node(label_t(8));
-    cfg.get_node(label_t(8)) >> cfg.get_node(label_t::exit);
+    cfg.get_node(label_t::entry) >> cfg.get_node(label_t{1});
+    cfg.get_node(label_t{1}) >> cfg.get_node(label_t{2});
+    cfg.get_node(label_t{2}) >> cfg.get_node(label_t{3});
+    cfg.get_node(label_t{3}) >> cfg.get_node(label_t{4});
+    cfg.get_node(label_t{4}) >> cfg.get_node(label_t{5});
+    cfg.get_node(label_t{4}) >> cfg.get_node(label_t{7});
+    cfg.get_node(label_t{5}) >> cfg.get_node(label_t{6});
+    cfg.get_node(label_t{6}) >> cfg.get_node(label_t{5});
+    cfg.get_node(label_t{6}) >> cfg.get_node(label_t{7});
+    cfg.get_node(label_t{7}) >> cfg.get_node(label_t{3});
+    cfg.get_node(label_t{7}) >> cfg.get_node(label_t{8});
+    cfg.get_node(label_t{8}) >> cfg.get_node(label_t::exit);
 
     const wto_t wto(cfg);
 
@@ -44,18 +44,18 @@ TEST_CASE("wto figure 2a", "[wto]") {
 
     // Add nodes.
     for (int i = 1; i <= 5; i++) {
-        cfg.insert(label_t(i));
+        cfg.insert(label_t{i}, Undefined{});
     }
 
     // Add edges.
-    cfg.get_node(label_t::entry) >> cfg.get_node(label_t(1));
-    cfg.get_node(label_t(1)) >> cfg.get_node(label_t(2));
-    cfg.get_node(label_t(1)) >> cfg.get_node(label_t(4));
-    cfg.get_node(label_t(2)) >> cfg.get_node(label_t(3));
-    cfg.get_node(label_t(3)) >> cfg.get_node(label_t::exit);
-    cfg.get_node(label_t(4)) >> cfg.get_node(label_t(3));
-    cfg.get_node(label_t(4)) >> cfg.get_node(label_t(5));
-    cfg.get_node(label_t(5)) >> cfg.get_node(label_t(4));
+    cfg.get_node(label_t::entry) >> cfg.get_node(label_t{1});
+    cfg.get_node(label_t{1}) >> cfg.get_node(label_t{2});
+    cfg.get_node(label_t{1}) >> cfg.get_node(label_t{4});
+    cfg.get_node(label_t{2}) >> cfg.get_node(label_t{3});
+    cfg.get_node(label_t{3}) >> cfg.get_node(label_t::exit);
+    cfg.get_node(label_t{4}) >> cfg.get_node(label_t{3});
+    cfg.get_node(label_t{4}) >> cfg.get_node(label_t{5});
+    cfg.get_node(label_t{5}) >> cfg.get_node(label_t{4});
 
     const wto_t wto(cfg);
 
@@ -72,17 +72,17 @@ TEST_CASE("wto figure 2b", "[wto]") {
 
     // Add nodes.
     for (int i = 1; i <= 4; i++) {
-        cfg.insert(label_t(i));
+        cfg.insert(label_t{i}, Undefined{});
     }
 
     // Add edges.
-    cfg.get_node(label_t::entry) >> cfg.get_node(label_t(1));
-    cfg.get_node(label_t(1)) >> cfg.get_node(label_t(2));
-    cfg.get_node(label_t(1)) >> cfg.get_node(label_t(4));
-    cfg.get_node(label_t(2)) >> cfg.get_node(label_t(3));
-    cfg.get_node(label_t(3)) >> cfg.get_node(label_t(1));
-    cfg.get_node(label_t(3)) >> cfg.get_node(label_t::exit);
-    cfg.get_node(label_t(4)) >> cfg.get_node(label_t(3));
+    cfg.get_node(label_t::entry) >> cfg.get_node(label_t{1});
+    cfg.get_node(label_t{1}) >> cfg.get_node(label_t{2});
+    cfg.get_node(label_t{1}) >> cfg.get_node(label_t{4});
+    cfg.get_node(label_t{2}) >> cfg.get_node(label_t{3});
+    cfg.get_node(label_t{3}) >> cfg.get_node(label_t{1});
+    cfg.get_node(label_t{3}) >> cfg.get_node(label_t::exit);
+    cfg.get_node(label_t{4}) >> cfg.get_node(label_t{3});
 
     const wto_t wto(cfg);
 
