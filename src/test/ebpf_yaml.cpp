@@ -11,8 +11,8 @@
 
 #include <yaml-cpp/yaml.h>
 
-#include "asm_ostream.hpp"
 #include "asm_parse.hpp"
+#include "asm_syntax.hpp"
 #include "ebpf_verifier.hpp"
 #include "ebpf_yaml.hpp"
 #include "string_constraints.hpp"

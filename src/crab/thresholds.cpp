@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 #include "crab/thresholds.hpp"
 #include "crab/cfg.hpp"
+#include "crab/label.hpp"
 
 namespace crab {
 
@@ -90,7 +91,7 @@ void wto_thresholds_t::operator()(const std::shared_ptr<wto_cycle_t>& cycle) {
 
 std::ostream& operator<<(std::ostream& o, const wto_thresholds_t& t) {
     for (const auto& [label, th] : t.m_head_to_thresholds) {
-        o << label << "=" << th << "\n";
+        o << to_string(label) << "=" << th << "\n";
     }
     return o;
 }

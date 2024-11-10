@@ -12,7 +12,6 @@
 #endif
 
 #include "asm_files.hpp"
-#include "asm_ostream.hpp"
 #include "asm_unmarshal.hpp"
 
 #define TEST_OBJECT_FILE_DIRECTORY "ebpf-samples/build/"

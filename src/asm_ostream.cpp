@@ -6,7 +6,6 @@
 #include <variant>
 #include <vector>
 
-#include "asm_ostream.hpp"
 #include "asm_syntax.hpp"
 #include "crab/cfg.hpp"
 #include "crab/interval.hpp"
@@ -354,6 +353,26 @@ struct CommandPrinterVisitor {
     void operator()(IncrementLoopCounter const& a) { os_ << crab::variable_t::loop_counter(to_string(a.name)) << "++"; }
 };
 // ReSharper restore CppMemberFunctionMayBeConst
+
+std::ostream& operator<<(std::ostream& os, const label_t& label) {
+    if (label == label_t::entry) {
+        return os << "entry";
+    }
+    if (label == label_t::exit) {
+        return os << "exit";
+    }
+    if (!label.stack_frame_prefix.empty()) {
+        os << label.stack_frame_prefix << STACK_FRAME_DELIMITER;
+    }
+    if (label.to == -1) {
+        return os << label.from;
+    }
+    os << label.from << ":" << label.to;
+    if (!label.special_label.empty()) {
+        os << " (" << label.special_label << ")";
+    }
+    return os;
+}
 
 string to_string(label_t const& label) {
     std::stringstream str;

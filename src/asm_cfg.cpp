@@ -321,8 +321,8 @@ cfg_t prepare_cfg(const InstructionSeq& prog, const program_info& info, const pr
     // points. These entry points serve as natural locations for loop counters that help verify program termination.
     if (options.check_for_termination) {
         const wto_t wto{cfg};
-        wto.for_each_loop_head([&](const label_t& label) {
-            cfg.insert_before(label, label_t::increment_counter_label(label), IncrementLoopCounter{label});
+        wto.for_each_loop_head([&](const label_t& label) -> void {
+            cfg.insert_after(label, label_t::make_increment_counter(label), IncrementLoopCounter{label});
         });
     }
 

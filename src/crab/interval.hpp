@@ -104,7 +104,8 @@ class interval_t final {
     template <is_enum T>
     [[nodiscard]]
     std::tuple<T, T> bound(T elb, T eub) const {
-        auto [lb, ub] = bound(static_cast<std::underlying_type_t<T>>(elb), static_cast<std::underlying_type_t<T>>(eub));
+        using C = std::underlying_type_t<T>;
+        auto [lb, ub] = bound(static_cast<C>(elb), static_cast<C>(eub));
         return {static_cast<T>(lb), static_cast<T>(ub)};
     }
 

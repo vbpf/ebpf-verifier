@@ -6,7 +6,6 @@
 #include <vector>
 
 #include "asm_marshal.hpp"
-#include "asm_ostream.hpp"
 #include "crab_utils/num_safety.hpp"
 
 using std::vector;

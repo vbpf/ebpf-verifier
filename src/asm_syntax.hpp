@@ -2,94 +2,22 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 
+#include <functional>
+#include <limits>
 #include <optional>
+#include <ostream>
+#include <ranges>
 #include <string>
 #include <tuple>
 #include <utility>
 #include <variant>
 #include <vector>
 
-#include "crab/variable.hpp"
+#include "crab/label.hpp"
+#include "crab/type_encoding.hpp"
+#include "crab_utils/num_safety.hpp"
 #include "spec_type_descriptors.hpp"
 
-constexpr char STACK_FRAME_DELIMITER = '/';
-
-namespace crab {
-struct label_t {
-    int from;                       ///< Jump source, or simply index of instruction
-    int to;                         ///< Jump target or -1
-    std::string stack_frame_prefix; ///< Variable prefix when calling this label.
-
-    explicit label_t(const int index, const int to = -1, std::string stack_frame_prefix = {}) noexcept
-        : from(index), to(to), stack_frame_prefix(std::move(stack_frame_prefix)) {}
-
-    static label_t make_jump(const label_t& src_label, const label_t& target_label) {
-        return label_t{src_label.from, target_label.from, target_label.stack_frame_prefix};
-    }
-
-    bool operator==(const label_t& other) const noexcept = default;
-
-    constexpr bool operator<(const label_t& other) const {
-        if (this == &other) {
-            return false;
-        }
-        if (*this == label_t::exit) {
-            return false;
-        }
-        if (other == label_t::exit) {
-            return true;
-        }
-        return (stack_frame_prefix < other.stack_frame_prefix ||
-                (stack_frame_prefix == other.stack_frame_prefix &&
-                 (from < other.from || (from == other.from && to < other.to))));
-    }
-
-    // no hash; intended for use in ordered containers.
-
-    [[nodiscard]]
-    constexpr bool isjump() const {
-        return to != -1;
-    }
-
-    [[nodiscard]]
-    int call_stack_depth() const {
-        // The call stack depth is the number of '/' separated components in the label,
-        // which is one more than the number of '/' separated components in the prefix,
-        // hence two more than the number of '/' in the prefix, if any.
-        if (stack_frame_prefix.empty()) {
-            return 1;
-        }
-        return gsl::narrow<int>(2 + std::ranges::count(stack_frame_prefix, STACK_FRAME_DELIMITER));
-    }
-
-    friend std::ostream& operator<<(std::ostream& os, const label_t& label) {
-        if (label == entry) {
-            return os << "entry";
-        }
-        if (label == exit) {
-            return os << "exit";
-        }
-        if (!label.stack_frame_prefix.empty()) {
-            os << label.stack_frame_prefix << STACK_FRAME_DELIMITER;
-        }
-        if (label.to == -1) {
-            return os << label.from;
-        }
-        return os << label.from << ":" << label.to;
-    }
-    static label_t increment_counter_label(const label_t& label) {
-        // XXX: This is a hack to increment the loop counter.
-        return label_t{-label.from, -label.to, label.stack_frame_prefix};
-    }
-
-    static const label_t entry;
-    static const label_t exit;
-};
-
-inline const label_t label_t::entry{-1};
-inline const label_t label_t::exit{-2};
-
-} // namespace crab
 using crab::label_t;
 
 // Assembly syntax.
@@ -440,6 +368,53 @@ using pc_t = uint32_t;
 } // namespace asm_syntax
 
 using namespace asm_syntax;
+
+// We use a 16-bit offset whenever it fits in 16 bits.
+inline std::function<int16_t(label_t)> label_to_offset16(const pc_t pc) {
+    return [=](const label_t& label) {
+        const int64_t offset = label.from - gsl::narrow<int64_t>(pc) - 1;
+        const bool is16 =
+            std::numeric_limits<int16_t>::min() <= offset && offset <= std::numeric_limits<int16_t>::max();
+        return gsl::narrow<int16_t>(is16 ? offset : 0);
+    };
+}
+
+// We use the JA32 opcode with the offset in 'imm' when the offset
+// of an unconditional jump doesn't fit in an int16_t.
+inline std::function<int32_t(label_t)> label_to_offset32(const pc_t pc) {
+    return [=](const label_t& label) {
+        const int64_t offset = label.from - gsl::narrow<int64_t>(pc) - 1;
+        const bool is16 =
+            std::numeric_limits<int16_t>::min() <= offset && offset <= std::numeric_limits<int16_t>::max();
+        return is16 ? 0 : gsl::narrow<int32_t>(offset);
+    };
+}
+
+std::ostream& operator<<(std::ostream& os, const btf_line_info_t& line_info);
+
+void print(const InstructionSeq& insts, std::ostream& out, const std::optional<const label_t>& label_to_print,
+           bool print_line_info = false);
+
+std::ostream& operator<<(std::ostream& os, const label_t& label);
+std::string to_string(label_t const& label);
+
+std::ostream& operator<<(std::ostream& os, Instruction const& ins);
+std::string to_string(Instruction const& ins);
+
+std::ostream& operator<<(std::ostream& os, Bin::Op op);
+std::ostream& operator<<(std::ostream& os, Condition::Op op);
+
+inline std::ostream& operator<<(std::ostream& os, const Imm imm) { return os << crab::to_signed(imm.v); }
+inline std::ostream& operator<<(std::ostream& os, Reg const& a) { return os << "r" << gsl::narrow<int>(a.v); }
+inline std::ostream& operator<<(std::ostream& os, Value const& a) {
+    if (const auto pa = std::get_if<Imm>(&a)) {
+        return os << *pa;
+    }
+    return os << std::get<Reg>(a);
+}
+
+std::ostream& operator<<(std::ostream& os, const Assertion& a);
+std::string to_string(const Assertion& constraint);
 
 template <class... Ts>
 struct overloaded : Ts... {

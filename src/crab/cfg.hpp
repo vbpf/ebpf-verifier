@@ -15,7 +15,6 @@
 #include <boost/lexical_cast.hpp>
 #include <gsl/gsl>
 
-#include "asm_ostream.hpp"
 #include "asm_syntax.hpp"
 #include "crab_utils/debug.hpp"
 #include "crab_utils/num_big.hpp"
@@ -182,7 +181,7 @@ class cfg_t final {
     value_t& get_node(const label_t& _label) {
         const auto it = m_map.find(_label);
         if (it == m_map.end()) {
-            CRAB_ERROR("Basic block ", _label, " not found in the CFG: ");
+            CRAB_ERROR("Label ", to_string(_label), " not found in the CFG: ");
         }
         return it->second;
     }
@@ -190,7 +189,7 @@ class cfg_t final {
     const value_t& get_node(const label_t& _label) const {
         const auto it = m_map.find(_label);
         if (it == m_map.end()) {
-            CRAB_ERROR("Basic block ", _label, " not found in the CFG: ", __LINE__);
+            CRAB_ERROR("Label ", to_string(_label), " not found in the CFG: ");
         }
         return it->second;
     }
@@ -198,7 +197,7 @@ class cfg_t final {
     GuardedInstruction& at(const label_t& _label) {
         const auto it = m_map.find(_label);
         if (it == m_map.end()) {
-            CRAB_ERROR("Basic block ", _label, " not found in the CFG: ", __LINE__);
+            CRAB_ERROR("Label ", to_string(_label), " not found in the CFG: ");
         }
         return it->second.instruction();
     }
@@ -207,7 +206,7 @@ class cfg_t final {
     const GuardedInstruction& at(const label_t& _label) const {
         const auto it = m_map.find(_label);
         if (it == m_map.end()) {
-            CRAB_ERROR("Basic block ", _label, " not found in the CFG: ", __LINE__);
+            CRAB_ERROR("Label ", to_string(_label), " not found in the CFG: ");
         }
         return it->second.instruction();
     }
@@ -219,6 +218,15 @@ class cfg_t final {
         for (const label_t& prev : prev_nodes(next_label)) {
             get_node(prev) >> res;
             res >> get_node(next_label);
+        }
+        return res;
+    }
+
+    value_t& insert_after(const label_t& prev_label, const label_t& new_label, const Instruction& _ins) {
+        value_t& res = insert(new_label, GuardedInstruction{.cmd = _ins});
+        for (const label_t& next : next_nodes(prev_label)) {
+            get_node(prev_label) >> res;
+            res >> get_node(next);
         }
         return res;
     }
