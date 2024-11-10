@@ -188,8 +188,14 @@ static cfg_t instruction_seq_to_cfg(const InstructionSeq& insts, const bool must
         }
         if (const auto jmp = std::get_if<Jmp>(&inst)) {
             if (const auto cond = jmp->cond) {
+                label_t target_label = jmp->target;
+                if (target_label == fallthrough) {
+                    value >> cfg.get_node(fallthrough);
+                    continue;
+                }
+
                 vector<std::tuple<label_t, Condition>> jumps{
-                    {jmp->target, *cond},
+                    {target_label, *cond},
                     {fallthrough, reverse(*cond)},
                 };
                 for (const auto& [next_label, cond1] : jumps) {
