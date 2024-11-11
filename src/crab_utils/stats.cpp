@@ -94,7 +94,6 @@ void CrabStats::reset() {
     sw.clear();
 }
 
-void CrabStats::count(const std::string& name) { ++(*counters)[name]; }
 void CrabStats::count_max(const std::string& name, const unsigned v) {
     (*counters)[name] = std::max((*counters)[name], v);
 }
@@ -102,9 +101,6 @@ void CrabStats::count_max(const std::string& name, const unsigned v) {
 unsigned CrabStats::uset(const std::string& n, const unsigned v) { return (*counters)[n] = v; }
 unsigned CrabStats::get(const std::string& n) { return (*counters)[n]; }
 
-void CrabStats::start(const std::string& name) { (*sw)[name].start(); }
-void CrabStats::stop(const std::string& name) { (*sw)[name].stop(); }
-void CrabStats::resume(const std::string& name) { (*sw)[name].resume(); }
 
 /** Outputs all statistics to std output */
 void CrabStats::Print(std::ostream& OS) {

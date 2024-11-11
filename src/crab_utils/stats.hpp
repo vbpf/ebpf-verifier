@@ -33,6 +33,9 @@ inline std::ostream& operator<<(std::ostream& OS, const Stopwatch& sw) {
 }
 
 class CrabStats {
+    /// Controls whether statistics collection is active.
+    /// When false, all statistics methods become no-ops for better performance.
+    static constexpr bool enabled = false;
     static thread_local lazy_allocator<std::map<std::string, unsigned>> counters;
     static thread_local lazy_allocator<std::map<std::string, Stopwatch>> sw;
 
@@ -44,13 +47,29 @@ class CrabStats {
     /* counters */
     static unsigned get(const std::string& n);
     static unsigned uset(const std::string& n, unsigned v);
-    static void count(const std::string& name);
+    static void count(const std::string& name) {
+        if constexpr (enabled) {
+            ++(*counters)[name];
+        }
+    }
     static void count_max(const std::string& name, unsigned v);
 
     /* stop watch */
-    static void start(const std::string& name);
-    static void stop(const std::string& name);
-    static void resume(const std::string& name);
+    static void start(const std::string& name) {
+        if constexpr (enabled) {
+            (*sw)[name].start();
+        }
+    }
+    static void stop(const std::string& name) {
+        if constexpr (enabled) {
+            (*sw)[name].stop();
+        }
+    }
+    static void resume(const std::string& name) {
+        if constexpr (enabled) {
+            (*sw)[name].resume();
+        }
+    }
 
     /** Outputs all statistics to std output */
     static void Print(std::ostream& OS);
