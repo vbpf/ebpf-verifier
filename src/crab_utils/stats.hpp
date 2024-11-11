@@ -48,7 +48,7 @@ class CrabStats {
     static unsigned get(const std::string& n);
     static unsigned uset(const std::string& n, unsigned v);
     static void count(const std::string& name) {
-        if (enabled) {
+        if constexpr (enabled) {
             ++(*counters)[name];
         }
     }
@@ -56,17 +56,17 @@ class CrabStats {
 
     /* stop watch */
     static void start(const std::string& name) {
-        if (enabled) {
+        if constexpr (enabled) {
             (*sw)[name].start();
         }
     }
     static void stop(const std::string& name) {
-        if (enabled) {
+        if constexpr (enabled) {
             (*sw)[name].stop();
         }
     }
     static void resume(const std::string& name) {
-        if (enabled) {
+        if constexpr (enabled) {
             (*sw)[name].resume();
         }
     }
