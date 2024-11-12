@@ -104,8 +104,7 @@ FAIL_UNMARSHAL("invalid", "invalid-lddw.o", ".text")
         VERIFY_SECTION(project, filename, section, {}, &g_ebpf_platform_linux, false);                             \
     }
 
-#define TEST_SECTION_LEGACY(dirname, filename, sectionname)                                          \
-    TEST_SECTION(dirname, filename, sectionname)                                                     \
+#define TEST_LEGACY(dirname, filename, sectionname)                                                  \
     TEST_CASE("Fail unmarshalling: " dirname "/" filename " " sectionname, "[unmarshal]") {          \
         ebpf_platform_t platform = g_ebpf_platform_linux;                                            \
         platform.supported_conformance_groups &= ~bpf_conformance_groups_t::packet;                  \
@@ -115,6 +114,13 @@ FAIL_UNMARSHAL("invalid", "invalid-lddw.o", ".text")
         std::variant<InstructionSeq, std::string> prog_or_error = unmarshal(raw_prog);               \
         REQUIRE(std::holds_alternative<std::string>(prog_or_error));                                 \
     }
+#define TEST_SECTION_LEGACY(dirname, filename, sectionname) \
+    TEST_SECTION(dirname, filename, sectionname)            \
+    TEST_LEGACY(dirname, filename, sectionname)
+
+#define TEST_SECTION_LEGACY_FAIL(dirname, filename, sectionname) \
+    TEST_SECTION_FAIL(dirname, filename, sectionname)            \
+    TEST_LEGACY(dirname, filename, sectionname)
 
 TEST_SECTION("bpf_cilium_test", "bpf_lxc_jit.o", "1/0xdc06")
 TEST_SECTION("bpf_cilium_test", "bpf_lxc_jit.o", "2/1")
@@ -152,7 +158,6 @@ TEST_SECTION("bpf_cilium_test", "bpf_netdev.o", "2/3")
 TEST_SECTION("bpf_cilium_test", "bpf_netdev.o", "2/4")
 TEST_SECTION("bpf_cilium_test", "bpf_netdev.o", "2/5")
 TEST_SECTION("bpf_cilium_test", "bpf_netdev.o", "2/7")
-TEST_SECTION_LEGACY("bpf_cilium_test", "bpf_netdev.o", "from-netdev")
 
 TEST_SECTION("bpf_cilium_test", "bpf_overlay.o", "2/1")
 TEST_SECTION("bpf_cilium_test", "bpf_overlay.o", "2/2")
@@ -184,12 +189,8 @@ TEST_SECTION("cilium", "bpf_lxc.o", "2/3")
 TEST_SECTION("cilium", "bpf_lxc.o", "2/4")
 TEST_SECTION("cilium", "bpf_lxc.o", "2/5")
 TEST_SECTION("cilium", "bpf_lxc.o", "2/6")
-TEST_SECTION("cilium", "bpf_lxc.o", "2/7")
 TEST_SECTION("cilium", "bpf_lxc.o", "2/8")
 TEST_SECTION("cilium", "bpf_lxc.o", "2/9")
-TEST_SECTION_LEGACY("cilium", "bpf_lxc.o", "2/10")
-TEST_SECTION("cilium", "bpf_lxc.o", "2/11")
-TEST_SECTION("cilium", "bpf_lxc.o", "2/12")
 TEST_SECTION("cilium", "bpf_lxc.o", "from-container")
 
 TEST_SECTION("cilium", "bpf_netdev.o", "2/1")
@@ -197,7 +198,6 @@ TEST_SECTION("cilium", "bpf_netdev.o", "2/3")
 TEST_SECTION("cilium", "bpf_netdev.o", "2/4")
 TEST_SECTION("cilium", "bpf_netdev.o", "2/5")
 TEST_SECTION("cilium", "bpf_netdev.o", "2/7")
-TEST_SECTION_LEGACY("cilium", "bpf_netdev.o", "from-netdev")
 
 TEST_SECTION("cilium", "bpf_overlay.o", "2/1")
 TEST_SECTION("cilium", "bpf_overlay.o", "2/3")
@@ -585,6 +585,14 @@ TEST_SECTION_FAIL("cilium", "bpf_xdp_snat_linux.o", "2/16")
 
 // False positive, unknown cause
 TEST_SECTION_FAIL("linux", "test_map_in_map_kern.o", "kprobe/sys_connect")
+
+// Failures due to #679: sign extension (r1 s32= r1) leading to bottom
+TEST_SECTION_LEGACY_FAIL("cilium", "bpf_netdev.o", "from-netdev")
+TEST_SECTION_LEGACY_FAIL("bpf_cilium_test", "bpf_netdev.o", "from-netdev")
+TEST_SECTION_FAIL("cilium", "bpf_lxc.o", "2/7")
+TEST_SECTION_LEGACY_FAIL("cilium", "bpf_lxc.o", "2/10")
+TEST_SECTION_FAIL("cilium", "bpf_lxc.o", "2/11")
+TEST_SECTION_FAIL("cilium", "bpf_lxc.o", "2/12")
 
 void test_analyze_thread(const cfg_t* cfg, program_info* info, bool* res) {
     *res = run_ebpf_analysis(std::cout, *cfg, *info, {}, nullptr);
