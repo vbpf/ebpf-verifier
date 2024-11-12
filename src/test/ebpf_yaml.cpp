@@ -11,8 +11,8 @@
 
 #include <yaml-cpp/yaml.h>
 
-#include "asm_ostream.hpp"
 #include "asm_parse.hpp"
+#include "asm_syntax.hpp"
 #include "ebpf_verifier.hpp"
 #include "ebpf_yaml.hpp"
 #include "string_constraints.hpp"
@@ -171,7 +171,7 @@ static ebpf_verifier_options_t raw_options_to_options(const std::set<string>& ra
     ebpf_verifier_options_t options{};
 
     // Use ~simplify for YAML tests unless otherwise specified.
-    options.cfg_opts.simplify = false;
+    options.simplify = false;
 
     // All YAML tests use !setup_constraints.
     options.setup_constraints = false;
@@ -193,7 +193,7 @@ static ebpf_verifier_options_t raw_options_to_options(const std::set<string>& ra
         } else if (name == "strict") {
             options.strict = true;
         } else if (name == "simplify") {
-            options.cfg_opts.simplify = true;
+            options.simplify = true;
         } else if (name == "big_endian") {
             options.big_endian = true;
         } else if (name == "!big_endian") {
@@ -251,7 +251,7 @@ std::optional<Failure> run_yaml_test_case(TestCase test_case, bool debug) {
     if (debug) {
         test_case.options.print_failures = true;
         test_case.options.print_invariants = true;
-        test_case.options.cfg_opts.simplify = false;
+        test_case.options.simplify = false;
     }
 
     ebpf_context_descriptor_t context_descriptor{64, 0, 4, -1};
@@ -360,7 +360,7 @@ ConformanceTestResult run_conformance_test_case(const std::vector<std::byte>& me
         print(prog, std::cout, {});
         options.print_failures = true;
         options.print_invariants = true;
-        options.cfg_opts.simplify = false;
+        options.simplify = false;
     }
 
     try {

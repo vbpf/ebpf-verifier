@@ -38,8 +38,6 @@ struct EbpfProgramType {
     bool is_privileged{};
 };
 
-void print_map_descriptors(const std::vector<EbpfMapDescriptor>& descriptors, std::ostream& o);
-
 // Represents the key characteristics that determine equivalence between eBPF maps.
 // Used to cache and compare map configurations across the program.
 struct EquivalenceKey {
@@ -73,5 +71,9 @@ struct raw_program {
     program_info info{};
     std::vector<btf_line_info_t> line_info{};
 };
+
+void print_map_descriptors(const std::vector<EbpfMapDescriptor>& descriptors, std::ostream& o);
+
+std::ostream& operator<<(std::ostream& os, const btf_line_info_t& line_info);
 
 extern thread_local crab::lazy_allocator<program_info> global_program_info;

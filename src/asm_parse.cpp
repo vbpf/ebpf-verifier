@@ -208,8 +208,12 @@ Instruction parse_instruction(const std::string& line, const std::map<std::strin
         return Undefined{0};
     }
     if (regex_match(text, m, regex("assume " WREG CMPOP REG_OR_IMM))) {
-        Assume res{Condition{
-            .op = str_to_cmpop.at(m[2]), .left = reg(m[1]), .right = reg_or_imm(m[3]), .is64 = is64_reg(m[1])}};
+        Assume res{
+            .cond =
+                Condition{
+                    .op = str_to_cmpop.at(m[2]), .left = reg(m[1]), .right = reg_or_imm(m[3]), .is64 = is64_reg(m[1])},
+            .is_explicit = true,
+        };
         return res;
     }
     if (regex_match(text, m, regex("(?:if " WREG CMPOP REG_OR_IMM " )?goto\\s+(?:" IMM ")?" WRAPPED_LABEL))) {

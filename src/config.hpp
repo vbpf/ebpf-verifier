@@ -8,6 +8,9 @@ struct ebpf_verifier_options_t {
     // Options that control how the control flow graph is built.
     prepare_cfg_options cfg_opts;
 
+    /// When true, simplifies the control flow graph by merging basic blocks.
+    bool simplify = true;
+
     // True to assume prior failed assertions are true and continue verification.
     bool assume_assertions = false;
 
@@ -20,7 +23,7 @@ struct ebpf_verifier_options_t {
     // True to allow division by zero and assume BPF ISA defined semantics.
     bool allow_division_by_zero = true;
 
-    // Setup the entry constraints for a BPF program.
+    // Set up the entry constraints for a BPF program.
     bool setup_constraints = true;
 
     // True if the ELF file is built on a big endian system.

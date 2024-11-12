@@ -38,7 +38,7 @@ class AssertExtractor {
         : info{std::move(info)}, current_label(label) {}
 
     vector<Assertion> operator()(const Undefined&) const {
-        assert(false);
+        // assert(false);
         return {};
     }
 
@@ -176,7 +176,12 @@ class AssertExtractor {
         return res;
     }
 
-    vector<Assertion> operator()(const Assume& ins) const { return explicate(ins.cond); }
+    vector<Assertion> operator()(const Assume& ins) const {
+        if (ins.is_explicit) {
+            return explicate(ins.cond);
+        }
+        return {};
+    }
 
     vector<Assertion> operator()(const Jmp& ins) const {
         if (!ins.cond) {
@@ -298,10 +303,9 @@ vector<Assertion> get_assertions(Instruction ins, const program_info& info, cons
 /// regions. The verifier will use these assertions to treat the program as
 /// unsafe unless it can prove that the assertions can never fail.
 void explicate_assertions(cfg_t& cfg, const program_info& info) {
-    for (auto& [label, bb] : cfg) {
+    for (auto& [label, value] : cfg) {
         (void)label; // unused
-        for (auto& ins : bb) {
-            ins.preconditions = get_assertions(ins.cmd, info, bb.label());
-        }
+        auto& ins = value.instruction();
+        ins.preconditions = get_assertions(ins.cmd, info, value.label());
     }
 }
