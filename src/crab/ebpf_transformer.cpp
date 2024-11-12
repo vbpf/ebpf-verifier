@@ -132,7 +132,20 @@ class ebpf_transformer final {
                       const linear_expression_t& val_uvalue, const std::optional<reg_pack_t>& opt_val_reg);
 }; // end ebpf_domain_t
 
-void ebpf_domain_transform(ebpf_domain_t& inv, const Instruction& ins) { std::visit(ebpf_transformer{inv}, ins); }
+void ebpf_domain_transform(ebpf_domain_t& inv, const Instruction& ins) {
+    if (inv.is_bottom()) {
+        return;
+    }
+    std::visit(ebpf_transformer{inv}, ins);
+    if (inv.is_bottom() && !std::holds_alternative<Assume>(ins)) {
+        // Fail. raise an exception to stop the analysis.
+        std::stringstream msg;
+        msg << "Bug! pre-invariant:\n"
+            << inv.to_set() << "\n followed by instruction: " << ins << "\n"
+            << "leads to bottom";
+        throw std::logic_error(msg.str());
+    }
+}
 
 /** Linear constraint for a pointer comparison.
  */

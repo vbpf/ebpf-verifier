@@ -226,16 +226,21 @@ bool ebpf_verify_program(std::ostream& os, const InstructionSeq& prog, const pro
         prog_opt = prog;
     }
 
-    const checks_db report = get_ebpf_report(os, cfg, info, options, prog_opt);
-    if (options.print_failures) {
-        print_report(os, report, prog, options.print_line_info);
+    try {
+        const checks_db report = get_ebpf_report(os, cfg, info, options, prog_opt);
+        if (options.print_failures) {
+            print_report(os, report, prog, options.print_line_info);
+        }
+        if (stats) {
+            stats->total_unreachable = report.total_unreachable;
+            stats->total_warnings = report.total_warnings;
+            stats->max_loop_count = report.get_max_loop_count();
+        }
+        return report.total_warnings == 0;
+    } catch (std::logic_error& e) {
+        std::cerr << e.what();
+        return false;
     }
-    if (stats) {
-        stats->total_unreachable = report.total_unreachable;
-        stats->total_warnings = report.total_warnings;
-        stats->max_loop_count = report.get_max_loop_count();
-    }
-    return report.total_warnings == 0;
 }
 
 void ebpf_verifier_clear_thread_local_state() {
