@@ -30,7 +30,7 @@ struct Failure {
     Diff<std::set<std::string>> messages;
 };
 
-void print_failure(const Failure& failure, std::ostream& out);
+void print_failure(const Failure& failure);
 
 std::optional<Failure> run_yaml_test_case(TestCase test_case, bool debug = false);
 

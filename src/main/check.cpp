@@ -233,16 +233,14 @@ int main(int argc, char** argv) {
     }
 
     if (domain == "zoneCrab") {
-        ebpf_verifier_stats_t verifier_stats;
-        const auto [res, seconds] = timed_execution([&] {
-            return ebpf_verify_program(std::cout, prog, raw_prog.info, ebpf_verifier_options, &verifier_stats);
-        });
-        if (res && ebpf_verifier_options.cfg_opts.check_for_termination &&
+        const auto [verifier_stats, seconds] = timed_execution([&prog] { return analyze_and_report({.prog = &prog}); });
+        const bool pass = verifier_stats.total_warnings == 0;
+        if (pass && ebpf_verifier_options.cfg_opts.check_for_termination &&
             (ebpf_verifier_options.print_failures || ebpf_verifier_options.print_invariants)) {
             std::cout << "Program terminates within " << verifier_stats.max_loop_count << " loop iterations\n";
         }
-        std::cout << res << "," << seconds << "," << resident_set_size_kb() << "\n";
-        return !res;
+        std::cout << pass << "," << seconds << "," << resident_set_size_kb() << "\n";
+        return pass;
     } else if (domain == "linux") {
         // Pass the instruction sequence to the Linux kernel verifier.
         const auto [res, seconds] = bpf_verify_program(raw_prog.info.type, raw_prog.prog, &ebpf_verifier_options);

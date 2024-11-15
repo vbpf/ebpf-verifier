@@ -121,7 +121,7 @@ code:
 
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0: Code becomes unreachable (assume r1 w== 13)"
 ---
 test-case: assume number w!= reg
 
@@ -204,9 +204,9 @@ post:
   - r0.svalue=1
   - r0.uvalue=1
 messages:
-  - "2:5: Code is unreachable after 2:5"
-  - "3:5: Code is unreachable after 3:5"
-  - "4:5: Code is unreachable after 4:5"
+  - "2:5: Code becomes unreachable (assume r1 s< -3)"
+  - "3:5: Code becomes unreachable (assume r1 s< -2)"
+  - "4:5: Code becomes unreachable (assume r1 s>= -1)"
 ---
 test-case: jump-32
 
@@ -238,9 +238,9 @@ post:
   - r0.svalue=1
   - r0.uvalue=1
 messages:
-  - "3:9: Code is unreachable after 3:9"
-  - "4:9: Code is unreachable after 4:9"
-  - "5:6: Code is unreachable after 5:6"
+  - "3:9: Code becomes unreachable (assume r1 w< 4)"
+  - "4:9: Code becomes unreachable (assume r1 w< 5)"
+  - "5:6: Code becomes unreachable (assume r1 w>= 6)"
 ---
 test-case: join stack
 
@@ -555,7 +555,7 @@ post:
   - r10.stack_offset=512
 
 messages:
-  - "7:9: Code is unreachable after 7:9"
+  - "7:9: Code becomes unreachable (assume r1 == r2)"
 ---
 test-case: lost implications in correlated branches
 
@@ -622,7 +622,7 @@ post:
   - r4.uvalue=18446744073709551594
 
 messages:
-  - "0:1: Code is unreachable after 0:1"
+  - "0:1: Code becomes unreachable (assume r4 w== 0)"
 ---
 test-case: unsigned comparison of negative number
 
@@ -645,7 +645,7 @@ post:
   - r1.uvalue=18446744073709551615
 
 messages:
-  - "0:1: Code is unreachable after 0:1"
+  - "0:1: Code becomes unreachable (assume r1 <= 0)"
 ---
 test-case: JMP32
 
@@ -668,7 +668,7 @@ post:
   - r1.uvalue=4294967294
 
 messages:
-  - "0:2: Code is unreachable after 0:2"
+  - "0:2: Code becomes unreachable (assume r1 ws> 0)"
 ---
 test-case: assume map_fd == map_fd
 
@@ -691,7 +691,7 @@ code:
 
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0: Code becomes unreachable (assume r1 != r1)"
 ---
 test-case: assume map_fd1 != map_fd2
 
@@ -717,7 +717,7 @@ code:
 
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0: Code becomes unreachable (assume r1 != r2)"
 ---
 test-case: assume map_fd1 < map_fd2
 
@@ -762,7 +762,7 @@ post:
   - r1.type=ctx
 
 messages:
-  - "0:2: Code is unreachable after 0:2"
+  - "0:2: Code becomes unreachable (assume r1 == 0)"
 ---
 test-case: JNE with imm 0 and pointer
 options: ["assume_assertions"]
@@ -781,8 +781,7 @@ code:
 post: []
 
 messages:
-  - "0:1: Code is unreachable after 0:1"
-  - "2: Code is unreachable after 2"
+  - "0:1: Code becomes unreachable (assume r1 == 0)"
   - "2: Invalid type (r0.type == number)"
 
 ---
@@ -803,7 +802,6 @@ code:
 post: []
 
 messages:
-  - "2: Code is unreachable after 2"
   - "2: Invalid type (r0.type == number)"
 
 ---
@@ -824,7 +822,6 @@ code:
 post: []
 
 messages:
-  - "2: Code is unreachable after 2"
   - "2: Invalid type (r0.type == number)"
 
 ---
@@ -852,7 +849,7 @@ post:
   - r1.uvalue=[0, +oo]
 
 messages:
-  - "0:2: Code is unreachable after 0:2"
+  - "0:2: Code becomes unreachable (assume r1 < 0)"
 
 ---
 test-case: JLE with imm 0 and pointer
@@ -879,7 +876,7 @@ post:
   - r1.uvalue=[1, +oo]
 
 messages:
-  - "0:2: Code is unreachable after 0:2"
+  - "0:2: Code becomes unreachable (assume r1 <= 0)"
 
 ---
 test-case: JGT with imm 0 and pointer
@@ -899,8 +896,7 @@ code:
 post: []
 
 messages:
-  - "0:1: Code is unreachable after 0:1"
-  - "2: Code is unreachable after 2"
+  - "0:1: Code becomes unreachable (assume r1 <= 0)"
   - "2: Invalid type (r0.type == number)"
 
 ---
@@ -921,8 +917,7 @@ code:
 post: []
 
 messages:
-  - "0:1: Code is unreachable after 0:1"
-  - "2: Code is unreachable after 2"
+  - "0:1: Code becomes unreachable (assume r1 < 0)"
   - "2: Invalid type (r0.type == number)"
 
 ---
@@ -943,7 +938,6 @@ code:
 post: []
 
 messages:
-  - "0: Code is unreachable after 0"
   - "0: Invalid type (r1.type == number)"
 
 ---
@@ -964,7 +958,6 @@ code:
 post: []
 
 messages:
-  - "0: Code is unreachable after 0"
   - "0: Invalid type (r1.type == number)"
 
 ---
@@ -985,7 +978,6 @@ code:
 post: []
 
 messages:
-  - "0: Code is unreachable after 0"
   - "0: Invalid type (r1.type == number)"
 
 ---
@@ -1006,7 +998,6 @@ code:
 post: []
 
 messages:
-  - "0: Code is unreachable after 0"
   - "0: Invalid type (r1.type == number)"
 
 ---
@@ -1027,7 +1018,6 @@ code:
 post: []
 
 messages:
-  - "0: Code is unreachable after 0"
   - "0: Invalid type (r1.type == number)"
 
 ---
@@ -1048,7 +1038,6 @@ code:
 post: []
 
 messages:
-  - "0: Code is unreachable after 0"
   - "0: Invalid type (r1.type == number)"
 
 ---
@@ -1069,7 +1058,6 @@ code:
 post: []
 
 messages:
-  - "0: Code is unreachable after 0"
   - "0: Invalid type (r1.type == number)"
 
 ---
@@ -1090,7 +1078,6 @@ code:
 post: []
 
 messages:
-  - "0: Code is unreachable after 0"
   - "0: Invalid type (r1.type == number)"
 
 ---
@@ -1111,7 +1098,6 @@ code:
 post: []
 
 messages:
-  - "0: Code is unreachable after 0"
   - "0: Invalid type (r1.type == number)"
 
 ---
@@ -1132,7 +1118,6 @@ code:
 post: []
 
 messages:
-  - "0: Code is unreachable after 0"
   - "0: Invalid type (r1.type == number)"
 
 ---
@@ -1153,7 +1138,6 @@ code:
 post: []
 
 messages:
-  - "0: Code is unreachable after 0"
   - "0: Invalid type (r1.type == number)"
 
 ---
@@ -1174,7 +1158,6 @@ code:
 post: []
 
 messages:
-  - "0: Code is unreachable after 0"
   - "0: Invalid type (r1.type == number)"
 
 ---
@@ -1195,7 +1178,6 @@ code:
 post: []
 
 messages:
-  - "0: Code is unreachable after 0"
   - "0: Invalid type (r1.type == number)"
 
 ---
@@ -1216,7 +1198,6 @@ code:
 post: []
 
 messages:
-  - "0: Code is unreachable after 0"
   - "0: Invalid type (r1.type == number)"
 
 ---
@@ -1237,7 +1218,6 @@ code:
 post: []
 
 messages:
-  - "0: Code is unreachable after 0"
   - "0: Invalid type (r1.type == number)"
 
 ---
@@ -1258,5 +1238,4 @@ code:
 post: []
 
 messages:
-  - "0: Code is unreachable after 0"
   - "0: Invalid type (r1.type == number)"

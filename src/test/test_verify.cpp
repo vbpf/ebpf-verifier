@@ -33,7 +33,7 @@ FAIL_UNMARSHAL("build", "wronghelper.o", "xdp")
 FAIL_UNMARSHAL("invalid", "invalid-lddw.o", ".text")
 
 // Verify a section with only one program in it.
-#define VERIFY_SECTION(dirname, filename, sectionname, options, platform, pass)                     \
+#define VERIFY_SECTION(dirname, filename, sectionname, _options, platform, pass)                    \
     do {                                                                                            \
         auto raw_progs = read_elf("ebpf-samples/" dirname "/" filename, sectionname, {}, platform); \
         REQUIRE(raw_progs.size() == 1);                                                             \
@@ -41,7 +41,10 @@ FAIL_UNMARSHAL("invalid", "invalid-lddw.o", ".text")
         auto prog_or_error = unmarshal(raw_prog);                                                   \
         auto prog = std::get_if<InstructionSeq>(&prog_or_error);                                    \
         REQUIRE(prog != nullptr);                                                                   \
-        bool res = ebpf_verify_program(std::cout, *prog, raw_prog.info, options, nullptr);          \
+        ebpf_verifier_options_t new_options = _options;                                             \
+        const ebpf_verifier_stats_t stats =                                                         \
+            analyze_and_report({.prog = prog, .info = &raw_prog.info, .options = &new_options});    \
+        const bool res = stats.total_warnings == 0;                                                 \
         if (pass)                                                                                   \
             REQUIRE(res);                                                                           \
         else                                                                                        \
@@ -49,21 +52,24 @@ FAIL_UNMARSHAL("invalid", "invalid-lddw.o", ".text")
     } while (0)
 
 // Verify a program in a section that may have multiple programs in it.
-#define VERIFY_PROGRAM(dirname, filename, section_name, program_name, options, platform, pass)       \
-    do {                                                                                             \
-        auto raw_progs = read_elf("ebpf-samples/" dirname "/" filename, section_name, {}, platform); \
-        for (const auto& raw_prog : raw_progs) {                                                     \
-            if (raw_prog.function_name == program_name) {                                            \
-                auto prog_or_error = unmarshal(raw_prog);                                            \
-                auto prog = std::get_if<InstructionSeq>(&prog_or_error);                             \
-                REQUIRE(prog != nullptr);                                                            \
-                bool res = ebpf_verify_program(std::cout, *prog, raw_prog.info, options, nullptr);   \
-                if (pass)                                                                            \
-                    REQUIRE(res);                                                                    \
-                else                                                                                 \
-                    REQUIRE(!res);                                                                   \
-            }                                                                                        \
-        }                                                                                            \
+#define VERIFY_PROGRAM(dirname, filename, section_name, program_name, _options, platform, pass)       \
+    do {                                                                                              \
+        auto raw_progs = read_elf("ebpf-samples/" dirname "/" filename, section_name, {}, platform);  \
+        for (const auto& raw_prog : raw_progs) {                                                      \
+            if (raw_prog.function_name == program_name) {                                             \
+                auto prog_or_error = unmarshal(raw_prog);                                             \
+                auto prog = std::get_if<InstructionSeq>(&prog_or_error);                              \
+                REQUIRE(prog != nullptr);                                                             \
+                ebpf_verifier_options_t new_options = _options;                                       \
+                const ebpf_verifier_stats_t stats = analyze_and_report(                               \
+                    analyze_params_t{.prog = prog, .info = &raw_prog.info, .options = &new_options}); \
+                const bool res = stats.total_warnings == 0;                                           \
+                if (pass)                                                                             \
+                    REQUIRE(res);                                                                     \
+                else                                                                                  \
+                    REQUIRE(!res);                                                                    \
+            }                                                                                         \
+        }                                                                                             \
     } while (0)
 
 #define TEST_SECTION(project, filename, section)                                      \
@@ -594,8 +600,8 @@ TEST_SECTION_LEGACY_FAIL("cilium", "bpf_lxc.o", "2/10")
 TEST_SECTION_FAIL("cilium", "bpf_lxc.o", "2/11")
 TEST_SECTION_FAIL("cilium", "bpf_lxc.o", "2/12")
 
-void test_analyze_thread(const cfg_t* cfg, program_info* info, bool* res) {
-    *res = run_ebpf_analysis(std::cout, *cfg, *info, {}, nullptr);
+void test_analyze_thread(std::unique_ptr<cfg_t> cfg, program_info* info, bool* res) {
+    *res = analyze_and_report({.cfg = std::move(cfg), .info = info}).total_warnings == 0;
 }
 
 // Test multithreading
@@ -606,7 +612,7 @@ TEST_CASE("multithreading", "[verify][multithreading]") {
     auto prog_or_error1 = unmarshal(raw_prog1);
     auto prog1 = std::get_if<InstructionSeq>(&prog_or_error1);
     REQUIRE(prog1 != nullptr);
-    const cfg_t cfg1 = prepare_cfg(*prog1, raw_prog1.info, {});
+    cfg_t cfg1 = prepare_cfg(*prog1, raw_prog1.info, {});
 
     auto raw_progs2 = read_elf("ebpf-samples/bpf_cilium_test/bpf_netdev.o", "2/2", {}, &g_ebpf_platform_linux);
     REQUIRE(raw_progs2.size() == 1);
@@ -614,11 +620,11 @@ TEST_CASE("multithreading", "[verify][multithreading]") {
     auto prog_or_error2 = unmarshal(raw_prog2);
     auto prog2 = std::get_if<InstructionSeq>(&prog_or_error2);
     REQUIRE(prog2 != nullptr);
-    const cfg_t cfg2 = prepare_cfg(*prog2, raw_prog2.info, {});
+    auto cfg2 = prepare_cfg(*prog2, raw_prog2.info, {});
 
     bool res1, res2;
-    std::thread a(test_analyze_thread, &cfg1, &raw_prog1.info, &res1);
-    std::thread b(test_analyze_thread, &cfg2, &raw_prog2.info, &res2);
+    std::thread a(test_analyze_thread, std::make_unique<cfg_t>(std::move(cfg1)), &raw_prog1.info, &res1);
+    std::thread b(test_analyze_thread, std::make_unique<cfg_t>(std::move(cfg2)), &raw_prog2.info, &res2);
     a.join();
     b.join();
 

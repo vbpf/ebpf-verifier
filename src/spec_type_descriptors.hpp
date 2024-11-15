@@ -48,18 +48,19 @@ struct EquivalenceKey {
     std::strong_ordering operator<=>(const EquivalenceKey&) const = default;
 };
 
-struct program_info {
-    const struct ebpf_platform_t* platform{};
-    std::vector<EbpfMapDescriptor> map_descriptors{};
-    EbpfProgramType type{};
-    std::map<EquivalenceKey, int> cache{};
-};
-
 struct btf_line_info_t {
     std::string file_name{};
     std::string source_line{};
     uint32_t line_number{};
     uint32_t column_number{};
+};
+
+struct program_info {
+    const struct ebpf_platform_t* platform{};
+    std::vector<EbpfMapDescriptor> map_descriptors{};
+    EbpfProgramType type{};
+    std::map<EquivalenceKey, int> cache{};
+    std::map<int, btf_line_info_t> line_info{};
 };
 
 struct raw_program {
@@ -69,7 +70,6 @@ struct raw_program {
     std::string function_name{};
     std::vector<ebpf_inst> prog{};
     program_info info{};
-    std::vector<btf_line_info_t> line_info{};
 };
 
 void print_map_descriptors(const std::vector<EbpfMapDescriptor>& descriptors, std::ostream& o);

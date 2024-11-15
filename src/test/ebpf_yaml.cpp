@@ -248,10 +248,9 @@ static Diff<T> make_diff(const T& actual, const T& expected) {
 }
 
 std::optional<Failure> run_yaml_test_case(TestCase test_case, bool debug) {
+    test_case.options.print_failures = true;
     if (debug) {
-        test_case.options.print_failures = true;
         test_case.options.print_invariants = true;
-        test_case.options.simplify = false;
     }
 
     ebpf_context_descriptor_t context_descriptor{64, 0, 4, -1};
@@ -259,10 +258,18 @@ std::optional<Failure> run_yaml_test_case(TestCase test_case, bool debug) {
 
     program_info info{&g_platform_test, {}, program_type};
 
+    string_invariant_map out_invariants{{label_t::exit, string_invariant::top()}};
     std::ostringstream ss;
-    const auto& [actual_last_invariant, result] = ebpf_analyze_program_for_test(
-        ss, test_case.instruction_seq, test_case.assumed_pre_invariant, info, test_case.options);
+    (void)analyze_and_report(analyze_params_t{
+        .os = &ss,
+        .prog = &test_case.instruction_seq,
+        .entry_invariant = &test_case.assumed_pre_invariant,
+        .out_invariants = &out_invariants,
+        .info = &info,
+        .options = &test_case.options,
+    });
     std::set<string> actual_messages = extract_messages(ss.str());
+    const string_invariant actual_last_invariant = out_invariants.at(label_t::exit);
 
     if (actual_last_invariant == test_case.expected_post_invariant && actual_messages == test_case.expected_messages) {
         return {};
@@ -365,10 +372,19 @@ ConformanceTestResult run_conformance_test_case(const std::vector<std::byte>& me
 
     try {
         std::ostringstream null_stream;
-        const auto& [actual_last_invariant, result] =
-            ebpf_analyze_program_for_test(null_stream, prog, pre_invariant, info, options);
 
-        for (const std::string& invariant : actual_last_invariant.value()) {
+        string_invariant_map out_invariants{{label_t::exit, string_invariant::top()}};
+        const auto& stats = analyze_and_report(analyze_params_t{
+            .os = &null_stream,
+            .prog = &prog,
+            .entry_invariant = &pre_invariant,
+            .out_invariants = &out_invariants,
+            .info = &info,
+            .options = &options,
+        });
+        const bool result = stats.total_warnings == 0;
+
+        for (const std::string& invariant : out_invariants.at(label_t::exit).value()) {
             if (invariant.rfind("r0.svalue=", 0) == 0) {
                 crab::number_t lb, ub;
                 if (invariant[10] == '[') {
@@ -387,7 +403,7 @@ ConformanceTestResult run_conformance_test_case(const std::vector<std::byte>& me
     }
 }
 
-void print_failure(const Failure& failure, std::ostream& out) {
+void print_failure(const Failure& failure) {
     constexpr auto INDENT = "  ";
     if (!failure.invariant.unexpected.empty()) {
         std::cout << "Unexpected properties:\n" << INDENT << failure.invariant.unexpected << "\n";

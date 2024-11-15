@@ -22,6 +22,11 @@
 
 namespace crab {
 
+class InvalidControlFlow final : public std::runtime_error {
+  public:
+    explicit InvalidControlFlow(const std::string& what) : std::runtime_error(what) {}
+};
+
 class cfg_t;
 
 // Node type for the CFG
@@ -322,7 +327,7 @@ class cfg_t final {
     [[nodiscard]]
     std::vector<label_t> sorted_labels() const {
         std::vector<label_t> labels = this->labels();
-        std::sort(labels.begin(), labels.end());
+        std::ranges::sort(labels);
         return labels;
     }
 
@@ -351,20 +356,6 @@ class cfg_t final {
         const auto rng = prev_nodes(b);
         return std::distance(rng.begin(), rng.end()) == 1;
     }
-
-    // mark reachable blocks from curId
-    template <class AnyCfg>
-    void mark_alive_blocks(label_t curId, AnyCfg& cfg_t, visited_t& visited) {
-        if (visited.contains(curId)) {
-            return;
-        }
-        visited.insert(curId);
-        for (const auto& child : cfg_t.next_nodes(curId)) {
-            mark_alive_blocks(child, cfg_t, visited);
-        }
-    }
-
-    void remove_unreachable_blocks();
 };
 
 class basic_block_t final {

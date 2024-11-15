@@ -3,17 +3,23 @@
 #include <stdexcept>
 #if __linux__
 #include <linux/bpf.h>
-#define PTYPE(name, descr, native_type, prefixes) {name, descr, native_type, prefixes}
-#define PTYPE_PRIVILEGED(name, descr, native_type, prefixes) {name, descr, native_type, prefixes, true}
+#define PTYPE(name, descr, native_type, prefixes) \
+    { name, descr, native_type, prefixes }
+#define PTYPE_PRIVILEGED(name, descr, native_type, prefixes) \
+    { name, descr, native_type, prefixes, true }
 #else
-#define PTYPE(name, descr, native_type, prefixes) {name, descr, 0, prefixes}
-#define PTYPE_PRIVILEGED(name, descr, native_type, prefixes) {name, descr, 0, prefixes, true}
+#define PTYPE(name, descr, native_type, prefixes) \
+    { name, descr, 0, prefixes }
+#define PTYPE_PRIVILEGED(name, descr, native_type, prefixes) \
+    { name, descr, 0, prefixes, true }
 #endif
 #include "crab_verifier.hpp"
 #include "helpers.hpp"
 #include "linux/gpl/spec_type_descriptors.hpp"
 #include "linux_platform.hpp"
 #include "platform.hpp"
+
+#include <asm_files.hpp>
 
 // Map definitions as they appear in an ELF file, so field width matters.
 struct bpf_load_map_def {
@@ -198,7 +204,7 @@ static int create_map_linux(const uint32_t map_type, const uint32_t key_size, co
     }
 
 #if __linux__
-    union bpf_attr attr{};
+    union bpf_attr attr {};
     memset(&attr, '\0', sizeof(attr));
     attr.map_type = map_type;
     attr.key_size = key_size;
@@ -237,7 +243,7 @@ EbpfMapDescriptor& get_map_descriptor_linux(const int map_fd) {
     // (key size, value size) from the execution context, but this is
     // not yet supported on Linux.
 
-    throw std::runtime_error(std::string("map_fd not found"));
+    throw UnmarshalError("map_fd not found");
 }
 
 const ebpf_platform_t g_ebpf_platform_linux = {get_program_type_linux,

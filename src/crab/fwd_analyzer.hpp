@@ -10,7 +10,10 @@
 namespace crab {
 
 using invariant_table_t = std::map<label_t, ebpf_domain_t>;
-
-std::pair<invariant_table_t, invariant_table_t> run_forward_analyzer(const cfg_t& cfg, ebpf_domain_t entry_inv);
+struct invariant_map_pair {
+    invariant_table_t pre;
+    invariant_table_t post;
+};
+invariant_map_pair run_forward_analyzer(const cfg_t& cfg, ebpf_domain_t entry_inv);
 
 } // namespace crab

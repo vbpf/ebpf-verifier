@@ -141,7 +141,7 @@ void ebpf_domain_transform(ebpf_domain_t& inv, const Instruction& ins) {
         // Fail. raise an exception to stop the analysis.
         std::stringstream msg;
         msg << "Bug! pre-invariant:\n"
-            << inv.to_set() << "\n followed by instruction: " << ins << "\n"
+            << inv << "\n followed by instruction: " << ins << "\n"
             << "leads to bottom";
         throw std::logic_error(msg.str());
     }

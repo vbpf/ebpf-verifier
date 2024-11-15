@@ -43,9 +43,8 @@ struct ebpf_verifier_options_t {
 };
 
 struct ebpf_verifier_stats_t {
-    int total_unreachable;
-    int total_warnings;
-    int max_loop_count;
+    int total_warnings{};
+    int max_loop_count{};
 };
 
 extern thread_local ebpf_verifier_options_t thread_local_options;

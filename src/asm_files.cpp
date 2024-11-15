@@ -24,7 +24,7 @@ template <typename T>
     requires std::is_trivially_copyable_v<T>
 static vector<T> vector_of(const char* data, const ELFIO::Elf_Xword size) {
     if (size % sizeof(T) != 0 || size > std::numeric_limits<uint32_t>::max() || !data) {
-        throw std::runtime_error("Invalid argument to vector_of");
+        throw UnmarshalError("Invalid argument to vector_of");
     }
     return {reinterpret_cast<const T*>(data), reinterpret_cast<const T*>(data + size)};
 }
@@ -111,10 +111,10 @@ static size_t parse_map_sections(const ebpf_verifier_options_t& options, const e
         if (map_count > 0) {
             map_record_size = s->get_size() / map_count;
             if (s->get_data() == nullptr || map_record_size == 0) {
-                throw std::runtime_error("bad maps section");
+                throw UnmarshalError("bad maps section");
             }
             if (s->get_size() % map_record_size != 0) {
-                throw std::runtime_error("bad maps section size");
+                throw UnmarshalError("bad maps section size");
             }
             platform->parse_maps_section(map_descriptors, s->get_data(), map_record_size, map_count, platform, options);
         }
@@ -131,9 +131,9 @@ vector<raw_program> read_elf(const string& path, const string& desired_section, 
     }
     struct stat st;
     if (stat(path.c_str(), &st)) {
-        throw std::runtime_error(string(strerror(errno)) + " opening " + path);
+        throw UnmarshalError(string(strerror(errno)) + " opening " + path);
     }
-    throw std::runtime_error("Can't process ELF file " + path);
+    throw UnmarshalError("Can't process ELF file " + path);
 }
 
 static std::tuple<string, ELFIO::Elf_Xword>
@@ -168,8 +168,8 @@ void relocate_map(ebpf_inst& inst, const std::string& symbol_name,
                   const ELFIO::const_symbol_section_accessor& symbols) {
     // Only permit loading the address of the map.
     if ((inst.opcode & INST_CLS_MASK) != INST_CLS_LD) {
-        throw std::runtime_error("Illegal operation on symbol " + symbol_name + " at location " +
-                                 std::to_string(offset / sizeof(ebpf_inst)));
+        throw UnmarshalError("Illegal operation on symbol " + symbol_name + " at location " +
+                             std::to_string(offset / sizeof(ebpf_inst)));
     }
     inst.src = 1; // magic number for LoadFd
 
@@ -190,8 +190,8 @@ void relocate_map(ebpf_inst& inst, const std::string& symbol_name,
         }
     }
     if (reloc_value >= info.map_descriptors.size()) {
-        throw std::runtime_error("Bad reloc value (" + std::to_string(reloc_value) + "). " +
-                                 "Make sure to compile with -O2.");
+        throw UnmarshalError("Bad reloc value (" + std::to_string(reloc_value) + "). " +
+                             "Make sure to compile with -O2.");
     }
     inst.imm = info.map_descriptors.at(reloc_value).original_fd;
 }
@@ -213,8 +213,8 @@ static vector<ebpf_inst> read_subprogram(const ELFIO::section& subprogram_sectio
         auto [subprogram_name, subprogram_size] =
             get_program_name_and_size(subprogram_section, subprogram_offset, symbols);
         if (subprogram_size == 0) {
-            throw std::runtime_error("Zero-size subprogram '" + subprogram_name + "' in section '" +
-                                     subprogram_section.get_name() + "'");
+            throw UnmarshalError("Zero-size subprogram '" + subprogram_name + "' in section '" +
+                                 subprogram_section.get_name() + "'");
         }
         if (subprogram_name == symbol_name) {
             // Append subprogram instructions to the main program.
@@ -222,8 +222,8 @@ static vector<ebpf_inst> read_subprogram(const ELFIO::section& subprogram_sectio
         }
         subprogram_offset += subprogram_size;
     }
-    throw std::runtime_error("Subprogram '" + symbol_name + "' not found in section '" + subprogram_section.get_name() +
-                             "'");
+    throw UnmarshalError("Subprogram '" + symbol_name + "' not found in section '" + subprogram_section.get_name() +
+                         "'");
 }
 
 static void append_subprograms(raw_program& prog, const vector<raw_program>& programs,
@@ -254,8 +254,8 @@ static void append_subprograms(raw_program& prog, const vector<raw_program>& pro
         const int64_t target_offset = gsl::narrow_cast<int64_t>(subprogram_offsets[reloc.target_function_name]);
         const auto offset_diff = target_offset - gsl::narrow<int64_t>(reloc.source_offset) - 1;
         if (offset_diff < std::numeric_limits<int32_t>::min() || offset_diff > std::numeric_limits<int32_t>::max()) {
-            throw std::runtime_error("Offset difference out of int32_t range for instruction at source offset " +
-                                     std::to_string(reloc.source_offset));
+            throw UnmarshalError("Offset difference out of int32_t range for instruction at source offset " +
+                                 std::to_string(reloc.source_offset));
         }
         prog.prog[reloc.source_offset].imm = gsl::narrow_cast<int32_t>(offset_diff);
     }
@@ -282,12 +282,12 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
                              const ebpf_verifier_options_t& options, const ebpf_platform_t* platform) {
     ELFIO::elfio reader;
     if (!reader.load(input_stream)) {
-        throw std::runtime_error("Can't process ELF file " + path);
+        throw UnmarshalError("Can't process ELF file " + path);
     }
 
     auto symbol_section = reader.sections[".symtab"];
     if (!symbol_section) {
-        throw std::runtime_error("No symbol section found in ELF file " + path);
+        throw UnmarshalError("No symbol section found in ELF file " + path);
     }
 
     // Make sure the ELFIO library will be able to parse the symbol section correctly.
@@ -295,7 +295,7 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
         reader.get_class() == ELFIO::ELFCLASS32 ? sizeof(ELFIO::Elf32_Sym) : sizeof(ELFIO::Elf64_Sym);
 
     if (symbol_section->get_entry_size() != expected_entry_size) {
-        throw std::runtime_error("Invalid symbol section found in ELF file " + path);
+        throw UnmarshalError("Invalid symbol section found in ELF file " + path);
     }
 
     program_info info{platform};
@@ -324,7 +324,7 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
             parse_map_sections(options, platform, reader, info.map_descriptors, map_section_indices, symbols);
     } else {
         if (!btf_data.has_value()) {
-            throw std::runtime_error("No BTF section found in ELF file " + path);
+            throw UnmarshalError("No BTF section found in ELF file " + path);
         }
         map_record_size_or_map_offsets = parse_map_section(*btf_data, info.map_descriptors);
         // Prevail requires:
@@ -390,7 +390,7 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
 
             if (prelocs) {
                 if (!prelocs->get_data()) {
-                    throw std::runtime_error("Malformed relocation data");
+                    throw UnmarshalError("Malformed relocation data");
                 }
                 ELFIO::const_relocation_section_accessor reloc{reader, prelocs};
 
@@ -410,7 +410,7 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
                     }
                     offset -= program_offset;
                     if (offset / sizeof(ebpf_inst) >= prog.prog.size()) {
-                        throw std::runtime_error("Invalid relocation data");
+                        throw UnmarshalError("Invalid relocation data");
                     }
                     ebpf_inst& inst = prog.prog[offset / sizeof(ebpf_inst)];
 
@@ -437,7 +437,6 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
                     unresolved_symbols_errors.push_back(unresolved_symbol);
                 }
             }
-            prog.line_info.resize(prog.prog.size());
             res.push_back(prog);
             program_offset += program_size;
         }
@@ -457,8 +456,8 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
         for (const auto& unresolved_symbol : unresolved_symbols_errors) {
             std::cerr << unresolved_symbol << std::endl;
         }
-        throw std::runtime_error("There are relocations in section but no maps sections in file " + path +
-                                 "\nMake sure to inline all function calls.");
+        throw UnmarshalError("There are relocations in section but no maps sections in file " + path +
+                             "\nMake sure to inline all function calls.");
     }
 
     auto btf_ext = reader.sections[".BTF.ext"];
@@ -469,10 +468,11 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
                 if (program.section_name == section && instruction_offset >= program.insn_off &&
                     instruction_offset < program.insn_off + program.prog.size() * sizeof(ebpf_inst)) {
                     const size_t inst_index = (instruction_offset - program.insn_off) / sizeof(ebpf_inst);
-                    if (inst_index >= program.line_info.size()) {
-                        throw std::runtime_error("Invalid BTF data");
+                    if (inst_index >= program.prog.size()) {
+                        throw UnmarshalError("Invalid BTF data");
                     }
-                    program.line_info[inst_index] = {file_name, source, line_number, column_number};
+                    program.info.line_info.insert_or_assign(
+                        inst_index, btf_line_info_t{file_name, source, line_number, column_number});
                     return;
                 }
             }
@@ -482,10 +482,10 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
 
         // BTF doesn't include line info for every instruction, only on the first instruction per source line.
         for (auto& program : res) {
-            for (size_t i = 1; i < program.line_info.size(); i++) {
+            for (size_t i = 1; i < program.info.line_info.size(); i++) {
                 // If the previous PC has line info, copy it.
-                if (program.line_info[i].line_number == 0 && program.line_info[i - 1].line_number != 0) {
-                    program.line_info[i] = program.line_info[i - 1];
+                if (program.info.line_info[i].line_number == 0 && program.info.line_info[i - 1].line_number != 0) {
+                    program.info.line_info[i] = program.info.line_info[i - 1];
                 }
             }
         }
@@ -493,9 +493,9 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
 
     if (res.empty()) {
         if (desired_section.empty()) {
-            throw std::runtime_error("Can't find any non-empty TEXT sections in file " + path);
+            throw UnmarshalError("Can't find any non-empty TEXT sections in file " + path);
         }
-        throw std::runtime_error("Can't find section " + desired_section + " in file " + path);
+        throw UnmarshalError("Can't find section " + desired_section + " in file " + path);
     }
     return res;
 }
