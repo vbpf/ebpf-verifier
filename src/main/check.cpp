@@ -240,7 +240,7 @@ int main(int argc, char** argv) {
             std::cout << "Program terminates within " << verifier_stats.max_loop_count << " loop iterations\n";
         }
         std::cout << pass << "," << seconds << "," << resident_set_size_kb() << "\n";
-        return pass;
+        return !pass;
     } else if (domain == "linux") {
         // Pass the instruction sequence to the Linux kernel verifier.
         const auto [res, seconds] = bpf_verify_program(raw_prog.info.type, raw_prog.prog, &ebpf_verifier_options);
