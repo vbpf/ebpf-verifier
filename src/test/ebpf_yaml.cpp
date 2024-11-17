@@ -171,13 +171,13 @@ static ebpf_verifier_options_t raw_options_to_options(const std::set<string>& ra
     ebpf_verifier_options_t options{};
 
     // Use ~simplify for YAML tests unless otherwise specified.
-    options.simplify = false;
+    options.verbosity_opts.simplify = false;
 
     // All YAML tests use !setup_constraints.
     options.setup_constraints = false;
 
     // Default to the machine's native endianness.
-    options.big_endian = (std::endian::native == std::endian::big);
+    options.big_endian = std::endian::native == std::endian::big;
 
     // Default to not assuming assertions.
     options.assume_assertions = false;
@@ -193,7 +193,7 @@ static ebpf_verifier_options_t raw_options_to_options(const std::set<string>& ra
         } else if (name == "strict") {
             options.strict = true;
         } else if (name == "simplify") {
-            options.simplify = true;
+            options.verbosity_opts.simplify = true;
         } else if (name == "big_endian") {
             options.big_endian = true;
         } else if (name == "!big_endian") {
@@ -225,20 +225,6 @@ static vector<TestCase> read_suite(const string& path) {
     return res;
 }
 
-static std::set<string> extract_messages(const string& str) {
-    vector<string> output;
-    boost::split(output, str, boost::is_any_of("\n"));
-
-    std::set<string> actual_messages;
-    for (auto& item : output) {
-        boost::trim(item);
-        if (!item.empty()) {
-            actual_messages.insert(item);
-        }
-    }
-    return actual_messages;
-}
-
 template <typename T>
 static Diff<T> make_diff(const T& actual, const T& expected) {
     return Diff<T>{
@@ -248,27 +234,41 @@ static Diff<T> make_diff(const T& actual, const T& expected) {
 }
 
 std::optional<Failure> run_yaml_test_case(TestCase test_case, bool debug) {
+    test_case.options.verbosity_opts.print_failures = true;
     if (debug) {
-        test_case.options.print_failures = true;
-        test_case.options.print_invariants = true;
-        test_case.options.simplify = false;
+        test_case.options.verbosity_opts.print_invariants = true;
     }
 
     ebpf_context_descriptor_t context_descriptor{64, 0, 4, -1};
     EbpfProgramType program_type = make_program_type(test_case.name, &context_descriptor);
 
     program_info info{&g_platform_test, {}, program_type};
+    thread_local_options = test_case.options;
+    try {
+        const cfg_t cfg = prepare_cfg(test_case.instruction_seq, info, test_case.options.cfg_opts);
+        const Invariants invariants = analyze(cfg, test_case.assumed_pre_invariant);
+        const string_invariant actual_last_invariant = invariants.invariant_at(label_t::exit);
+        const std::set<string> actual_messages = invariants.check_assertions(cfg).all_messages();
 
-    std::ostringstream ss;
-    const auto& [actual_last_invariant, result] = ebpf_analyze_program_for_test(
-        ss, test_case.instruction_seq, test_case.assumed_pre_invariant, info, test_case.options);
-    std::set<string> actual_messages = extract_messages(ss.str());
-
-    if (actual_last_invariant == test_case.expected_post_invariant && actual_messages == test_case.expected_messages) {
-        return {};
+        if (actual_last_invariant == test_case.expected_post_invariant &&
+            actual_messages == test_case.expected_messages) {
+            return {};
+        }
+        return Failure{
+            .invariant = make_diff(actual_last_invariant, test_case.expected_post_invariant),
+            .messages = make_diff(actual_messages, test_case.expected_messages),
+        };
+    } catch (crab::InvalidControlFlow& ex) {
+        const std::set<string> actual_messages{ex.what()};
+        if (test_case.expected_post_invariant == string_invariant::top() &&
+            actual_messages == test_case.expected_messages) {
+            return {};
+        }
+        return Failure{
+            .invariant = make_diff(string_invariant::top(), test_case.expected_post_invariant),
+            .messages = make_diff(actual_messages, test_case.expected_messages),
+        };
     }
-    return Failure{.invariant = make_diff(actual_last_invariant, test_case.expected_post_invariant),
-                   .messages = make_diff(actual_messages, test_case.expected_messages)};
 }
 
 template <typename T>
@@ -358,64 +358,51 @@ ConformanceTestResult run_conformance_test_case(const std::vector<std::byte>& me
     ebpf_verifier_options_t options{};
     if (debug) {
         print(prog, std::cout, {});
-        options.print_failures = true;
-        options.print_invariants = true;
-        options.simplify = false;
+        options.verbosity_opts.print_failures = true;
+        options.verbosity_opts.print_invariants = true;
+        options.verbosity_opts.simplify = false;
     }
+    thread_local_options = options;
 
     try {
-        std::ostringstream null_stream;
-        const auto& [actual_last_invariant, result] =
-            ebpf_analyze_program_for_test(null_stream, prog, pre_invariant, info, options);
-
-        for (const std::string& invariant : actual_last_invariant.value()) {
-            if (invariant.rfind("r0.svalue=", 0) == 0) {
-                crab::number_t lb, ub;
-                if (invariant[10] == '[') {
-                    lb = std::stoll(invariant.substr(11));
-                    ub = std::stoll(invariant.substr(invariant.find(',', 11) + 1));
-                } else {
-                    lb = ub = std::stoll(invariant.substr(10));
-                }
-                return {result, crab::interval_t(lb, ub)};
-            }
-        }
-        return {result, crab::interval_t::top()};
+        const cfg_t cfg = prepare_cfg(prog, info, options.cfg_opts);
+        const Invariants invariants = analyze(cfg, pre_invariant);
+        return ConformanceTestResult{.success = invariants.verified(cfg), .r0_value = invariants.exit_value()};
     } catch (const std::exception&) {
         // Catch exceptions thrown in ebpf_domain.cpp.
         return {};
     }
 }
 
-void print_failure(const Failure& failure, std::ostream& out) {
+void print_failure(const Failure& failure, std::ostream& os) {
     constexpr auto INDENT = "  ";
     if (!failure.invariant.unexpected.empty()) {
-        std::cout << "Unexpected properties:\n" << INDENT << failure.invariant.unexpected << "\n";
+        os << "Unexpected properties:\n" << INDENT << failure.invariant.unexpected << "\n";
     } else {
-        std::cout << "Unexpected properties: None\n";
+        os << "Unexpected properties: None\n";
     }
     if (!failure.invariant.unseen.empty()) {
-        std::cout << "Unseen properties:\n" << INDENT << failure.invariant.unseen << "\n";
+        os << "Unseen properties:\n" << INDENT << failure.invariant.unseen << "\n";
     } else {
-        std::cout << "Unseen properties: None\n";
+        os << "Unseen properties: None\n";
     }
 
     if (!failure.messages.unexpected.empty()) {
-        std::cout << "Unexpected messages:\n";
+        os << "Unexpected messages:\n";
         for (const auto& item : failure.messages.unexpected) {
-            std::cout << INDENT << item << "\n";
+            os << INDENT << item << "\n";
         }
     } else {
-        std::cout << "Unexpected messages: None\n";
+        os << "Unexpected messages: None\n";
     }
 
     if (!failure.messages.unseen.empty()) {
-        std::cout << "Unseen messages:\n";
+        os << "Unseen messages:\n";
         for (const auto& item : failure.messages.unseen) {
-            std::cout << INDENT << item << "\n";
+            os << INDENT << item << "\n";
         }
     } else {
-        std::cout << "Unseen messages: None\n";
+        os << "Unseen messages: None\n";
     }
 }
 

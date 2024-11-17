@@ -184,7 +184,7 @@ std::optional<uint32_t> ebpf_domain_t::get_map_type(const Reg& map_fd_reg) const
 
     std::optional<uint32_t> type;
     for (int32_t map_fd = start_fd; map_fd <= end_fd; map_fd++) {
-        EbpfMapDescriptor* map = &global_program_info->platform->get_map_descriptor(map_fd);
+        EbpfMapDescriptor* map = &thread_local_program_info->platform->get_map_descriptor(map_fd);
         if (map == nullptr) {
             return std::optional<uint32_t>();
         }
@@ -206,7 +206,7 @@ std::optional<uint32_t> ebpf_domain_t::get_map_inner_map_fd(const Reg& map_fd_re
 
     std::optional<uint32_t> inner_map_fd;
     for (int map_fd = start_fd; map_fd <= end_fd; map_fd++) {
-        EbpfMapDescriptor* map = &global_program_info->platform->get_map_descriptor(map_fd);
+        EbpfMapDescriptor* map = &thread_local_program_info->platform->get_map_descriptor(map_fd);
         if (map == nullptr) {
             return {};
         }
@@ -228,7 +228,7 @@ interval_t ebpf_domain_t::get_map_key_size(const Reg& map_fd_reg) const {
 
     interval_t result = interval_t::bottom();
     for (int map_fd = start_fd; map_fd <= end_fd; map_fd++) {
-        if (const EbpfMapDescriptor* map = &global_program_info->platform->get_map_descriptor(map_fd)) {
+        if (const EbpfMapDescriptor* map = &thread_local_program_info->platform->get_map_descriptor(map_fd)) {
             result = result | interval_t{map->key_size};
         } else {
             return interval_t::top();
@@ -246,7 +246,7 @@ interval_t ebpf_domain_t::get_map_value_size(const Reg& map_fd_reg) const {
 
     interval_t result = interval_t::bottom();
     for (int map_fd = start_fd; map_fd <= end_fd; map_fd++) {
-        if (const EbpfMapDescriptor* map = &global_program_info->platform->get_map_descriptor(map_fd)) {
+        if (const EbpfMapDescriptor* map = &thread_local_program_info->platform->get_map_descriptor(map_fd)) {
             result = result | interval_t(map->value_size);
         } else {
             return interval_t::top();
@@ -264,7 +264,7 @@ interval_t ebpf_domain_t::get_map_max_entries(const Reg& map_fd_reg) const {
 
     interval_t result = interval_t::bottom();
     for (int map_fd = start_fd; map_fd <= end_fd; map_fd++) {
-        if (const EbpfMapDescriptor* map = &global_program_info->platform->get_map_descriptor(map_fd)) {
+        if (const EbpfMapDescriptor* map = &thread_local_program_info->platform->get_map_descriptor(map_fd)) {
             result = result | interval_t(map->max_entries);
         } else {
             return interval_t::top();
@@ -280,6 +280,8 @@ extended_number ebpf_domain_t::get_loop_count_upper_bound() const {
     }
     return ub;
 }
+
+interval_t ebpf_domain_t::get_r0() const { return m_inv[reg_pack(R0_RETURN_VALUE).svalue]; }
 
 std::ostream& operator<<(std::ostream& o, const ebpf_domain_t& dom) {
     if (dom.is_bottom()) {
@@ -298,7 +300,7 @@ void ebpf_domain_t::initialize_packet() {
 
     inv += 0 <= variable_t::packet_size();
     inv += variable_t::packet_size() < MAX_PACKET_SIZE;
-    const auto info = *global_program_info;
+    const auto info = *thread_local_program_info;
     if (info.type.context_descriptor->meta >= 0) {
         inv += variable_t::meta_offset() <= 0;
         inv += variable_t::meta_offset() >= -4098;

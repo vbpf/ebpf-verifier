@@ -4,21 +4,48 @@
 
 #include "config.hpp"
 #include "crab/cfg.hpp"
+#include "crab/fwd_analyzer.hpp"
 #include "spec_type_descriptors.hpp"
 #include "string_constraints.hpp"
 
-bool run_ebpf_analysis(std::ostream& s, const cfg_t& cfg, const program_info& info,
-                       const ebpf_verifier_options_t& options, ebpf_verifier_stats_t* stats);
+class Report final {
+    std::map<label_t, std::vector<std::string>> warnings;
+    std::map<label_t, std::vector<std::string>> reachability;
+    friend class Invariants;
 
-bool ebpf_verify_program(std::ostream& os, const InstructionSeq& prog, const program_info& info,
-                         const ebpf_verifier_options_t& options, ebpf_verifier_stats_t* stats);
+  public:
+    void print_reachability(std::ostream& os) const;
+    void print_warnings(std::ostream& os) const;
+    void print_all_messages(std::ostream& os) const;
+    std::set<std::string> all_messages() const;
+    std::set<std::string> reachability_set() const;
+    std::set<std::string> warning_set() const;
+    bool verified() const;
+};
 
-using string_invariant_map = std::map<label_t, string_invariant>;
+class Invariants final {
+    crab::invariant_table_t invariants;
 
-std::tuple<string_invariant, bool> ebpf_analyze_program_for_test(std::ostream& os, const InstructionSeq& prog,
-                                                                 const string_invariant& entry_invariant,
-                                                                 const program_info& info,
-                                                                 const ebpf_verifier_options_t& options);
+  public:
+    explicit Invariants(crab::invariant_table_t&& invariants) : invariants(std::move(invariants)) {}
+    Invariants(Invariants&& invariants) = default;
+    Invariants(const Invariants& invariants) = default;
+
+    bool is_valid_after(const label_t& label, const string_invariant& state) const;
+    void print_invariants(std::ostream& os, const cfg_t& cfg) const;
+
+    string_invariant invariant_at(const label_t& label) const;
+
+    crab::interval_t exit_value() const;
+
+    int max_loop_count() const;
+    bool verified(const cfg_t& cfg) const;
+    Report check_assertions(const cfg_t& cfg) const;
+};
+
+Invariants analyze(const cfg_t& cfg);
+Invariants analyze(const cfg_t& cfg, const string_invariant& entry_invariant);
+inline bool verify(const cfg_t& cfg) { return analyze(cfg).verified(cfg); }
 
 int create_map_crab(const EbpfMapType& map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries,
                     ebpf_verifier_options_t options);

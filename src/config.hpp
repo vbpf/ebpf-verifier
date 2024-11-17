@@ -4,12 +4,26 @@
 
 #include "crab/cfg.hpp"
 
+struct verbosity_options_t {
+    /// When true, prints simplified control flow graph by merging chains into basic blocks.
+    bool simplify = true;
+
+    /// Print the invariants for each basic block.
+    bool print_invariants = false;
+
+    /// Print failures that occur during verification.
+    bool print_failures = false;
+
+    /// When printing the control flow graph, print the line number of each instruction.
+    bool print_line_info = false;
+
+    /// Print the BTF types in JSON format.
+    bool dump_btf_types_json = false;
+};
+
 struct ebpf_verifier_options_t {
     // Options that control how the control flow graph is built.
     prepare_cfg_options cfg_opts;
-
-    /// When true, simplifies the control flow graph by merging basic blocks.
-    bool simplify = true;
 
     // True to assume prior failed assertions are true and continue verification.
     bool assume_assertions = false;
@@ -29,23 +43,12 @@ struct ebpf_verifier_options_t {
     // True if the ELF file is built on a big endian system.
     bool big_endian = false;
 
-    // Print the invariants for each basic block.
-    bool print_invariants = false;
-
-    // Print failures that occur during verification.
-    bool print_failures = false;
-
-    // When printing the control flow graph, print the line number of each instruction.
-    bool print_line_info = false;
-
-    // Print the BTF types in JSON format.
-    bool dump_btf_types_json = false;
+    verbosity_options_t verbosity_opts;
 };
 
 struct ebpf_verifier_stats_t {
-    int total_unreachable;
-    int total_warnings;
-    int max_loop_count;
+    int total_warnings{};
+    int max_loop_count{};
 };
 
 extern thread_local ebpf_verifier_options_t thread_local_options;

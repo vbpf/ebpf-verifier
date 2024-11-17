@@ -3,17 +3,22 @@
 #include <stdexcept>
 #if __linux__
 #include <linux/bpf.h>
-#define PTYPE(name, descr, native_type, prefixes) {name, descr, native_type, prefixes}
-#define PTYPE_PRIVILEGED(name, descr, native_type, prefixes) {name, descr, native_type, prefixes, true}
+#define PTYPE(name, descr, native_type, prefixes) \
+    { name, descr, native_type, prefixes }
+#define PTYPE_PRIVILEGED(name, descr, native_type, prefixes) \
+    { name, descr, native_type, prefixes, true }
 #else
-#define PTYPE(name, descr, native_type, prefixes) {name, descr, 0, prefixes}
-#define PTYPE_PRIVILEGED(name, descr, native_type, prefixes) {name, descr, 0, prefixes, true}
+#define PTYPE(name, descr, native_type, prefixes) \
+    { name, descr, 0, prefixes }
+#define PTYPE_PRIVILEGED(name, descr, native_type, prefixes) \
+    { name, descr, 0, prefixes, true }
 #endif
 #include "crab_verifier.hpp"
-#include "helpers.hpp"
 #include "linux/gpl/spec_type_descriptors.hpp"
 #include "linux_platform.hpp"
 #include "platform.hpp"
+
+#include <asm_files.hpp>
 
 // Map definitions as they appear in an ELF file, so field width matters.
 struct bpf_load_map_def {
@@ -175,8 +180,7 @@ void resolve_inner_map_references_linux(std::vector<EbpfMapDescriptor>& map_desc
     for (size_t i = 0; i < map_descriptors.size(); i++) {
         const unsigned int inner = map_descriptors[i].inner_map_fd; // Get the inner_map_idx back.
         if (inner >= map_descriptors.size()) {
-            throw std::runtime_error(std::string("bad inner map index ") + std::to_string(inner) + " for map " +
-                                     std::to_string(i));
+            throw UnmarshalError("bad inner map index " + std::to_string(inner) + " for map " + std::to_string(i));
         }
         map_descriptors[i].inner_map_fd = map_descriptors.at(inner).original_fd;
     }
@@ -198,7 +202,7 @@ static int create_map_linux(const uint32_t map_type, const uint32_t key_size, co
     }
 
 #if __linux__
-    union bpf_attr attr{};
+    union bpf_attr attr {};
     memset(&attr, '\0', sizeof(attr));
     attr.map_type = map_type;
     attr.key_size = key_size;
@@ -207,15 +211,13 @@ static int create_map_linux(const uint32_t map_type, const uint32_t key_size, co
     attr.map_flags = map_type == BPF_MAP_TYPE_HASH ? BPF_F_NO_PREALLOC : 0;
     const int map_fd = do_bpf(BPF_MAP_CREATE, attr);
     if (map_fd < 0) {
-        if (options.print_failures) {
-            std::cerr << "Failed to create map, " << strerror(errno) << "\n";
-            std::cerr << "Map: \n"
-                      << " map_type = " << attr.map_type << "\n"
-                      << " key_size = " << attr.key_size << "\n"
-                      << " value_size = " << attr.value_size << "\n"
-                      << " max_entries = " << attr.max_entries << "\n"
-                      << " map_flags = " << attr.map_flags << "\n";
-        }
+        std::cerr << "Failed to create map, " << strerror(errno) << "\n";
+        std::cerr << "Map: \n"
+                  << " map_type = " << attr.map_type << "\n"
+                  << " key_size = " << attr.key_size << "\n"
+                  << " value_size = " << attr.value_size << "\n"
+                  << " max_entries = " << attr.max_entries << "\n"
+                  << " map_flags = " << attr.map_flags << "\n";
         exit(2);
     }
     return map_fd;
@@ -237,7 +239,7 @@ EbpfMapDescriptor& get_map_descriptor_linux(const int map_fd) {
     // (key size, value size) from the execution context, but this is
     // not yet supported on Linux.
 
-    throw std::runtime_error(std::string("map_fd not found"));
+    throw UnmarshalError("map_fd " + std::to_string(map_fd) + " not found");
 }
 
 const ebpf_platform_t g_ebpf_platform_linux = {get_program_type_linux,

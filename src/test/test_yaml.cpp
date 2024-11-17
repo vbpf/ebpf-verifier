@@ -13,7 +13,7 @@
             std::optional<Failure> failure = run_yaml_test_case(test_case); \
             if (failure) {                                                  \
                 std::cout << "test case: " << test_case.name << "\n";       \
-                print_failure(*failure, std::cout);                         \
+                print_failure(*failure);                                    \
             }                                                               \
             REQUIRE(!failure);                                              \
         });                                                                 \

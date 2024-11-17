@@ -696,7 +696,7 @@ struct Unmarshaller {
         }
     }
 
-    vector<LabeledInstruction> unmarshal(vector<ebpf_inst> const& insts, vector<btf_line_info_t> const& line_info) {
+    vector<LabeledInstruction> unmarshal(vector<ebpf_inst> const& insts) {
         vector<LabeledInstruction> prog;
         int exit_count = 0;
         if (insts.empty()) {
@@ -773,8 +773,8 @@ struct Unmarshaller {
 
             std::optional<btf_line_info_t> current_line_info = {};
 
-            if (pc < line_info.size()) {
-                current_line_info = line_info[pc];
+            if (pc < info.line_info.size()) {
+                current_line_info = info.line_info.at(pc);
             }
 
             prog.emplace_back(label_t(gsl::narrow<int>(pc)), new_ins, current_line_info);
@@ -794,9 +794,9 @@ struct Unmarshaller {
 };
 
 std::variant<InstructionSeq, std::string> unmarshal(const raw_program& raw_prog, vector<vector<string>>& notes) {
-    global_program_info = raw_prog.info;
+    thread_local_program_info = raw_prog.info;
     try {
-        return Unmarshaller{notes, raw_prog.info}.unmarshal(raw_prog.prog, raw_prog.line_info);
+        return Unmarshaller{notes, raw_prog.info}.unmarshal(raw_prog.prog);
     } catch (InvalidInstruction& arg) {
         std::ostringstream ss;
         ss << arg.pc << ": " << arg.what() << "\n";

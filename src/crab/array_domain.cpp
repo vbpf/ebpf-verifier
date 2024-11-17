@@ -421,17 +421,11 @@ std::vector<cell_t> offset_map_t::get_overlap_cells(const offset_t o, const unsi
 // We use a global array map
 using array_map_t = std::unordered_map<data_kind_t, offset_map_t>;
 
-static thread_local lazy_allocator<array_map_t> global_array_map;
+static thread_local lazy_allocator<array_map_t> thread_local_array_map;
 
-void clear_thread_local_state() { global_array_map.clear(); }
+void clear_thread_local_state() { thread_local_array_map.clear(); }
 
-static offset_map_t& lookup_array_map(const data_kind_t kind) { return (*global_array_map)[kind]; }
-
-/**
-    Ugly this needs to be fixed: needed if multiple analyses are
-    run so we can clear the array map from one run to another.
-**/
-void clear_global_state() { global_array_map->clear(); }
+static offset_map_t& lookup_array_map(const data_kind_t kind) { return (*thread_local_array_map)[kind]; }
 
 void array_domain_t::initialize_numbers(const int lb, const int width) {
     num_bytes.reset(lb, width);

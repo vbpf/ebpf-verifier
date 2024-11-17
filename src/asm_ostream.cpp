@@ -257,7 +257,7 @@ struct AssertionPrinterVisitor {
     }
 
     void operator()(ValidCall const& a) {
-        const EbpfHelperPrototype proto = global_program_info->platform->get_helper_prototype(a.func);
+        const EbpfHelperPrototype proto = thread_local_program_info->platform->get_helper_prototype(a.func);
         _os << "valid call(" << proto.name << ")";
     }
 

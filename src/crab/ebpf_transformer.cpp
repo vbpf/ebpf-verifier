@@ -141,7 +141,7 @@ void ebpf_domain_transform(ebpf_domain_t& inv, const Instruction& ins) {
         // Fail. raise an exception to stop the analysis.
         std::stringstream msg;
         msg << "Bug! pre-invariant:\n"
-            << inv.to_set() << "\n followed by instruction: " << ins << "\n"
+            << inv << "\n followed by instruction: " << ins << "\n"
             << "leads to bottom";
         throw std::logic_error(msg.str());
     }
@@ -1364,7 +1364,7 @@ void ebpf_transformer::do_load_ctx(NumAbsDomain& inv, const Reg& target_reg, con
         return;
     }
 
-    const ebpf_context_descriptor_t* desc = global_program_info->type.context_descriptor;
+    const ebpf_context_descriptor_t* desc = thread_local_program_info->type.context_descriptor;
 
     const reg_pack_t& target = reg_pack(target_reg);
 
@@ -1760,7 +1760,7 @@ void ebpf_transformer::operator()(const Call& call) {
         // This is the only way to get a null pointer
         if (maybe_fd_reg) {
             if (const auto map_type = dom.get_map_type(*maybe_fd_reg)) {
-                if (global_program_info->platform->get_map_type(*map_type).value_type == EbpfMapValueType::MAP) {
+                if (thread_local_program_info->platform->get_map_type(*map_type).value_type == EbpfMapValueType::MAP) {
                     if (const auto inner_map_fd = dom.get_map_inner_map_fd(*maybe_fd_reg)) {
                         do_load_mapfd(r0_reg, to_signed(*inner_map_fd), true);
                         goto out;
@@ -1815,18 +1815,18 @@ void ebpf_transformer::operator()(const Callx& callx) {
         if (sn->fits<int32_t>()) {
             // We can now process it as if the id was immediate.
             const int32_t imm = sn->cast_to<int32_t>();
-            if (!global_program_info->platform->is_helper_usable(imm)) {
+            if (!thread_local_program_info->platform->is_helper_usable(imm)) {
                 return;
             }
-            const Call call = make_call(imm, *global_program_info->platform);
+            const Call call = make_call(imm, *thread_local_program_info->platform);
             (*this)(call);
         }
     }
 }
 
 void ebpf_transformer::do_load_mapfd(const Reg& dst_reg, const int mapfd, const bool maybe_null) {
-    const EbpfMapDescriptor& desc = global_program_info->platform->get_map_descriptor(mapfd);
-    const EbpfMapType& type = global_program_info->platform->get_map_type(desc.type);
+    const EbpfMapDescriptor& desc = thread_local_program_info->platform->get_map_descriptor(mapfd);
+    const EbpfMapType& type = thread_local_program_info->platform->get_map_type(desc.type);
     if (type.value_type == EbpfMapValueType::PROGRAM) {
         type_inv.assign_type(m_inv, dst_reg, T_MAP_PROGRAMS);
     } else {

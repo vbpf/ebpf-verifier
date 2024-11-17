@@ -28,7 +28,7 @@ class ebpf_domain_t;
 
 void ebpf_domain_transform(ebpf_domain_t& inv, const Instruction& ins);
 void ebpf_domain_assume(ebpf_domain_t& dom, const Assertion& assertion);
-std::vector<std::string> ebpf_domain_check(ebpf_domain_t& dom, const label_t& label, const Assertion& assertion);
+std::vector<std::string> ebpf_domain_check(const ebpf_domain_t& dom, const Assertion& assertion);
 
 // TODO: make this an explicit instruction
 void ebpf_domain_initialize_loop_counter(ebpf_domain_t& dom, const label_t& label);
@@ -66,6 +66,7 @@ class ebpf_domain_t final {
 
     static ebpf_domain_t calculate_constant_limits();
     extended_number get_loop_count_upper_bound() const;
+    interval_t get_r0() const;
 
     static ebpf_domain_t setup_entry(bool init_r1);
     static ebpf_domain_t from_constraints(const std::set<std::string>& constraints, bool setup_constraints);

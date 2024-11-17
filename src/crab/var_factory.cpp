@@ -134,7 +134,7 @@ std::vector<std::string> default_variable_names() {
         "data_size",
         "meta_size",
     };
-};
+}
 
 thread_local lazy_allocator<std::vector<std::string>, default_variable_names> variable_t::names;
 

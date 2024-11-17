@@ -308,7 +308,7 @@ bool TypeDomain::is_in_group(const NumAbsDomain& inv, const Reg& r, const TypeGr
     }
 }
 
-std::string typeset_to_string(const std::vector<crab::type_encoding_t>& items) {
+std::string typeset_to_string(const std::vector<type_encoding_t>& items) {
     std::stringstream ss;
     ss << "{";
     for (auto it = items.begin(); it != items.end(); ++it) {
