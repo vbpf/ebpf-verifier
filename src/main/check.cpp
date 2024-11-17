@@ -12,7 +12,6 @@
 #include "memsize_linux.hpp"
 #endif
 #include "linux_verifier.hpp"
-#include "utils.hpp"
 
 // Avoid affecting other headers by macros.
 #include "CLI11/CLI11.hpp"
@@ -245,7 +244,11 @@ int main(int argc, char** argv) {
                 std::cout << "\n";
                 return 0;
             }
-            const auto [invariants, seconds] = timed_execution([&] { return analyze(cfg); });
+            const auto begin = std::chrono::steady_clock::now();
+            auto invariants = analyze(cfg);
+            const auto end = std::chrono::steady_clock::now();
+            const auto seconds = std::chrono::duration<double>(end - begin).count();
+
             if (ebpf_verifier_options.verbosity_opts.print_invariants) {
                 invariants.print_invariants(std::cout, cfg);
             }
