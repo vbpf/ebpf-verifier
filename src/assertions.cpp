@@ -193,7 +193,7 @@ class AssertExtractor {
     vector<Assertion> operator()(const Mem& ins) const {
         vector<Assertion> res;
         const Reg basereg = ins.access.basereg;
-        Imm width{static_cast<uint32_t>(ins.access.width)};
+        Imm width{gsl::narrow<uint32_t>(ins.access.width)};
         const int offset = ins.access.offset;
         if (basereg.v == R10_STACK_POINTER) {
             // We know we are accessing the stack.
@@ -201,6 +201,10 @@ class AssertExtractor {
                 // This assertion will fail
                 res.emplace_back(make_valid_access(basereg, offset, width, false,
                                                    ins.is_load ? AccessType::read : AccessType::write));
+            } else if (ins.is_load) {
+                // This assertion is not for bound checks but for reading initialized memory.
+                // TODO: avoid load assertions: use post-assertion to check that the loaded value is initialized
+                // res.emplace_back(make_valid_access(basereg, offset, width, false, AccessType::read));
             }
         } else {
             res.emplace_back(TypeConstraint{basereg, TypeGroup::pointer});

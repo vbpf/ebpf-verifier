@@ -1,8 +1,7 @@
 // Copyright (c) Prevail Verifier contributors.
 // SPDX-License-Identifier: MIT
-#include <cassert>
-
 #include <algorithm>
+#include <cassert>
 #include <map>
 #include <optional>
 #include <string>
@@ -87,7 +86,7 @@ static void add_cfg_nodes(cfg_t& cfg, const label_t& caller_label, const label_t
         macro_labels.erase(macro_label);
 
         if (stack_frame_prefix == macro_label.stack_frame_prefix) {
-            throw std::runtime_error{stack_frame_prefix + ": illegal recursion"};
+            throw crab::InvalidControlFlow{stack_frame_prefix + ": illegal recursion"};
         }
 
         // Clone the macro block into a new block with the new stack frame prefix.
@@ -143,7 +142,7 @@ static void add_cfg_nodes(cfg_t& cfg, const label_t& caller_label, const label_t
         const label_t label(macro_label.from, macro_label.to, caller_label_str);
         if (const auto pins = std::get_if<CallLocal>(&cfg.at(label).cmd)) {
             if (stack_frame_depth >= MAX_CALL_STACK_FRAMES) {
-                throw std::runtime_error{"too many call stack frames"};
+                throw crab::InvalidControlFlow{"too many call stack frames"};
             }
             add_cfg_nodes(cfg, label, pins->target);
         }
@@ -163,7 +162,7 @@ static cfg_t instruction_seq_to_cfg(const InstructionSeq& insts, const bool must
     }
 
     if (insts.size() == 0) {
-        throw std::invalid_argument{"empty instruction sequence"};
+        throw crab::InvalidControlFlow{"empty instruction sequence"};
     } else {
         const auto& [label, inst, _0] = insts[0];
         cfg.get_node(cfg.entry_label()) >> cfg.get_node(label);
@@ -183,7 +182,7 @@ static cfg_t instruction_seq_to_cfg(const InstructionSeq& insts, const bool must
             fallthrough = std::get<0>(insts[i + 1]);
         } else {
             if (has_fall(inst) && must_have_exit) {
-                throw std::invalid_argument{"fallthrough in last instruction"};
+                throw crab::InvalidControlFlow{"fallthrough in last instruction"};
             }
         }
         if (const auto jmp = std::get_if<Jmp>(&inst)) {
@@ -230,6 +229,8 @@ static cfg_t instruction_seq_to_cfg(const InstructionSeq& insts, const bool must
 }
 
 cfg_t prepare_cfg(const InstructionSeq& prog, const program_info& info, const prepare_cfg_options& options) {
+    thread_local_program_info.set(info);
+
     // Convert the instruction sequence to a deterministic control-flow graph.
     cfg_t cfg = instruction_seq_to_cfg(prog, options.must_have_exit);
 

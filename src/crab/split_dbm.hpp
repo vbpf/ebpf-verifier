@@ -304,7 +304,7 @@ class SplitDBM final {
     string_invariant to_set() const;
 
   public:
-    static void clear_thread_local_state() { GraphOps<crab::AdaptGraph>::clear_thread_local_state(); }
+    static void clear_thread_local_state() { GraphOps<AdaptGraph>::clear_thread_local_state(); }
 }; // class SplitDBM
 
 } // namespace domains

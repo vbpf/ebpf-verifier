@@ -41,7 +41,7 @@ int main(int argc, char** argv) {
             std::cout << "failed:\n";
             res = false;
             std::cout << "------\n";
-            print_failure(*maybe_failure, std::cout);
+            print_failure(*maybe_failure);
             std::cout << "------\n";
         } else {
             std::cout << "pass\n";

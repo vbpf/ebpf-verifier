@@ -124,19 +124,22 @@ int main(int argc, char** argv) {
         ->expected(0, _conformance_groups.size())
         ->check(CLI::IsMember(_get_conformance_group_names()));
 
-    app.add_flag("--simplify,!--no-simplify", ebpf_verifier_options.simplify,
+    app.add_flag("--simplify,!--no-simplify", ebpf_verifier_options.verbosity_opts.simplify,
                  "Simplify the CFG before analysis by merging chains of instructions into a single basic block. "
                  "Default: enabled")
         ->group("Verbosity");
-    app.add_flag("--line-info", ebpf_verifier_options.print_line_info, "Print line information")->group("Verbosity");
-    app.add_flag("--print-btf-types", ebpf_verifier_options.dump_btf_types_json, "Print BTF types")->group("Verbosity");
+    app.add_flag("--line-info", ebpf_verifier_options.verbosity_opts.print_line_info, "Print line information")
+        ->group("Verbosity");
+    app.add_flag("--print-btf-types", ebpf_verifier_options.verbosity_opts.dump_btf_types_json, "Print BTF types")
+        ->group("Verbosity");
 
     app.add_flag("--assume-assert,!--no-assume-assert", ebpf_verifier_options.assume_assertions,
                  "Assume assertions (useful for debugging verification failures). Default: disabled")
         ->group("Verbosity");
 
-    app.add_flag("-i", ebpf_verifier_options.print_invariants, "Print invariants")->group("Verbosity");
-    app.add_flag("-f", ebpf_verifier_options.print_failures, "Print verifier's failure logs")->group("Verbosity");
+    app.add_flag("-i", ebpf_verifier_options.verbosity_opts.print_invariants, "Print invariants")->group("Verbosity");
+    app.add_flag("-f", ebpf_verifier_options.verbosity_opts.print_failures, "Print verifier's failure logs")
+        ->group("Verbosity");
     bool verbose = false;
     app.add_flag("-v", verbose, "Print both invariants and failures")->group("Verbosity");
 
@@ -148,7 +151,8 @@ int main(int argc, char** argv) {
     CLI11_PARSE(app, argc, argv);
 
     if (verbose) {
-        ebpf_verifier_options.print_invariants = ebpf_verifier_options.print_failures = true;
+        ebpf_verifier_options.verbosity_opts.print_invariants = ebpf_verifier_options.verbosity_opts.print_failures =
+            true;
     }
 
     // Enable default conformance groups, which don't include callx or packet.
@@ -229,20 +233,43 @@ int main(int argc, char** argv) {
     if (!asmfile.empty()) {
         std::ofstream out{asmfile};
         print(prog, out, {});
-        print_map_descriptors(global_program_info->map_descriptors, out);
+        print_map_descriptors(thread_local_program_info->map_descriptors, out);
     }
 
-    if (domain == "zoneCrab") {
-        ebpf_verifier_stats_t verifier_stats;
-        const auto [res, seconds] = timed_execution([&] {
-            return ebpf_verify_program(std::cout, prog, raw_prog.info, ebpf_verifier_options, &verifier_stats);
-        });
-        if (res && ebpf_verifier_options.cfg_opts.check_for_termination &&
-            (ebpf_verifier_options.print_failures || ebpf_verifier_options.print_invariants)) {
-            std::cout << "Program terminates within " << verifier_stats.max_loop_count << " loop iterations\n";
+    if (domain == "zoneCrab" || domain == "cfg") {
+        // Convert the instruction sequence to a control-flow graph.
+        try {
+            const cfg_t cfg = prepare_cfg(prog, raw_prog.info, ebpf_verifier_options.cfg_opts);
+            if (domain == "cfg") {
+                std::cout << cfg;
+                std::cout << "\n";
+                return 0;
+            }
+            const auto [invariants, seconds] = timed_execution([&] { return analyze(cfg); });
+            assert(invariants);
+            if (ebpf_verifier_options.verbosity_opts.print_invariants) {
+                invariants->print_invariants(std::cout, cfg);
+            }
+
+            bool pass;
+            if (ebpf_verifier_options.verbosity_opts.print_failures) {
+                auto report = invariants->check_assertions(cfg);
+                report->print_warnings(std::cout);
+                pass = report->verified();
+            } else {
+                pass = invariants->verified(cfg);
+            }
+            if (pass && ebpf_verifier_options.cfg_opts.check_for_termination &&
+                (ebpf_verifier_options.verbosity_opts.print_failures ||
+                 ebpf_verifier_options.verbosity_opts.print_invariants)) {
+                std::cout << "Program terminates within " << invariants->max_loop_count() << " loop iterations\n";
+            }
+            std::cout << pass << "," << seconds << "," << resident_set_size_kb() << "\n";
+            return pass ? 0 : 1;
+        } catch (UnmarshalError& e) {
+            std::cerr << "error: " << e.what() << std::endl;
+            return 1;
         }
-        std::cout << res << "," << seconds << "," << resident_set_size_kb() << "\n";
-        return !res;
     } else if (domain == "linux") {
         // Pass the instruction sequence to the Linux kernel verifier.
         const auto [res, seconds] = bpf_verify_program(raw_prog.info.type, raw_prog.prog, &ebpf_verifier_options);
@@ -261,11 +288,6 @@ int main(int argc, char** argv) {
         for (const string& h : stats_headers()) {
             std::cout << "," << stats.at(h);
         }
-        std::cout << "\n";
-    } else if (domain == "cfg") {
-        // Convert the instruction sequence to a control-flow graph.
-        const cfg_t cfg = prepare_cfg(prog, raw_prog.info, ebpf_verifier_options.cfg_opts);
-        std::cout << cfg;
         std::cout << "\n";
     } else {
         assert(false);

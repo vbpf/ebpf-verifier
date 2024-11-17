@@ -101,7 +101,6 @@ void CrabStats::count_max(const std::string& name, const unsigned v) {
 unsigned CrabStats::uset(const std::string& n, const unsigned v) { return (*counters)[n] = v; }
 unsigned CrabStats::get(const std::string& n) { return (*counters)[n]; }
 
-
 /** Outputs all statistics to std output */
 void CrabStats::Print(std::ostream& OS) {
     OS << "\n\n************** STATS ***************** \n";

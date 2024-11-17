@@ -3,14 +3,13 @@
 
 #pragma once
 
-template <typename F>
-auto timed_execution(F f) {
+auto timed_execution(auto f) -> std::tuple<decltype(f()), double> {
     const clock_t begin = clock();
 
-    const auto& res = f();
+    auto res = f();
 
     const clock_t end = clock();
 
     double elapsed_secs = static_cast<double>(end - begin) / CLOCKS_PER_SEC;
-    return std::make_tuple(res, elapsed_secs);
+    return std::make_tuple(std::move(res), elapsed_secs);
 }
