@@ -4,43 +4,46 @@
 
 #include "config.hpp"
 #include "crab/cfg.hpp"
+#include "crab/fwd_analyzer.hpp"
 #include "spec_type_descriptors.hpp"
 #include "string_constraints.hpp"
 
-class Invariants_Abs;
-class Report_Abs;
+class Report final {
+    std::map<label_t, std::vector<std::string>> warnings;
+    std::map<label_t, std::vector<std::string>> reachability;
+    friend class Invariants;
 
-std::unique_ptr<Invariants_Abs> analyze(const cfg_t& cfg);
-std::unique_ptr<Invariants_Abs> analyze(const cfg_t& cfg, const string_invariant& entry_invariant);
-
-class Invariants_Abs {
   public:
-    virtual string_invariant invariant_at(const label_t& label) const = 0;
-    virtual bool is_valid_after(const label_t& label, const string_invariant& entry_invariant) const = 0;
-    virtual void print_invariants(std::ostream& os, const cfg_t& cfg) const = 0;
-    virtual crab::interval_t exit_value() const = 0;
-    virtual int max_loop_count() const = 0;
-
-    virtual bool verified(const cfg_t& cfg) const = 0;
-    virtual std::unique_ptr<Report_Abs> check_assertions(const cfg_t& cfg) const = 0;
-
-    virtual ~Invariants_Abs() noexcept {}
+    void print_reachability(std::ostream& os) const;
+    void print_warnings(std::ostream& os) const;
+    void print_all_messages(std::ostream& os) const;
+    std::set<std::string> all_messages() const;
+    std::set<std::string> reachability_set() const;
+    std::set<std::string> warning_set() const;
+    bool verified() const;
 };
 
-class Report_Abs {
+class Invariants final {
+    crab::invariant_table_t invariants;
+
   public:
-    virtual void print_reachability(std::ostream& os) const = 0;
-    virtual void print_warnings(std::ostream& os) const = 0;
-    virtual void print_all_messages(std::ostream& os) const = 0;
+    explicit Invariants(crab::invariant_table_t&& invariants) : invariants(std::move(invariants)) {}
 
-    virtual std::set<std::string> all_messages() const = 0;
-    virtual std::set<std::string> reachability_set() const = 0;
-    virtual std::set<std::string> warning_set() const = 0;
+    bool is_valid_after(const label_t& label, const string_invariant& state) const;
+    void print_invariants(std::ostream& os, const cfg_t& cfg) const;
 
-    virtual bool verified() const = 0;
+    string_invariant invariant_at(const label_t& label) const;
 
-    virtual ~Report_Abs() noexcept {}
+    crab::interval_t exit_value() const;
+
+    int max_loop_count() const;
+    bool verified(const cfg_t& cfg) const;
+    Report check_assertions(const cfg_t& cfg) const;
 };
+
+Invariants analyze(const cfg_t& cfg);
+Invariants analyze(const cfg_t& cfg, const string_invariant& entry_invariant);
+inline bool verify(const cfg_t& cfg) { return analyze(cfg).verified(cfg); }
 
 int create_map_crab(const EbpfMapType& map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries,
                     ebpf_verifier_options_t options);

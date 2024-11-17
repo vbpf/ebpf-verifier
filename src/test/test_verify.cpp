@@ -58,9 +58,7 @@ FAIL_ANALYZE("build", "badmapptr.o", "test")
                 const auto prog = std::get_if<InstructionSeq>(&prog_or_error);                                \
                 REQUIRE(prog != nullptr);                                                                     \
                 const cfg_t cfg = prepare_cfg(*prog, raw_prog.info, thread_local_options.cfg_opts);           \
-                const auto invariants = analyze(cfg);                                                         \
-                REQUIRE(invariants);                                                                          \
-                REQUIRE(invariants->verified(cfg) == should_pass);                                            \
+                REQUIRE(verify(cfg) == should_pass);                                                          \
             }                                                                                                 \
         }                                                                                                     \
     } while (0)
@@ -606,7 +604,7 @@ TEST_SECTION_FAIL("cilium", "bpf_lxc.o", "2/12")
 
 void test_analyze_thread(const cfg_t* cfg, program_info* info, bool* res) {
     thread_local_program_info.set(*info);
-    *res = analyze(*cfg)->verified(*cfg);
+    *res = verify(*cfg);
 }
 
 // Test multithreading

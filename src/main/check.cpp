@@ -246,23 +246,22 @@ int main(int argc, char** argv) {
                 return 0;
             }
             const auto [invariants, seconds] = timed_execution([&] { return analyze(cfg); });
-            assert(invariants);
             if (ebpf_verifier_options.verbosity_opts.print_invariants) {
-                invariants->print_invariants(std::cout, cfg);
+                invariants.print_invariants(std::cout, cfg);
             }
 
             bool pass;
             if (ebpf_verifier_options.verbosity_opts.print_failures) {
-                auto report = invariants->check_assertions(cfg);
-                report->print_warnings(std::cout);
-                pass = report->verified();
+                auto report = invariants.check_assertions(cfg);
+                report.print_warnings(std::cout);
+                pass = report.verified();
             } else {
-                pass = invariants->verified(cfg);
+                pass = invariants.verified(cfg);
             }
             if (pass && ebpf_verifier_options.cfg_opts.check_for_termination &&
                 (ebpf_verifier_options.verbosity_opts.print_failures ||
                  ebpf_verifier_options.verbosity_opts.print_invariants)) {
-                std::cout << "Program terminates within " << invariants->max_loop_count() << " loop iterations\n";
+                std::cout << "Program terminates within " << invariants.max_loop_count() << " loop iterations\n";
             }
             std::cout << pass << "," << seconds << "," << resident_set_size_kb() << "\n";
             return pass ? 0 : 1;
