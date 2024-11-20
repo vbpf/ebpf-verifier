@@ -115,7 +115,7 @@ post: ["r1.type=number", "r1.svalue=40926266145", "r1.uvalue=40926266145"]
 ---
 test-case: be16 range on little-endian
 
-pre: ["r1.type=number", "r1.svalue=[0, 2]", "r1.uvalue=[0, 2]", "r1.svalue=r1.uvalue"]
+pre: ["r1.type=number", "r1.svalue=[0, 2]", "r1.uvalue=[0, 2]", "r1.uvalue=r1.svalue"]
 
 options: ["!big_endian"]
 
@@ -127,7 +127,7 @@ post: ["r1.type=number"]
 ---
 test-case: be16 range on big-endian
 
-pre: ["r1.type=number", "r1.svalue=[0, 2]", "r1.uvalue=[0, 2]", "r1.svalue=r1.uvalue"]
+pre: ["r1.type=number", "r1.svalue=[0, 2]", "r1.uvalue=[0, 2]", "r1.uvalue=r1.svalue"]
 
 options: ["big_endian"]
 
@@ -211,7 +211,7 @@ post: ["r1.type=number", "r1.svalue=2396871057337221120", "r1.uvalue=23968710573
 ---
 test-case: le16 range on little-endian
 
-pre: ["r1.type=number", "r1.svalue=[0, 2]", "r1.uvalue=[0, 2]", "r1.svalue=r1.uvalue"]
+pre: ["r1.type=number", "r1.svalue=[0, 2]", "r1.uvalue=[0, 2]", "r1.uvalue=r1.svalue"]
 
 options: ["!big_endian"]
 
@@ -223,7 +223,7 @@ post: ["r1.type=number"]
 ---
 test-case: le16 range on big-endian
 
-pre: ["r1.type=number", "r1.svalue=[0, 2]", "r1.uvalue=[0, 2]", "r1.svalue=r1.uvalue"]
+pre: ["r1.type=number", "r1.svalue=[0, 2]", "r1.uvalue=[0, 2]", "r1.uvalue=r1.svalue"]
 
 options: ["!big_endian"]
 
@@ -307,7 +307,7 @@ post: ["r1.type=number", "r1.svalue=2396871057337221120", "r1.uvalue=23968710573
 ---
 test-case: swap16 range on little-endian
 
-pre: ["r1.type=number", "r1.svalue=[0, 2]", "r1.uvalue=[0, 2]", "r1.svalue=r1.uvalue"]
+pre: ["r1.type=number", "r1.svalue=[0, 2]", "r1.uvalue=[0, 2]", "r1.uvalue=r1.svalue"]
 
 options: ["!big_endian"]
 
@@ -319,7 +319,7 @@ post: ["r1.type=number"]
 ---
 test-case: swap16 range on big-endian
 
-pre: ["r1.type=number", "r1.svalue=[0, 2]", "r1.uvalue=[0, 2]", "r1.svalue=r1.uvalue"]
+pre: ["r1.type=number", "r1.svalue=[0, 2]", "r1.uvalue=[0, 2]", "r1.uvalue=r1.svalue"]
 
 options: ["big_endian"]
 

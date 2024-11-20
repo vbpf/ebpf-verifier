@@ -227,7 +227,7 @@ post:
 ---
 test-case: 64-bit unsigned right shift interval by imm
 
-pre: ["r1.type=number", "r1.svalue=[0, 4294967297]", "r1.uvalue=[0, 4294967297]", "r1.svalue=r1.uvalue"]
+pre: ["r1.type=number", "r1.svalue=[0, 4294967297]", "r1.uvalue=[0, 4294967297]", "r1.uvalue=r1.svalue"]
 
 code:
   <start>: |
@@ -236,11 +236,11 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 65536]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
 ---
 test-case: 64-bit signed right shift interval by imm
 
-pre: ["r1.type=number", "r1.svalue=[0, 4294967297]", "r1.uvalue=[0, 4294967297]", "r1.svalue=r1.uvalue"]
+pre: ["r1.type=number", "r1.svalue=[0, 4294967297]", "r1.uvalue=[0, 4294967297]", "r1.uvalue=r1.svalue"]
 
 code:
   <start>: |
@@ -249,11 +249,11 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 65536]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
 ---
 test-case: 64-bit unsigned right shift interval by reg
 
-pre: ["r1.type=number", "r1.svalue=[0, 4294967297]", "r1.uvalue=[0, 4294967297]", "r1.svalue=r1.uvalue",
+pre: ["r1.type=number", "r1.svalue=[0, 4294967297]", "r1.uvalue=[0, 4294967297]", "r1.uvalue=r1.svalue",
       "r2.type=number", "r2.svalue=16", "r2.uvalue=16"]
 
 code:
@@ -263,14 +263,14 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 65536]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
   - r2.type=number
   - r2.svalue=16
   - r2.uvalue=16
 ---
 test-case: 64-bit signed right shift interval by reg
 
-pre: ["r1.type=number", "r1.svalue=[0, 4294967297]", "r1.uvalue=[0, 4294967297]", "r1.svalue=r1.uvalue",
+pre: ["r1.type=number", "r1.svalue=[0, 4294967297]", "r1.uvalue=[0, 4294967297]", "r1.uvalue=r1.svalue",
       "r2.type=number", "r2.svalue=16", "r2.uvalue=16"]
 
 code:
@@ -280,14 +280,14 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 65536]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
   - r2.type=number
   - r2.svalue=16
   - r2.uvalue=16
 ---
 test-case: unsigned 32-bit right shift interval by imm
 
-pre: ["r1.type=number", "r1.svalue=[0, 65535]", "r1.uvalue=[0, 65535]", "r1.svalue=r1.uvalue"]
+pre: ["r1.type=number", "r1.svalue=[0, 65535]", "r1.uvalue=[0, 65535]", "r1.uvalue=r1.svalue"]
 
 code:
   <start>: |
@@ -296,11 +296,11 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 255]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
 ---
 test-case: signed 32-bit right shift interval by imm
 
-pre: ["r1.type=number", "r1.svalue=[0, 65535]", "r1.uvalue=[0, 65535]", "r1.svalue=r1.uvalue"]
+pre: ["r1.type=number", "r1.svalue=[0, 65535]", "r1.uvalue=[0, 65535]", "r1.uvalue=r1.svalue"]
 
 code:
   <start>: |
@@ -309,11 +309,11 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 255]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
 ---
 test-case: 32-bit unsigned right shift interval by reg
 
-pre: ["r1.type=number", "r1.svalue=[0, 65535]", "r1.uvalue=[0, 65535]", "r1.svalue=r1.uvalue",
+pre: ["r1.type=number", "r1.svalue=[0, 65535]", "r1.uvalue=[0, 65535]", "r1.uvalue=r1.svalue",
       "r2.type=number", "r2.svalue=8", "r2.uvalue=8"]
 
 code:
@@ -323,14 +323,14 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 255]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
   - r2.type=number
   - r2.svalue=8
   - r2.uvalue=8
 ---
 test-case: 32-bit signed right shift interval by reg
 
-pre: ["r1.type=number", "r1.svalue=[0, 65535]", "r1.uvalue=[0, 65535]", "r1.svalue=r1.uvalue",
+pre: ["r1.type=number", "r1.svalue=[0, 65535]", "r1.uvalue=[0, 65535]", "r1.uvalue=r1.svalue",
       "r2.type=number", "r2.svalue=8", "r2.uvalue=8"]
 
 code:
@@ -340,14 +340,14 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 255]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
   - r2.type=number
   - r2.svalue=8
   - r2.uvalue=8
 ---
 test-case: 32-bit unsigned right shift interval by imm with truncation
 
-pre: ["r1.type=number", "r1.svalue=[0, 4294967808]", "r1.uvalue=[0, 4294967808]", "r1.svalue=r1.uvalue"]
+pre: ["r1.type=number", "r1.svalue=[0, 4294967808]", "r1.uvalue=[0, 4294967808]", "r1.uvalue=r1.svalue"]
 
 code:
   <start>: |
@@ -356,11 +356,11 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 255]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
 ---
 test-case: 32-bit signed right shift interval by imm with truncation
 
-pre: ["r1.type=number", "r1.svalue=[0, 4294967808]", "r1.uvalue=[0, 4294967808]", "r1.svalue=r1.uvalue"]
+pre: ["r1.type=number", "r1.svalue=[0, 4294967808]", "r1.uvalue=[0, 4294967808]", "r1.uvalue=r1.svalue"]
 
 code:
   <start>: |
@@ -369,11 +369,11 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 4294967295]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
 ---
 test-case: 32-bit unsigned right shift interval by reg with truncation
 
-pre: ["r1.type=number", "r1.svalue=[0, 4294967808]", "r1.uvalue=[0, 4294967808]", "r1.svalue=r1.uvalue",
+pre: ["r1.type=number", "r1.svalue=[0, 4294967808]", "r1.uvalue=[0, 4294967808]", "r1.uvalue=r1.svalue",
       "r2.type=number", "r2.svalue=24", "r2.uvalue=24"]
 
 code:
@@ -383,14 +383,14 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 255]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
   - r2.type=number
   - r2.svalue=24
   - r2.uvalue=24
 ---
 test-case: 32-bit signed right shift interval by reg with truncation
 
-pre: ["r1.type=number", "r1.svalue=[0, 4294967808]", "r1.uvalue=[0, 4294967808]", "r1.svalue=r1.uvalue",
+pre: ["r1.type=number", "r1.svalue=[0, 4294967808]", "r1.uvalue=[0, 4294967808]", "r1.uvalue=r1.svalue",
       "r2.type=number", "r2.svalue=24", "r2.uvalue=24"]
 
 code:
@@ -400,7 +400,7 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 4294967295]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
   - r2.type=number
   - r2.svalue=24
   - r2.uvalue=24
@@ -416,7 +416,7 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[16776960, 16777215]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
 ---
 test-case: 32-bit signed right shift interval by imm with negatives
 
@@ -429,7 +429,7 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[4294967040, 4294967295]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
 ---
 test-case: 32-bit unsigned right shift interval by reg with negatives
 
@@ -443,7 +443,7 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[16776960, 16777215]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
   - r2.type=number
   - r2.svalue=8
   - r2.uvalue=8
@@ -460,7 +460,7 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[4294967040, 4294967295]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
   - r2.type=number
   - r2.svalue=8
   - r2.uvalue=8
@@ -476,7 +476,7 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 16777215]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
 ---
 test-case: 32-bit signed right shift interval by imm crossing zero
 
@@ -489,7 +489,7 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 4294967295]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
 ---
 test-case: 32-bit unsigned right shift interval by reg crossing zero
 
@@ -503,7 +503,7 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 16777215]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
   - r2.type=number
   - r2.svalue=8
   - r2.uvalue=8
@@ -520,7 +520,7 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 4294967295]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
   - r2.type=number
   - r2.svalue=8
   - r2.uvalue=8
@@ -639,7 +639,7 @@ post:
 ---
 test-case: 64-bit left shift interval by imm
 
-pre: ["r1.type=number", "r1.svalue=[1, 65536]", "r1.uvalue=[1, 65536]", "r1.svalue=r1.uvalue"]
+pre: ["r1.type=number", "r1.svalue=[1, 65536]", "r1.uvalue=[1, 65536]", "r1.uvalue=r1.svalue"]
 
 code:
   <start>: |
@@ -648,11 +648,11 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[65536, 4294967296]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
 ---
 test-case: 64-bit left shift interval by reg
 
-pre: ["r1.type=number", "r1.svalue=[1, 65536]", "r1.uvalue=[1, 65536]", "r1.svalue=r1.uvalue",
+pre: ["r1.type=number", "r1.svalue=[1, 65536]", "r1.uvalue=[1, 65536]", "r1.uvalue=r1.svalue",
       "r2.type=number", "r2.svalue=16", "r2.uvalue=16"]
 
 code:
@@ -662,14 +662,14 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[65536, 4294967296]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
   - r2.type=number
   - r2.svalue=16
   - r2.uvalue=16
 ---
 test-case: 64-bit left shift interval by imm with wrap
 
-pre: ["r1.type=number", "r1.svalue=[0, 4294967296]", "r1.uvalue=[0, 4294967296]", "r1.svalue=r1.uvalue"]
+pre: ["r1.type=number", "r1.svalue=[0, 4294967296]", "r1.uvalue=[0, 4294967296]", "r1.uvalue=r1.svalue"]
 
 code:
   <start>: |
@@ -681,7 +681,7 @@ post:
 ---
 test-case: 64-bit left shift interval by reg with wrap
 
-pre: ["r1.type=number", "r1.svalue=[0, 4294967296]", "r1.uvalue=[0, 4294967296]", "r1.svalue=r1.uvalue",
+pre: ["r1.type=number", "r1.svalue=[0, 4294967296]", "r1.uvalue=[0, 4294967296]", "r1.uvalue=r1.svalue",
       "r2.type=number", "r2.svalue=32", "r2.uvalue=32"]
 
 code:
@@ -706,7 +706,7 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[65536, 4294901760]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
 ---
 test-case: 32-bit left shift interval by reg
 
@@ -720,14 +720,14 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[65536, 4294901760]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
   - r2.type=number
   - r2.svalue=16
   - r2.uvalue=16
 ---
 test-case: 32-bit left shift interval by imm with wrap
 
-pre: ["r1.type=number", "r1.svalue=[1, 65537]", "r1.uvalue=[1, 65537]", "r1.svalue=r1.uvalue"]
+pre: ["r1.type=number", "r1.svalue=[1, 65537]", "r1.uvalue=[1, 65537]", "r1.uvalue=r1.svalue"]
 
 code:
   <start>: |
@@ -736,11 +736,11 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 4294901760]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
 ---
 test-case: 32-bit left shift interval by reg with wrap
 
-pre: ["r1.type=number", "r1.svalue=[1, 65537]", "r1.uvalue=[1, 65537]", "r1.svalue=r1.uvalue",
+pre: ["r1.type=number", "r1.svalue=[1, 65537]", "r1.uvalue=[1, 65537]", "r1.uvalue=r1.svalue",
       "r2.type=number", "r2.svalue=16", "r2.uvalue=16"]
 
 code:
@@ -750,14 +750,14 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 4294901760]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
   - r2.type=number
   - r2.svalue=16
   - r2.uvalue=16
 ---
 test-case: 32-bit left shift interval by imm with another wrap
 
-pre: ["r1.type=number", "r1.svalue=[2, 65537]", "r1.uvalue=[2, 65537]", "r1.svalue=r1.uvalue"]
+pre: ["r1.type=number", "r1.svalue=[2, 65537]", "r1.uvalue=[2, 65537]", "r1.uvalue=r1.svalue"]
 
 code:
   <start>: |
@@ -766,11 +766,11 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 4294901760]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
 ---
 test-case: 32-bit left shift interval by reg with another wrap
 
-pre: ["r1.type=number", "r1.svalue=[2, 65537]", "r1.uvalue=[2, 65537]", "r1.svalue=r1.uvalue",
+pre: ["r1.type=number", "r1.svalue=[2, 65537]", "r1.uvalue=[2, 65537]", "r1.uvalue=r1.svalue",
       "r2.type=number", "r2.svalue=16", "r2.uvalue=16"]
 
 code:
@@ -780,7 +780,7 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 4294901760]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
   - r2.type=number
   - r2.svalue=16
   - r2.uvalue=16
@@ -822,7 +822,7 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 4294901760]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
 ---
 test-case: 32-bit left shift top by reg
 
@@ -836,14 +836,14 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 4294901760]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
   - r2.type=number
   - r2.svalue=16
   - r2.uvalue=16
 ---
 test-case: 32-bit left shift interval by imm with longer wrap
 
-pre: ["r1.type=number", "r1.svalue=[1, 65538]", "r1.uvalue=[1, 65538]", "r1.svalue=r1.uvalue"]
+pre: ["r1.type=number", "r1.svalue=[1, 65538]", "r1.uvalue=[1, 65538]", "r1.uvalue=r1.svalue"]
 
 code:
   <start>: |
@@ -852,11 +852,11 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 4294901760]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
 ---
 test-case: 32-bit left shift interval by reg with longer wrap
 
-pre: ["r1.type=number", "r1.svalue=[1, 65538]", "r1.uvalue=[1, 65538]", "r1.svalue=r1.uvalue",
+pre: ["r1.type=number", "r1.svalue=[1, 65538]", "r1.uvalue=[1, 65538]", "r1.uvalue=r1.svalue",
       "r2.type=number", "r2.svalue=16", "r2.uvalue=16"]
 
 code:
@@ -866,14 +866,14 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 4294901760]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
   - r2.type=number
   - r2.svalue=16
   - r2.uvalue=16
 ---
 test-case: 32-bit left shift interval by imm with another long wrap
 
-pre: ["r1.type=number", "r1.svalue=[1, 65539]", "r1.uvalue=[1, 65539]", "r1.svalue=r1.uvalue"]
+pre: ["r1.type=number", "r1.svalue=[1, 65539]", "r1.uvalue=[1, 65539]", "r1.uvalue=r1.svalue"]
 
 code:
   <start>: |
@@ -882,11 +882,11 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 4294901760]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
 ---
 test-case: 32-bit left shift interval by reg with another long wrap
 
-pre: ["r1.type=number", "r1.svalue=[1, 65539]", "r1.uvalue=[1, 65539]", "r1.svalue=r1.uvalue",
+pre: ["r1.type=number", "r1.svalue=[1, 65539]", "r1.uvalue=[1, 65539]", "r1.uvalue=r1.svalue",
       "r2.type=number", "r2.svalue=16", "r2.uvalue=16"]
 
 code:
@@ -896,7 +896,7 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 4294901760]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
   - r2.type=number
   - r2.svalue=16
   - r2.uvalue=16
@@ -912,7 +912,7 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[4278190336, 4294967040]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
 ---
 test-case: 32-bit left shift interval by reg with negatives
 
@@ -926,7 +926,7 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[4278190336, 4294967040]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
   - r2.type=number
   - r2.svalue=8
   - r2.uvalue=8
@@ -942,7 +942,7 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 4294967040]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
 ---
 test-case: 32-bit left shift interval by reg crossing zero
 
@@ -956,7 +956,7 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 4294967040]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
   - r2.type=number
   - r2.svalue=8
   - r2.uvalue=8
@@ -964,7 +964,7 @@ post:
 test-case: left shift by interval
 
 pre: ["r1.type=number", "r1.svalue=1", "r1.uvalue=1",
-      "r2.type=number", "r2.svalue=[1, 2]", "r2.uvalue=[1, 2]", "r2.svalue=r2.uvalue"]
+      "r2.type=number", "r2.svalue=[1, 2]", "r2.uvalue=[1, 2]", "r2.uvalue=r2.svalue"]
 
 code:
   <start>: |
@@ -974,12 +974,12 @@ post:
   - r1.type=number
   - r2.type=number
   - r2.svalue=[1, 2]
-  - r2.svalue=r2.uvalue
+  - r2.uvalue=r2.svalue
 ---
 test-case: unsigned right shift by interval
 
 pre: ["r1.type=number", "r1.svalue=256", "r1.uvalue=256",
-      "r2.type=number", "r2.svalue=[1, 2]", "r2.uvalue=[1, 2]", "r2.svalue=r2.uvalue"]
+      "r2.type=number", "r2.svalue=[1, 2]", "r2.uvalue=[1, 2]", "r2.uvalue=r2.svalue"]
 
 code:
   <start>: |
@@ -989,12 +989,12 @@ post:
   - r1.type=number
   - r2.type=number
   - r2.svalue=[1, 2]
-  - r2.svalue=r2.uvalue
+  - r2.uvalue=r2.svalue
 ---
 test-case: signed right shift by interval
 
 pre: ["r1.type=number", "r1.svalue=256", "r1.uvalue=256",
-      "r2.type=number", "r2.svalue=[1, 2]", "r2.uvalue=[1, 2]", "r2.svalue=r2.uvalue"]
+      "r2.type=number", "r2.svalue=[1, 2]", "r2.uvalue=[1, 2]", "r2.uvalue=r2.svalue"]
 
 code:
   <start>: |
@@ -1004,7 +1004,7 @@ post:
   - r1.type=number
   - r2.type=number
   - r2.svalue=[1, 2]
-  - r2.svalue=r2.uvalue
+  - r2.uvalue=r2.svalue
 ---
 test-case: unsigned right shift TOP by 32 imm
 
@@ -1017,7 +1017,7 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 4294967295]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
 ---
 test-case: signed right shift TOP by 32 imm
 
@@ -1042,7 +1042,7 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 4294967295]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
   - r2.type=number
   - r2.svalue=32
   - r2.uvalue=32

@@ -1151,18 +1151,13 @@ string_invariant SplitDBM::to_set() const {
     }
 
     std::set<variable_t> representatives;
-    std::map<variable_t, std::string> equivalence_str;
+    std::set<std::string> result;
     for (const auto [vs, least] : equivalence_classes) {
         if (vs == least) {
-            representatives.insert(vs);
+            representatives.insert(least);
         } else {
-            equivalence_str[least] += "=" + vs.name();
+            result.insert(vs.name() + "=" + least.name());
         }
-    }
-
-    std::set<std::string> result;
-    for (const auto& [v, eqs] : equivalence_str) {
-        result.insert(v.name() + eqs);
     }
 
     // simplify: x - y <= k && y - x <= -k

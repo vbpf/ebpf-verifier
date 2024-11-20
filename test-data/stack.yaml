@@ -330,8 +330,8 @@ code:
 
 post:
   - r1.type=number
-  - r1.svalue=s[504...511].svalue
-  - r1.uvalue=s[504...511].uvalue
+  - s[504...511].svalue=r1.svalue
+  - s[504...511].uvalue=r1.uvalue
   - r2.type=stack
   - r2.stack_offset=504
   - r2.stack_numeric_size=8
@@ -353,7 +353,7 @@ code:
 post:
   - r2.type=stack
   - r2.stack_offset=504
-  - r3.type=s[504].type
+  - s[504].type=r3.type
   - r10.type=stack
   - r10.stack_offset=512
   - s[505...511].type=number
@@ -373,7 +373,7 @@ post:
   - r2.type=stack
   - r2.stack_offset=504
   - r2.stack_numeric_size=4
-  - r3.type=s[508...511].type
+  - s[508...511].type=r3.type
   - r10.type=stack
   - r10.stack_offset=512
   - s[504...507].type=number
@@ -392,8 +392,8 @@ code:
 
 post:
   - r1.type=number
-  - r1.svalue=s[508...511].svalue
-  - r1.uvalue=s[508...511].uvalue
+  - s[508...511].svalue=r1.svalue
+  - s[508...511].uvalue=r1.uvalue
   - r2.type=stack
   - r2.stack_offset=504
   - r2.stack_numeric_size=8
@@ -447,7 +447,7 @@ code:
     *(u8 *)(r10 - 16) = r0 ; this should reset r2.stack_numeric_size to 0
 
 post:
-  - r0.type=s[496].type
+  - s[496].type=r0.type
   - r2.type=stack
   - r2.stack_offset=[496, 504]
   - r10.type=stack
@@ -467,8 +467,10 @@ code:
     r3 = *(u64 *)(r10 - 16)
 
 post:
-  - r2.svalue=r3.svalue=s[496...503].svalue
-  - r2.uvalue=r3.uvalue=s[496...503].uvalue
+  - r3.svalue=r2.svalue
+  - r3.uvalue=r2.uvalue
+  - s[496...503].uvalue=r2.uvalue
+  - s[496...503].svalue=r2.svalue
   - r2.type=stack
   - r2.stack_offset=504
   - r2.stack_numeric_size=8

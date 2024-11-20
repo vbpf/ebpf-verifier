@@ -121,7 +121,7 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 6]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
   - r2.type=number
   - r2.svalue=[-5, 5]
 
@@ -152,7 +152,7 @@ messages:
 test-case: non-zero divided by possibly zero register 2
 
 pre: ["r1.type=number", "r1.svalue=6", "r1.uvalue=6",
-      "r2.type=number", "r2.svalue=[0, 5]", "r2.uvalue=[0, 5]", "r2.svalue=r2.uvalue"]
+      "r2.type=number", "r2.svalue=[0, 5]", "r2.uvalue=[0, 5]", "r2.uvalue=r2.svalue"]
 
 options: ["!allow_division_by_zero"]
 
@@ -163,10 +163,10 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 6]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
   - r2.type=number
   - r2.svalue=[0, 5]
-  - r2.svalue=r2.uvalue
+  - r2.uvalue=r2.svalue
 
 messages:
   - "0: Possible division by zero (r2 != 0)"
@@ -206,7 +206,7 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 6]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
   - r2.type=number
 
 messages:
@@ -347,7 +347,7 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 6]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
   - r2.type=number
   - r2.svalue=[-5, 5]
 
@@ -380,7 +380,7 @@ test-case: non-zero modulo possibly zero register 2
 options: ["!allow_division_by_zero"]
 
 pre: ["r1.type=number", "r1.svalue=6", "r1.uvalue=6",
-      "r2.type=number", "r2.svalue=[0, 5]", "r2.uvalue=[0, 5]", "r2.svalue=r2.uvalue"]
+      "r2.type=number", "r2.svalue=[0, 5]", "r2.uvalue=[0, 5]", "r2.uvalue=r2.svalue"]
 
 code:
   <start>: |
@@ -389,10 +389,10 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 6]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
   - r2.type=number
   - r2.svalue=[0, 5]
-  - r2.svalue=r2.uvalue
+  - r2.uvalue=r2.svalue
 
 messages:
   - "0: Possible division by zero (r2 != 0)"
@@ -432,7 +432,7 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 6]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
   - r2.type=number
 
 messages:
@@ -470,7 +470,7 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 4]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
   - r2.type=number
   - r2.svalue=[1, 5]
   - r2.uvalue=[1, 5]
@@ -582,4 +582,4 @@ code:
 post:
   - r0.type=number
   - r0.svalue=[0, 2055]
-  - r0.svalue=r0.uvalue
+  - r0.uvalue=r0.svalue
