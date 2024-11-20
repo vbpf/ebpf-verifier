@@ -236,7 +236,6 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 65536]
-  - r1.uvalue=[0, 65536]
   - r1.svalue=r1.uvalue
 ---
 test-case: 64-bit signed right shift interval by imm
@@ -250,7 +249,6 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 65536]
-  - r1.uvalue=[0, 65536]
   - r1.svalue=r1.uvalue
 ---
 test-case: 64-bit unsigned right shift interval by reg
@@ -265,7 +263,6 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 65536]
-  - r1.uvalue=[0, 65536]
   - r1.svalue=r1.uvalue
   - r2.type=number
   - r2.svalue=16
@@ -283,7 +280,6 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 65536]
-  - r1.uvalue=[0, 65536]
   - r1.svalue=r1.uvalue
   - r2.type=number
   - r2.svalue=16
@@ -300,7 +296,6 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 255]
-  - r1.uvalue=[0, 255]
   - r1.svalue=r1.uvalue
 ---
 test-case: signed 32-bit right shift interval by imm
@@ -314,7 +309,6 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 255]
-  - r1.uvalue=[0, 255]
   - r1.svalue=r1.uvalue
 ---
 test-case: 32-bit unsigned right shift interval by reg
@@ -329,7 +323,6 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 255]
-  - r1.uvalue=[0, 255]
   - r1.svalue=r1.uvalue
   - r2.type=number
   - r2.svalue=8
@@ -347,7 +340,6 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 255]
-  - r1.uvalue=[0, 255]
   - r1.svalue=r1.uvalue
   - r2.type=number
   - r2.svalue=8
@@ -364,7 +356,6 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 255]
-  - r1.uvalue=[0, 255]
   - r1.svalue=r1.uvalue
 ---
 test-case: 32-bit signed right shift interval by imm with truncation
@@ -378,7 +369,6 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 4294967295]
-  - r1.uvalue=[0, 4294967295]
   - r1.svalue=r1.uvalue
 ---
 test-case: 32-bit unsigned right shift interval by reg with truncation
@@ -393,7 +383,6 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 255]
-  - r1.uvalue=[0, 255]
   - r1.svalue=r1.uvalue
   - r2.type=number
   - r2.svalue=24
@@ -411,7 +400,6 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 4294967295]
-  - r1.uvalue=[0, 4294967295]
   - r1.svalue=r1.uvalue
   - r2.type=number
   - r2.svalue=24
@@ -428,7 +416,6 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[16776960, 16777215]
-  - r1.uvalue=[16776960, 16777215]
   - r1.svalue=r1.uvalue
 ---
 test-case: 32-bit signed right shift interval by imm with negatives
@@ -442,7 +429,6 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[4294967040, 4294967295]
-  - r1.uvalue=[4294967040, 4294967295]
   - r1.svalue=r1.uvalue
 ---
 test-case: 32-bit unsigned right shift interval by reg with negatives
@@ -457,7 +443,6 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[16776960, 16777215]
-  - r1.uvalue=[16776960, 16777215]
   - r1.svalue=r1.uvalue
   - r2.type=number
   - r2.svalue=8
@@ -475,7 +460,6 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[4294967040, 4294967295]
-  - r1.uvalue=[4294967040, 4294967295]
   - r1.svalue=r1.uvalue
   - r2.type=number
   - r2.svalue=8
@@ -492,7 +476,6 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 16777215]
-  - r1.uvalue=[0, 16777215]
   - r1.svalue=r1.uvalue
 ---
 test-case: 32-bit signed right shift interval by imm crossing zero
@@ -506,7 +489,6 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 4294967295]
-  - r1.uvalue=[0, 4294967295]
   - r1.svalue=r1.uvalue
 ---
 test-case: 32-bit unsigned right shift interval by reg crossing zero
@@ -521,7 +503,6 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 16777215]
-  - r1.uvalue=[0, 16777215]
   - r1.svalue=r1.uvalue
   - r2.type=number
   - r2.svalue=8
@@ -539,7 +520,6 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 4294967295]
-  - r1.uvalue=[0, 4294967295]
   - r1.svalue=r1.uvalue
   - r2.type=number
   - r2.svalue=8
@@ -668,7 +648,6 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[65536, 4294967296]
-  - r1.uvalue=[65536, 4294967296]
   - r1.svalue=r1.uvalue
 ---
 test-case: 64-bit left shift interval by reg
@@ -683,7 +662,6 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[65536, 4294967296]
-  - r1.uvalue=[65536, 4294967296]
   - r1.svalue=r1.uvalue
   - r2.type=number
   - r2.svalue=16
@@ -728,7 +706,6 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[65536, 4294901760]
-  - r1.uvalue=[65536, 4294901760]
   - r1.svalue=r1.uvalue
 ---
 test-case: 32-bit left shift interval by reg
@@ -743,7 +720,6 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[65536, 4294901760]
-  - r1.uvalue=[65536, 4294901760]
   - r1.svalue=r1.uvalue
   - r2.type=number
   - r2.svalue=16
@@ -760,7 +736,6 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 4294901760]
-  - r1.uvalue=[0, 4294901760]
   - r1.svalue=r1.uvalue
 ---
 test-case: 32-bit left shift interval by reg with wrap
@@ -775,7 +750,6 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 4294901760]
-  - r1.uvalue=[0, 4294901760]
   - r1.svalue=r1.uvalue
   - r2.type=number
   - r2.svalue=16
@@ -792,7 +766,6 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 4294901760]
-  - r1.uvalue=[0, 4294901760]
   - r1.svalue=r1.uvalue
 ---
 test-case: 32-bit left shift interval by reg with another wrap
@@ -807,7 +780,6 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 4294901760]
-  - r1.uvalue=[0, 4294901760]
   - r1.svalue=r1.uvalue
   - r2.type=number
   - r2.svalue=16
@@ -850,7 +822,6 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 4294901760]
-  - r1.uvalue=[0, 4294901760]
   - r1.svalue=r1.uvalue
 ---
 test-case: 32-bit left shift top by reg
@@ -865,7 +836,6 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 4294901760]
-  - r1.uvalue=[0, 4294901760]
   - r1.svalue=r1.uvalue
   - r2.type=number
   - r2.svalue=16
@@ -882,7 +852,6 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 4294901760]
-  - r1.uvalue=[0, 4294901760]
   - r1.svalue=r1.uvalue
 ---
 test-case: 32-bit left shift interval by reg with longer wrap
@@ -897,7 +866,6 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 4294901760]
-  - r1.uvalue=[0, 4294901760]
   - r1.svalue=r1.uvalue
   - r2.type=number
   - r2.svalue=16
@@ -914,7 +882,6 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 4294901760]
-  - r1.uvalue=[0, 4294901760]
   - r1.svalue=r1.uvalue
 ---
 test-case: 32-bit left shift interval by reg with another long wrap
@@ -929,7 +896,6 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 4294901760]
-  - r1.uvalue=[0, 4294901760]
   - r1.svalue=r1.uvalue
   - r2.type=number
   - r2.svalue=16
@@ -946,7 +912,6 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[4278190336, 4294967040]
-  - r1.uvalue=[4278190336, 4294967040]
   - r1.svalue=r1.uvalue
 ---
 test-case: 32-bit left shift interval by reg with negatives
@@ -961,7 +926,6 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[4278190336, 4294967040]
-  - r1.uvalue=[4278190336, 4294967040]
   - r1.svalue=r1.uvalue
   - r2.type=number
   - r2.svalue=8
@@ -978,7 +942,6 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 4294967040]
-  - r1.uvalue=[0, 4294967040]
   - r1.svalue=r1.uvalue
 ---
 test-case: 32-bit left shift interval by reg crossing zero
@@ -993,7 +956,6 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 4294967040]
-  - r1.uvalue=[0, 4294967040]
   - r1.svalue=r1.uvalue
   - r2.type=number
   - r2.svalue=8
@@ -1012,7 +974,6 @@ post:
   - r1.type=number
   - r2.type=number
   - r2.svalue=[1, 2]
-  - r2.uvalue=[1, 2]
   - r2.svalue=r2.uvalue
 ---
 test-case: unsigned right shift by interval
@@ -1028,7 +989,6 @@ post:
   - r1.type=number
   - r2.type=number
   - r2.svalue=[1, 2]
-  - r2.uvalue=[1, 2]
   - r2.svalue=r2.uvalue
 ---
 test-case: signed right shift by interval
@@ -1044,7 +1004,6 @@ post:
   - r1.type=number
   - r2.type=number
   - r2.svalue=[1, 2]
-  - r2.uvalue=[1, 2]
   - r2.svalue=r2.uvalue
 ---
 test-case: unsigned right shift TOP by 32 imm
@@ -1058,7 +1017,6 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 4294967295]
-  - r1.uvalue=[0, 4294967295]
   - r1.svalue=r1.uvalue
 ---
 test-case: signed right shift TOP by 32 imm
@@ -1084,7 +1042,6 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 4294967295]
-  - r1.uvalue=[0, 4294967295]
   - r1.svalue=r1.uvalue
   - r2.type=number
   - r2.svalue=32

@@ -1130,14 +1130,62 @@ string_invariant SplitDBM::to_set() const {
     if (this->is_top()) {
         return string_invariant::top();
     }
+    // Extract all the edges
+    SubGraph g_excl{this->g, 0};
+
+    std::map<variable_t, variable_t> equivalence_classes;
+    std::set<std::tuple<variable_t, variable_t, Weight>> diff_csts;
+    for (const vert_id s : g_excl.verts()) {
+        const variable_t vs = *rev_map.at(s);
+        variable_t least = vs;
+        for (const vert_id d : g_excl.succs(s)) {
+            const variable_t vd = *rev_map.at(d);
+            const Weight w = g_excl.edge_val(s, d);
+            if (w == 0) {
+                least = std::min(least, vd, variable_t::printing_order);
+            } else {
+                diff_csts.emplace(vd, vs, w);
+            }
+        }
+        equivalence_classes.insert_or_assign(vs, least);
+    }
+
+    std::set<variable_t> representatives;
+    std::map<variable_t, std::string> equivalence_str;
+    for (const auto [vs, least] : equivalence_classes) {
+        if (vs == least) {
+            representatives.insert(vs);
+        } else {
+            equivalence_str[least] += "=" + vs.name();
+        }
+    }
 
     std::set<std::string> result;
-    // Intervals
+    for (const auto& [v, eqs] : equivalence_str) {
+        result.insert(v.name() + eqs);
+    }
 
-    // Extract all the edges
-    SubGraph g_excl(this->g, 0);
+    // simplify: x - y <= k && y - x <= -k
+    //        -> x <= y + k <= x
+    //        -> x = y + k
+    for (const auto& [vd, vs, w] : diff_csts) {
+        if (!representatives.contains(vd) || !representatives.contains(vs)) {
+            continue;
+        }
+        auto dual = to_string(vs, vd, -w, false);
+        if (result.contains(dual)) {
+            assert(w != 0);
+            result.erase(dual);
+            result.insert(to_string(vd, vs, w, true));
+        } else {
+            result.insert(to_string(vd, vs, w, false));
+        }
+    }
+
+    // Intervals
     for (vert_id v : g_excl.verts()) {
-        if (!this->rev_map[v]) {
+        const auto pvar = this->rev_map[v];
+        if (!pvar || !representatives.contains(*pvar)) {
             continue;
         }
         if (!this->g.elem(0, v) && !this->g.elem(v, 0)) {
@@ -1147,7 +1195,7 @@ string_invariant SplitDBM::to_set() const {
                          this->g.elem(0, v) ? number_t(this->g.edge_val(0, v)) : extended_number::plus_infinity()};
         assert(!v_out.is_bottom());
 
-        variable_t variable = *this->rev_map[v];
+        variable_t variable = *pvar;
 
         std::stringstream elem;
         elem << variable;
@@ -1164,7 +1212,7 @@ string_invariant SplitDBM::to_set() const {
             }
         } else {
             elem << "=";
-            if (v_out.lb() == v_out.ub()) {
+            if (v_out.is_singleton()) {
                 elem << v_out.lb();
             } else {
                 elem << v_out;
@@ -1173,40 +1221,13 @@ string_invariant SplitDBM::to_set() const {
         result.insert(elem.str());
     }
 
-    std::set<std::tuple<variable_t, variable_t, Weight>> diff_csts;
-    for (vert_id s : g_excl.verts()) {
-        if (!this->rev_map[s]) {
-            continue;
-        }
-        variable_t vs = *this->rev_map[s];
-        for (vert_id d : g_excl.succs(s)) {
-            if (!this->rev_map[d]) {
-                continue;
-            }
-            variable_t vd = *this->rev_map[d];
-            diff_csts.emplace(vd, vs, g_excl.edge_val(s, d));
-        }
-    }
-    // simplify: x - y <= k && y - x <= -k
-    //        -> x <= y + k <= x
-    //        -> x = y + k
-    for (const auto& [vd, vs, w] : diff_csts) {
-        auto dual = to_string(vs, vd, -w, false);
-        if (result.count(dual)) {
-            result.erase(dual);
-            result.insert(to_string(vd, vs, w, true));
-        } else {
-            result.insert(to_string(vd, vs, w, false));
-        }
-    }
     return string_invariant{result};
 }
 
 std::ostream& operator<<(std::ostream& o, const SplitDBM& dom) { return o << dom.to_set(); }
 
 bool SplitDBM::eval_expression_overflow(const linear_expression_t& e, Weight& out) const {
-    [[maybe_unused]]
-    const bool overflow = convert_NtoW_overflow(e.constant_term(), out);
+    [[maybe_unused]] const bool overflow = convert_NtoW_overflow(e.constant_term(), out);
     assert(!overflow);
     for (const auto& [variable, coefficient] : e.variable_terms()) {
         Weight coef;

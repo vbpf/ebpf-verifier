@@ -17,7 +17,6 @@ post:
   - r0.shared_offset=0
   - r0.shared_region_size=4
   - r0.svalue=[0, 2147418112]
-  - r0.uvalue=[0, 2147418112]
   - r0.svalue=r0.uvalue
   - r8.type=number
   - r8.svalue=1
@@ -39,7 +38,6 @@ post:
   - r0.shared_offset=0
   - r0.shared_region_size=4
   - r0.svalue=[0, 2147418112]
-  - r0.uvalue=[0, 2147418112]
   - r0.svalue=r0.uvalue
   - r8.type=number
   - r8.svalue=1
@@ -61,7 +59,6 @@ post:
   - r0.shared_offset=0
   - r0.shared_region_size=4
   - r0.svalue=[0, 2147418112]
-  - r0.uvalue=[0, 2147418112]
   - r0.svalue=r0.uvalue
   - meta_offset=0
   - packet_size=4
@@ -84,7 +81,6 @@ post:
   - r0.shared_offset=0
   - r0.shared_region_size=4
   - r0.svalue=[0, 2147418112]
-  - r0.uvalue=[0, 2147418112]
   - r0.svalue=r0.uvalue
   - r8.type=number
   - r8.svalue=1
@@ -108,7 +104,6 @@ post:
   - r0.shared_offset=0
   - r0.shared_region_size=4
   - r0.svalue=[0, 2147418112]
-  - r0.uvalue=[0, 2147418112]
   - r0.svalue=r0.uvalue
   - r8.type=number
   - r8.svalue=1
@@ -132,7 +127,6 @@ post:
   - r0.shared_offset=0
   - r0.shared_region_size=4
   - r0.svalue=[0, 2147418112]
-  - r0.uvalue=[0, 2147418112]
   - r0.svalue=r0.uvalue
   - r8.type=number
   - r8.svalue=1
@@ -204,7 +198,6 @@ post:
   - r0.shared_offset=0
   - r0.shared_region_size=4
   - r0.svalue=[0, 2147418112]
-  - r0.uvalue=[0, 2147418112]
   - r0.svalue=r0.uvalue
   - r8.type=number
   - r8.svalue=1

@@ -63,7 +63,6 @@ code:
 post:
   - "r1.svalue=[0, 4294967295]"
   - "r1.svalue=r1.uvalue"
-  - "r1.uvalue=[0, 4294967295]"
 
 messages:
   - "0: Invalid type (r1.type == number)"
@@ -89,7 +88,6 @@ code:
 post:
   - "r1.svalue=[0, 4294967295]"
   - "r1.svalue=r1.uvalue"
-  - "r1.uvalue=[0, 4294967295]"
 
 messages:
   - "0: Invalid type (r1.type == number)"
@@ -115,7 +113,6 @@ code:
 post:
   - "r1.svalue=[0, 4294967295]"
   - "r1.svalue=r1.uvalue"
-  - "r1.uvalue=[0, 4294967295]"
 
 messages:
   - "0: Invalid type (r1.type == number)"
@@ -130,7 +127,6 @@ pre:
   - "r1.svalue=[0, 4294967295]"
   - "r1.svalue=r1.uvalue"
   - "r1.type=ctx"
-  - "r1.uvalue=[0, 4294967295]"
 
 # Trigger 32-bit ALU operation without changing the value
 code:
@@ -141,7 +137,6 @@ code:
 post:
   - "r1.svalue=[0, 4294967295]"
   - "r1.svalue=r1.uvalue"
-  - "r1.uvalue=[0, 4294967295]"
 
 messages:
   - "0: Invalid type (r1.type == number)"
@@ -167,7 +162,6 @@ code:
 post:
   - "r1.svalue=[0, 4294967295]"
   - "r1.svalue=r1.uvalue"
-  - "r1.uvalue=[0, 4294967295]"
 
 messages:
   - "0: Invalid type (r1.type == number)"
@@ -193,7 +187,6 @@ code:
 post:
   - "r1.svalue=[0, 4294967295]"
   - "r1.svalue=r1.uvalue"
-  - "r1.uvalue=[0, 4294967295]"
 
 messages:
   - "0: Invalid type (r1.type == number)"
@@ -219,7 +212,6 @@ code:
 post:
   - "r1.svalue=[0, 4294967295]"
   - "r1.svalue=r1.uvalue"
-  - "r1.uvalue=[0, 4294967295]"
 
 messages:
   - "0: Invalid type (r1.type == number)"
@@ -245,7 +237,6 @@ code:
 post:
   - "r1.svalue=[0, 4294967295]"
   - "r1.svalue=r1.uvalue"
-  - "r1.uvalue=[0, 4294967295]"
 
 messages:
   - "0: Invalid type (r1.type == number)"
@@ -271,7 +262,6 @@ code:
 post:
   - "r1.svalue=[0, 4294967295]"
   - "r1.svalue=r1.uvalue"
-  - "r1.uvalue=[0, 4294967295]"
 
 messages:
   - "0: Invalid type (r1.type == number)"
@@ -297,7 +287,6 @@ code:
 post:
   - "r1.svalue=[0, 4294967295]"
   - "r1.svalue=r1.uvalue"
-  - "r1.uvalue=[0, 4294967295]"
 
 messages:
   - "0: Invalid type (r1.type == number)"
@@ -323,7 +312,6 @@ code:
 post:
   - "r1.svalue=[0, 4294967295]"
   - "r1.svalue=r1.uvalue"
-  - "r1.uvalue=[0, 4294967295]"
 
 messages:
   - "0: Invalid type (r1.type == number)"
@@ -363,11 +351,11 @@ pre:
   - r0.uvalue=[0, 4294967295]
   - r0.svalue=r0.uvalue
   - r0.type=number
-  - "r1.ctx_offset=0"
-  - "r1.svalue=[0, 4294967295]"
-  - "r1.svalue=r1.uvalue"
-  - "r1.type=ctx"
-  - "r1.uvalue=[0, 4294967295]"
+  - r1.ctx_offset=0
+  - r1.svalue=[0, 4294967295]
+  - r1.svalue=r1.uvalue
+  - r1.type=ctx
+  - r1.uvalue=[0, 4294967295]
 
 code:
   <start>: |
@@ -375,20 +363,12 @@ code:
     exit
 
 post:
+  - r0.svalue=r0.uvalue=r1.svalue=r1.uvalue
   - r0.ctx_offset=0
   - r0.svalue=[0, 4294967295]
-  - r0.svalue=r0.uvalue
-  - r0.svalue=r1.svalue
-  - r0.svalue=r1.uvalue
   - r0.type=ctx
-  - r0.uvalue=[0, 4294967295]
-  - r0.uvalue=r1.svalue
-  - r0.uvalue=r1.uvalue
   - r1.ctx_offset=0
-  - r1.svalue=[0, 4294967295]
-  - r1.svalue=r1.uvalue
   - r1.type=ctx
-  - r1.uvalue=[0, 4294967295]
 
 messages:
   - "1: Invalid type (r0.type == number)"
@@ -401,11 +381,11 @@ pre:
   - r0.uvalue=0
   - r0.svalue=r0.uvalue
   - r0.type=number
-  - "r1.ctx_offset=0"
-  - "r1.svalue=1234567890"
-  - "r1.svalue=r1.uvalue"
-  - "r1.type=ctx"
-  - "r1.uvalue=1234567890"
+  - r1.ctx_offset=0
+  - r1.svalue=1234567890
+  - r1.svalue=r1.uvalue
+  - r1.type=ctx
+  - r1.uvalue=1234567890
 
 code:
   <start>: |
@@ -416,7 +396,6 @@ post:
   - r1.svalue=1234567890
   - r1.svalue=r1.uvalue
   - r1.type=ctx
-  - r1.uvalue=1234567890
   - r0.svalue=1234567890
   - r0.type=number
   - r0.uvalue=1234567890
