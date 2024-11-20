@@ -34,12 +34,8 @@ code:
 post:
   - r0.type=number
   - r0.svalue=[0, 1]
-  - r0.uvalue=[0, 1]
-  - r0.svalue=r0.uvalue
-  - r0.svalue-r1.uvalue<=0
-  - r0.uvalue-r1.uvalue<=0
+  - r0.svalue=r0.uvalue=r1.uvalue
   - r1.type=number
-  - r1.uvalue=[0, +oo]
 ---
 test-case: simple unconditional jump forward
 
@@ -304,7 +300,6 @@ post:
   - r1.type in {number, ctx}
   - r1.type=r2.type
   - r2.ctx_offset=0
-  - r2.type in {number, ctx}
   - r3.type=number
   - r8.ctx_offset=4
   - r8.type=ctx
@@ -413,88 +408,35 @@ code:
     r3 += r2; the domain does not currently store inequalities so we can't yet tell that this is safe
 
 post:
+  - r1.type=r3.type
+  - r1.svalue=r1.uvalue
+  - r2.svalue=r2.uvalue
+  - r2.ctx_offset=r3.ctx_offset
+  - r3.svalue=r3.uvalue
   - r0.type=number
   - r0.uvalue=[0, +oo]
   - r1.ctx_offset=0
   - r1.type in {number, ctx}
   - r1.type-r1.svalue<=-8
-  - r1.type-r1.uvalue<=-8
-  - r1.type-r3.ctx_offset<=-3
-  - r1.type-r3.type<=0
   - r1.type-r3.svalue<=-12
-  - r1.type-r3.uvalue<=-12
   - r1.svalue-r1.type<=1027
-  - r1.uvalue-r1.type<=1027
-  - r1.svalue-r3.ctx_offset<=1024
-  - r1.uvalue-r3.ctx_offset<=1024
-  - r1.svalue-r3.type<=1027
-  - r1.uvalue-r3.type<=1027
   - r1.svalue-r3.svalue<=-4
-  - r1.uvalue-r3.uvalue<=-4
-  - r1.svalue-r3.uvalue<=-4
-  - r1.uvalue-r3.svalue<=-4
   - r1.svalue=[4, 1024]
-  - r1.uvalue=[4, 1024]
-  - r1.svalue=r1.uvalue
   - r2.ctx_offset=0
   - r2.type in {number, ctx}
-  - r2.ctx_offset-r3.ctx_offset<=0
   - r2.type-r2.svalue<=-8
-  - r2.type-r2.uvalue<=-8
   - r2.type-r3.svalue<=-12
-  - r2.type-r3.uvalue<=-12
-  - r2.svalue-r2.type<=1027
-  - r2.uvalue-r2.type<=1027
-  - r2.svalue-r3.svalue<=-4
-  - r2.uvalue-r3.uvalue<=-4
-  - r2.svalue-r3.uvalue<=-4
-  - r2.uvalue-r3.svalue<=-4
-  - r2.svalue=[4, 1024]
-  - r2.uvalue=[4, 1024]
-  - r2.svalue=r2.uvalue
   - r2.svalue-r0.uvalue<=1023
+  - r2.svalue-r2.type<=1027
+  - r2.svalue-r3.svalue<=-4
+  - r2.svalue=[4, 1024]
   - r2.type-r0.uvalue<=-4
-  - r2.uvalue-r0.uvalue<=1023
-  - r3.ctx_offset-r0.uvalue<=2039
   - r3.svalue-r0.uvalue<=3071
-  - r3.uvalue-r0.uvalue<=3071
-  - r3.ctx_offset-r1.type<=1028
-  - r3.ctx_offset-r1.svalue<=1020
-  - r3.ctx_offset-r1.uvalue<=1020
-  - r3.ctx_offset-r2.ctx_offset<=1024
-  - r3.ctx_offset-r2.type<=2043
-  - r3.ctx_offset-r2.svalue<=1020
-  - r3.ctx_offset-r2.uvalue<=1020
-  - r3.ctx_offset-r3.type<=1027
-  - r3.ctx_offset-r3.svalue<=1016
-  - r3.ctx_offset-r3.uvalue<=1016
-  - r3.ctx_offset=[0, 1024]
-  - r3.type in {number, ctx}
-  - r3.type-r1.type<=1
-  - r3.type-r1.svalue<=-7
-  - r3.type-r1.uvalue<=-7
-  - r3.type-r3.ctx_offset<=-3
-  - r3.type-r3.svalue<=-11
-  - r3.type-r3.uvalue<=-11
   - r3.svalue-r1.type<=3075
-  - r3.uvalue-r1.type<=3075
   - r3.svalue-r1.svalue<=2048
-  - r3.uvalue-r1.uvalue<=2048
-  - r3.svalue-r1.uvalue<=2048
-  - r3.uvalue-r1.svalue<=2048
   - r3.svalue-r2.type<=3075
-  - r3.uvalue-r2.type<=3075
   - r3.svalue-r2.svalue<=2048
-  - r3.uvalue-r2.uvalue<=2048
-  - r3.svalue-r2.uvalue<=2048
-  - r3.uvalue-r2.svalue<=2048
-  - r3.svalue-r3.ctx_offset<=3072
-  - r3.uvalue-r3.ctx_offset<=3072
-  - r3.svalue-r3.type<=3075
-  - r3.uvalue-r3.type<=3075
   - r3.svalue=[8, 3072]
-  - r3.uvalue=[8, 3072]
-  - r3.svalue=r3.uvalue
   - r8.ctx_offset=0
   - r8.type=ctx
   - r8.svalue=1024
@@ -542,7 +484,6 @@ post:
   - r1.type=r2.type
   - r2.stack_offset=0
   - r2.packet_offset=0
-  - r2.type in {packet, stack}
   - r6.type=stack
   - r6.stack_offset=4
   - r7.type=stack
@@ -587,13 +528,9 @@ post:
   - r1.type=packet
   - r1.packet_offset=54
   - r1.packet_offset-packet_size<=18
-  - r1.packet_offset-r2.packet_offset<=18
   - r2.type=packet
-  - r2.packet_offset=[36, 65534]
-  - r2.packet_offset-r1.packet_offset<=65480
   - r4.type=number
   - r4.svalue=[0, 1]
-  - r4.uvalue=[0, 1]
   - r4.svalue=r4.uvalue
 
 messages:

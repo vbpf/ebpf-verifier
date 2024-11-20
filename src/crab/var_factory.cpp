@@ -191,6 +191,8 @@ std::vector<variable_t> variable_t::get_type_variables() {
 
 bool variable_t::is_in_stack() const { return this->name()[0] == 's'; }
 
+bool variable_t::printing_order(const variable_t& a, const variable_t& b) { return a.name() < b.name(); }
+
 std::vector<variable_t> variable_t::get_loop_counters() {
     std::vector<variable_t> res;
     for (const std::string& name : *names) {

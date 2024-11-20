@@ -183,7 +183,6 @@ code:
 post:
   - r2.svalue=[0, 4294967295]
   - r2.svalue=r2.uvalue
-  - r2.uvalue=[0, 4294967295]
   - r10.type=stack
   - r10.stack_offset=512
 
@@ -221,7 +220,6 @@ post:
   - r1.shared_offset=0
   - r1.shared_region_size=16
   - r2.svalue=[0, 4294967295]
-  - r2.uvalue=[0, 4294967295]
   - r2.svalue=r2.uvalue
 
 messages:
@@ -241,7 +239,6 @@ post:
   - r1.shared_region_size=16
   - r1.stack_offset=500
   - r1.stack_numeric_size=16
-  - r2.type in {stack, shared}
   - r2.shared_offset=0
   - r2.shared_region_size=16
   - r2.stack_offset=500
@@ -304,15 +301,12 @@ code:
     r1 = r2
 
 post:
-  - packet_size=r1.packet_offset
-  - r1.type=packet
-  - r1.svalue=[4098, 2147418112]
-  - packet_size=r2.packet_offset
-  - r2.type=packet
-  - r2.svalue=[4098, 2147418112]
-  - r1.packet_offset=r2.packet_offset
+  - packet_size=r1.packet_offset=r2.packet_offset
   - r1.svalue=r2.svalue
   - r1.uvalue=r2.uvalue
+  - r1.type=packet
+  - r1.svalue=[4098, 2147418112]
+  - r2.type=packet
 ---
 test-case: 32-bit assign register packet value
 
@@ -324,7 +318,6 @@ code:
 
 post:
   - r1.svalue=[0, 4294967295]
-  - r1.uvalue=[0, 4294967295]
   - r1.svalue=r1.uvalue
   - packet_size=r2.packet_offset
   - r2.type=packet
@@ -348,8 +341,6 @@ post:
   - r1.uvalue=[1, 2147418112]
   - r2.ctx_offset=0
   - r2.type=ctx
-  - r2.svalue=[1, 2147418112]
-  - r2.uvalue=[1, 2147418112]
   - r1.svalue=r2.svalue
   - r1.uvalue=r2.uvalue
 ---
@@ -367,7 +358,6 @@ post:
   - r1.svalue=[1, 2147418112]
   - r1.uvalue=[1, 2147418112]
   - r2.svalue=[1, 2147418112]
-  - r2.uvalue=[1, 2147418112]
   - r2.svalue=r2.uvalue
 
 messages:
@@ -401,7 +391,6 @@ post:
   - r1.map_fd=1
   - r1.type=map_fd
   - r2.svalue=[0, 4294967295]
-  - r2.uvalue=[0, 4294967295]
   - r2.svalue=r2.uvalue
 
 messages:
@@ -435,7 +424,6 @@ post:
   - r1.map_fd=1
   - r1.type=map_fd_programs
   - r2.svalue=[0, 4294967295]
-  - r2.uvalue=[0, 4294967295]
   - r2.svalue=r2.uvalue
 
 messages:

@@ -121,7 +121,6 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 6]
-  - r1.uvalue=[0, 6]
   - r1.svalue=r1.uvalue
   - r2.type=number
   - r2.svalue=[-5, 5]
@@ -164,11 +163,9 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 6]
-  - r1.uvalue=[0, 6]
   - r1.svalue=r1.uvalue
   - r2.type=number
   - r2.svalue=[0, 5]
-  - r2.uvalue=[0, 5]
   - r2.svalue=r2.uvalue
 
 messages:
@@ -209,7 +206,6 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 6]
-  - r1.uvalue=[0, 6]
   - r1.svalue=r1.uvalue
   - r2.type=number
 
@@ -351,7 +347,6 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 6]
-  - r1.uvalue=[0, 6]
   - r1.svalue=r1.uvalue
   - r2.type=number
   - r2.svalue=[-5, 5]
@@ -394,11 +389,9 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 6]
-  - r1.uvalue=[0, 6]
   - r1.svalue=r1.uvalue
   - r2.type=number
   - r2.svalue=[0, 5]
-  - r2.uvalue=[0, 5]
   - r2.svalue=r2.uvalue
 
 messages:
@@ -439,7 +432,6 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 6]
-  - r1.uvalue=[0, 6]
   - r1.svalue=r1.uvalue
   - r2.type=number
 
@@ -478,7 +470,6 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 4]
-  - r1.uvalue=[0, 4]
   - r1.svalue=r1.uvalue
   - r2.type=number
   - r2.svalue=[1, 5]
@@ -591,5 +582,4 @@ code:
 post:
   - r0.type=number
   - r0.svalue=[0, 2055]
-  - r0.uvalue=[0, 2055]
   - r0.svalue=r0.uvalue

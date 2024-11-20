@@ -78,6 +78,7 @@ class variable_t final {
     static variable_t loop_counter(const std::string& label);
     [[nodiscard]]
     bool is_in_stack() const;
+    static bool printing_order(const variable_t& a, const variable_t& b);
 }; // class variable_t
 
 } // namespace crab
