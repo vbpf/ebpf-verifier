@@ -18,7 +18,7 @@ code:
 post:
   - "r0.type=number"
   - "r0.svalue=4"
-  - "r0.svalue=r0.uvalue"
+  - "r0.uvalue=r0.svalue"
   - "pc[1]=5"
   - "pc[1]=r0.svalue+1"
 ---
@@ -36,7 +36,8 @@ code:
     exit
 
 post:
-  - pc[1]=r0.svalue=r0.uvalue
+  - r0.uvalue=pc[1]
+  - r0.svalue=pc[1]
   - r0.type=number
   - pc[1]=4
 ---
@@ -57,7 +58,7 @@ code:
 post:
   - r0.type=number
   - r0.svalue=4
-  - r0.svalue=r0.uvalue
+  - r0.uvalue=r0.svalue
   - pc[1]=5
   - pc[1]=r0.svalue+1
 ---
@@ -76,7 +77,8 @@ code:
     exit
 
 post:
-  - pc[1]=r0.svalue=r0.uvalue
+  - r0.uvalue=pc[1]
+  - r0.svalue=pc[1]
   - r0.type=number
   - pc[1]=4
 ---
@@ -97,7 +99,8 @@ code:
     exit
 
 post:
-  - pc[1]=r0.svalue=r0.uvalue
+  - r0.uvalue=pc[1]
+  - r0.svalue=pc[1]
   - r0.type=number
   - r1.type=number
   - r2.type=number
@@ -122,7 +125,7 @@ post:
   - "r0.type=number"
   - "r0.svalue=4"
   - "r0.uvalue=4"
-#  - "r0.svalue=r0.uvalue"
+#  - "r0.uvalue=r0.svalue"
 #  - "pc[1]=4"
 #  - "pc[1]=r0.value"
 ---
@@ -144,7 +147,7 @@ post:
   - "r0.type=number"
   - "r0.svalue=9"
   - "r0.uvalue=9"
-#  - "r0.svalue=r0.uvalue"
+#  - "r0.uvalue=r0.svalue"
 #  - "pc[1]=9"
 #  - "pc[1]=r0.value"
 ---
@@ -166,7 +169,7 @@ post:
   - "r0.type=number"
   - "r0.svalue=9"
   - "r0.uvalue=9"
-  # - "r0.svalue=r0.uvalue"
+  # - "r0.uvalue=r0.svalue"
   - "pc[1]=[1, +oo]"
 
 messages:
@@ -206,8 +209,12 @@ code:
     exit
 
 post:
-  - packet_size=r2.svalue=r2.uvalue
-  - pc[7]=r3.svalue=r3.uvalue=r4.svalue=r4.uvalue
+  - r2.uvalue=packet_size
+  - r2.svalue=packet_size
+  - r3.uvalue=pc[7]
+  - r3.svalue=pc[7]
+  - r4.svalue=pc[7]
+  - r4.uvalue=pc[7]
   - meta_offset=[-oo, 0]
   - packet_size=[1, 65534]
   - pc[7]=[1, 255]
@@ -339,7 +346,8 @@ code:
     exit
 post:
   - pc[0]=1000001
-  - pc[0]=r0.svalue=r0.uvalue
+  - r0.uvalue=pc[0]
+  - r0.svalue=pc[0]
   - r0.type=number
 messages:
   - "0 (counter): Loop counter is too large (pc[0] < 100000)"

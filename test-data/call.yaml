@@ -16,7 +16,7 @@ post:
   - r0.shared_offset=0
   - r0.shared_region_size=4
   - r0.svalue=[0, 2147418112]
-  - r0.svalue=r0.uvalue
+  - r0.uvalue=r0.svalue
   - s[504...511].type=number
 ---
 test-case: bpf_map_lookup_elem shared key
@@ -33,7 +33,7 @@ post:
   - r0.shared_offset=0
   - r0.shared_region_size=4
   - r0.svalue=[0, 2147418112]
-  - r0.svalue=r0.uvalue
+  - r0.uvalue=r0.svalue
 ---
 test-case: bpf_map_lookup_elem packet key
 
@@ -50,7 +50,7 @@ post:
   - r0.shared_offset=0
   - r0.shared_region_size=4
   - r0.svalue=[0, 2147418112]
-  - r0.svalue=r0.uvalue
+  - r0.uvalue=r0.svalue
   - meta_offset=0
   - packet_size=4
 ---
@@ -68,7 +68,7 @@ post:
   - r0.shared_offset=0
   - r0.shared_region_size=4
   - r0.svalue=[0, 2147418112]
-  - r0.svalue=r0.uvalue
+  - r0.uvalue=r0.svalue
 
 messages:
   - "0: Possible null access (within stack(r2:key_size(r1)))"
@@ -88,7 +88,7 @@ post:
   - r0.shared_offset=0
   - r0.shared_region_size=4
   - r0.svalue=[0, 2147418112]
-  - r0.svalue=r0.uvalue
+  - r0.uvalue=r0.svalue
 
 messages:
   - "0: Upper bound must be at most r2.shared_region_size (within stack(r2:key_size(r1)))"
@@ -107,7 +107,7 @@ post:
   - r0.shared_offset=0
   - r0.shared_region_size=4
   - r0.svalue=[0, 2147418112]
-  - r0.svalue=r0.uvalue
+  - r0.uvalue=r0.svalue
 
 messages:
   - "0: Lower bound must be at least 0 (within stack(r2:key_size(r1)))"
@@ -126,7 +126,7 @@ post:
   - r0.shared_offset=0
   - r0.shared_region_size=4
   - r0.svalue=[0, 2147418112]
-  - r0.svalue=r0.uvalue
+  - r0.uvalue=r0.svalue
 
 messages:
   - "0: Illegal map update with a non-numerical value [-oo-oo) (within stack(r2:key_size(r1)))"
