@@ -205,30 +205,27 @@ struct function_relocation {
     string target_function_name;
 };
 
-static vector<ebpf_inst> read_subprogram(const ELFIO::section& subprogram_section,
-                                         const ELFIO::const_symbol_section_accessor& symbols,
-                                         const string& symbol_name) {
+static raw_program& find_subprogram(vector<raw_program>& programs, const ELFIO::section& subprogram_section,
+                                    const std::string& symbol_name) {
     // Find subprogram by name.
-    for (ELFIO::Elf_Xword subprogram_offset = 0; subprogram_offset < subprogram_section.get_size();) {
-        auto [subprogram_name, subprogram_size] =
-            get_program_name_and_size(subprogram_section, subprogram_offset, symbols);
-        if (subprogram_size == 0) {
-            throw UnmarshalError("Zero-size subprogram '" + subprogram_name + "' in section '" +
-                                 subprogram_section.get_name() + "'");
+    for (auto& subprog : programs) {
+        if ((subprog.section_name == subprogram_section.get_name()) && (subprog.function_name == symbol_name)) {
+            return subprog;
         }
-        if (subprogram_name == symbol_name) {
-            // Append subprogram instructions to the main program.
-            return vector_of<ebpf_inst>(subprogram_section.get_data() + subprogram_offset, subprogram_size);
-        }
-        subprogram_offset += subprogram_size;
     }
     throw UnmarshalError("Subprogram '" + symbol_name + "' not found in section '" + subprogram_section.get_name() +
                          "'");
 }
 
-static void append_subprograms(raw_program& prog, const vector<raw_program>& programs,
+static void append_subprograms(raw_program& prog, vector<raw_program>& programs,
                                const vector<function_relocation>& function_relocations, const ELFIO::elfio& reader,
                                const ELFIO::const_symbol_section_accessor& symbols) {
+    if (prog.resolved_subprograms) {
+        // We've already appended any relevant subprograms.
+        return;
+    }
+    prog.resolved_subprograms = true;
+
     // Perform function relocations and fill in the inst.imm values of CallLocal instructions.
     std::map<string, ELFIO::Elf_Xword> subprogram_offsets;
     for (const auto& reloc : function_relocations) {
@@ -250,8 +247,17 @@ static void append_subprograms(raw_program& prog, const vector<raw_program>& pro
                                      std::to_string(reloc.source_offset));
             }
             ELFIO::section& subprogram_section = *reader.sections[section_index];
-            auto subprogram = read_subprogram(subprogram_section, symbols, symbol_name);
-            prog.prog.insert(prog.prog.end(), subprogram.begin(), subprogram.end());
+
+            auto& subprogram = find_subprogram(programs, subprogram_section, symbol_name);
+
+            // Make sure subprogram has already had any subprograms of its own appended.
+            append_subprograms(subprogram, programs, function_relocations, reader, symbols);
+
+            // Append subprogram to program.
+            prog.prog.insert(prog.prog.end(), subprogram.prog.begin(), subprogram.prog.end());
+            for (int i = 0; i < subprogram.info.line_info.size(); i++) {
+                prog.info.line_info[prog.info.line_info.size()] = subprogram.info.line_info[i];
+            }
         }
 
         // Fill in the PC offset into the imm field of the CallLocal instruction.
@@ -359,9 +365,6 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
     vector<function_relocation> function_relocations;
     for (const auto& section : reader.sections) {
         const string name = section->get_name();
-        if (!desired_section.empty() && name != desired_section) {
-            continue;
-        }
         if (name == "license" || name == "version" || is_map_section(name)) {
             continue;
         }
@@ -446,14 +449,6 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
         }
     }
 
-    // Now that we have all programs in the list, we can recursively append any subprograms
-    // to the calling programs.  We have to keep them as programs themselves in case the caller
-    // wants to verify them separately, but we also have to append them if used as subprograms to
-    // allow the caller to be fully verified since inst.imm can only point into the same program.
-    for (auto& prog : res) {
-        append_subprograms(prog, res, function_relocations, reader, symbols);
-    }
-
     // Below, only relocations of symbols located in the map sections are allowed,
     // so if there are relocations there needs to be a maps section.
     if (!unresolved_symbols_errors.empty()) {
@@ -477,7 +472,6 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
                     }
                     program.info.line_info.insert_or_assign(
                         inst_index, btf_line_info_t{file_name, source, line_number, column_number});
-                    return;
                 }
             }
         };
@@ -486,11 +480,29 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
 
         // BTF doesn't include line info for every instruction, only on the first instruction per source line.
         for (auto& program : res) {
-            for (size_t i = 1; i < program.info.line_info.size(); i++) {
+            for (size_t i = 1; i < program.prog.size(); i++) {
                 // If the previous PC has line info, copy it.
                 if (program.info.line_info[i].line_number == 0 && program.info.line_info[i - 1].line_number != 0) {
                     program.info.line_info[i] = program.info.line_info[i - 1];
                 }
+            }
+        }
+    }
+
+    // Now that we have all programs in the list, we can recursively append any subprograms
+    // to the calling programs.  We have to keep them as programs themselves in case the caller
+    // wants to verify them separately, but we also have to append them if used as subprograms to
+    // allow the caller to be fully verified since inst.imm can only point into the same program.
+    for (auto& prog : res) {
+        append_subprograms(prog, res, function_relocations, reader, symbols);
+    }
+
+    // Now that we've incorporated any subprograms from other sections, we can narrow the list
+    // to return to just those programs in the desired section, if any.
+    if (!desired_section.empty()) {
+        for (int index = res.size() - 1; index >= 0; index--) {
+            if (res[index].section_name != desired_section) {
+                res.erase(res.begin() + index);
             }
         }
     }

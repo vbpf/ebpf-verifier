@@ -70,6 +70,7 @@ struct raw_program {
     std::string function_name{};
     std::vector<ebpf_inst> prog{};
     program_info info{};
+    bool resolved_subprograms{};
 };
 
 void print_map_descriptors(const std::vector<EbpfMapDescriptor>& descriptors, std::ostream& o);
