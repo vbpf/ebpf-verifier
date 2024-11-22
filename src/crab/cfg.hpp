@@ -429,12 +429,12 @@ class basic_block_t final {
 
     [[nodiscard]]
     label_t first_label() const {
-        return m_ts.at(0);
+        return m_ts.front();
     }
 
     [[nodiscard]]
     label_t last_label() const {
-        return m_ts.at(m_ts.size() - 1);
+        return m_ts.back();
     }
 
     [[nodiscard]]
