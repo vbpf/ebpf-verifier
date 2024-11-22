@@ -87,14 +87,18 @@ void print_dot(const cfg_t& cfg, const std::string& outfile) {
     print_dot(cfg, out);
 }
 
-std::ostream& operator<<(std::ostream& o, const value_t& value) {
-    o << value.label() << ":\n";
-    const auto ins = value.instruction();
-    for (const auto& pre : ins.preconditions) {
+void print_label(std::ostream& o, const value_t& value) { o << value.label() << ":\n"; }
+
+void print_assertions(std::ostream& o, const value_t& value) {
+    for (const auto& pre : value.instruction().preconditions) {
         o << "  "
           << "assert " << pre << ";\n";
     }
-    o << "  " << ins.cmd << ";\n";
+}
+
+void print_instruction(std::ostream& o, const value_t& value) { o << "  " << value.instruction().cmd << ";\n"; }
+
+void print_goto(std::ostream& o, const value_t& value) {
     auto [it, et] = value.next_labels();
     if (it != et) {
         o << "  "
@@ -110,12 +114,32 @@ std::ostream& operator<<(std::ostream& o, const value_t& value) {
         }
     }
     o << "\n";
-    return o;
+}
+
+void print_from(std::ostream& o, const value_t& value) {
+    auto [it, et] = value.prev_labels();
+    if (it != et) {
+        o << "  "
+          << "from ";
+        while (it != et) {
+            o << *it;
+            ++it;
+            if (it == et) {
+                o << ";";
+            } else {
+                o << ",";
+            }
+        }
+    }
+    o << "\n";
 }
 
 std::ostream& operator<<(std::ostream& o, const cfg_t& cfg) {
     for (const label_t& label : cfg.sorted_labels()) {
-        o << cfg.get_node(label);
+        const auto& value = cfg.get_node(label);
+        print_label(o, value);
+        print_assertions(o, value);
+        print_instruction(o, value);
         o << "edges to:";
         for (const label_t& next_label : cfg.next_nodes(label)) {
             o << " " << next_label;
