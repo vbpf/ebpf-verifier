@@ -245,6 +245,10 @@ static void append_subprograms(raw_program& prog, const vector<raw_program>& pro
 
             auto [symbol_name, section_index] =
                 get_symbol_name_and_section_index(symbols, reloc.relocation_entry_index);
+            if (section_index >= reader.sections.size()) {
+                throw UnmarshalError("Invalid section index " + std::to_string(section_index) + " at source offset " +
+                                     std::to_string(reloc.source_offset));
+            }
             ELFIO::section& subprogram_section = *reader.sections[section_index];
             auto subprogram = read_subprogram(subprogram_section, symbols, symbol_name);
             prog.prog.insert(prog.prog.end(), subprogram.begin(), subprogram.end());
