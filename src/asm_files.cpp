@@ -499,7 +499,7 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
 
     // Now that we've incorporated any subprograms from other sections, we can narrow the list
     // to return to just those programs in the desired section, if any.
-    if (!desired_section.empty()) {
+    if (!desired_section.empty() && !res.empty()) {
         for (int index = res.size() - 1; index >= 0; index--) {
             if (res[index].section_name != desired_section) {
                 res.erase(res.begin() + index);
