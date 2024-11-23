@@ -217,12 +217,13 @@ static std::optional<std::reference_wrapper<raw_program>> find_subprogram(vector
     return {};
 }
 
-static void append_subprograms(raw_program& prog, vector<raw_program>& programs,
-                               const vector<function_relocation>& function_relocations, const ELFIO::elfio& reader,
-                               const ELFIO::const_symbol_section_accessor& symbols) {
+// Returns an error message, or empty string on success.
+static std::string append_subprograms(raw_program& prog, vector<raw_program>& programs,
+                                      const vector<function_relocation>& function_relocations, const ELFIO::elfio& reader,
+                                      const ELFIO::const_symbol_section_accessor& symbols) {
     if (prog.resolved_subprograms) {
         // We've already appended any relevant subprograms.
-        return;
+        return {};
     }
     prog.resolved_subprograms = true;
 
@@ -252,12 +253,16 @@ static void append_subprograms(raw_program& prog, vector<raw_program>& programs,
             if (!subprogram) {
                 // The program will be invalid, but continue rather than throwing an exception
                 // since we might be verifying a different program in the file.
-                continue;
+                return std::string("Subprogram '" + symbol_name + "' not found in section '" +
+                                   subprogram_section.get_name() + "'");
             }
             auto& subprog = subprogram->get();
 
             // Make sure subprogram has already had any subprograms of its own appended.
-            append_subprograms(subprog, programs, function_relocations, reader, symbols);
+            std::string error = append_subprograms(subprog, programs, function_relocations, reader, symbols);
+            if (!error.empty()) {
+                return error;
+            }
 
             // Append subprogram to program.
             prog.prog.insert(prog.prog.end(), subprog.prog.begin(), subprog.prog.end());
@@ -275,6 +280,7 @@ static void append_subprograms(raw_program& prog, vector<raw_program>& programs,
         }
         prog.prog[reloc.source_offset].imm = gsl::narrow_cast<int32_t>(offset_diff);
     }
+    return {};
 }
 
 std::map<std::string, size_t> parse_map_section(const libbtf::btf_type_data& btf_data,
@@ -498,7 +504,12 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
     // wants to verify them separately, but we also have to append them if used as subprograms to
     // allow the caller to be fully verified since inst.imm can only point into the same program.
     for (auto& prog : res) {
-        append_subprograms(prog, res, function_relocations, reader, symbols);
+        std::string error = append_subprograms(prog, res, function_relocations, reader, symbols);
+        if (!error.empty()) {
+            if (prog.section_name == desired_section) {
+                throw UnmarshalError(error);
+            }
+        }
     }
 
     // Now that we've incorporated any subprograms from other sections, we can narrow the list
