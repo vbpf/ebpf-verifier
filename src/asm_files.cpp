@@ -205,16 +205,16 @@ struct function_relocation {
     string target_function_name;
 };
 
-static raw_program& find_subprogram(vector<raw_program>& programs, const ELFIO::section& subprogram_section,
-                                    const std::string& symbol_name) {
+static std::optional<std::reference_wrapper<raw_program>> find_subprogram(vector<raw_program>& programs,
+                                                                          const ELFIO::section& subprogram_section,
+                                                                          const std::string& symbol_name) {
     // Find subprogram by name.
     for (auto& subprog : programs) {
         if ((subprog.section_name == subprogram_section.get_name()) && (subprog.function_name == symbol_name)) {
-            return subprog;
+            return std::ref(subprog);
         }
     }
-    throw UnmarshalError("Subprogram '" + symbol_name + "' not found in section '" + subprogram_section.get_name() +
-                         "'");
+    return {};
 }
 
 static void append_subprograms(raw_program& prog, vector<raw_program>& programs,
@@ -248,15 +248,21 @@ static void append_subprograms(raw_program& prog, vector<raw_program>& programs,
             }
             ELFIO::section& subprogram_section = *reader.sections[section_index];
 
-            auto& subprogram = find_subprogram(programs, subprogram_section, symbol_name);
+            auto subprogram = find_subprogram(programs, subprogram_section, symbol_name);
+            if (!subprogram) {
+                // The program will be invalid, but continue rather than throwing an exception
+                // since we might be verifying a different program in the file.
+                continue;
+            }
+            auto& subprog = subprogram->get();
 
             // Make sure subprogram has already had any subprograms of its own appended.
-            append_subprograms(subprogram, programs, function_relocations, reader, symbols);
+            append_subprograms(subprog, programs, function_relocations, reader, symbols);
 
             // Append subprogram to program.
-            prog.prog.insert(prog.prog.end(), subprogram.prog.begin(), subprogram.prog.end());
-            for (int i = 0; i < subprogram.info.line_info.size(); i++) {
-                prog.info.line_info[prog.info.line_info.size()] = subprogram.info.line_info[i];
+            prog.prog.insert(prog.prog.end(), subprog.prog.begin(), subprog.prog.end());
+            for (int i = 0; i < subprog.info.line_info.size(); i++) {
+                prog.info.line_info[prog.info.line_info.size()] = subprog.info.line_info[i];
             }
         }
 
@@ -364,11 +370,8 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
     vector<string> unresolved_symbols_errors;
     vector<function_relocation> function_relocations;
     for (const auto& section : reader.sections) {
-        const string name = section->get_name();
-        if (name == "license" || name == "version" || is_map_section(name)) {
-            continue;
-        }
-        if (name != ".text" && name.find('.') == 0) {
+        if (!(section->get_flags() & ELFIO::SHF_EXECINSTR)) {
+            // Section does not contain executable instructions.
             continue;
         }
         const auto section_size = section->get_size();
@@ -379,6 +382,7 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
         if (section_data == nullptr) {
             continue;
         }
+        const string name = section->get_name();
         info.type = platform->get_program_type(name, path);
 
         for (ELFIO::Elf_Xword program_offset = 0; program_offset < section_size;) {
