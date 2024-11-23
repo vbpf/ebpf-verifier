@@ -50,13 +50,33 @@ bool Invariants::is_valid_after(const label_t& label, const string_invariant& st
 }
 
 void Invariants::print_invariants(std::ostream& os, const cfg_t& cfg) const {
-    LineInfoPrinter printer{os};
-    for (const label_t& label : cfg.sorted_labels()) {
-        printer.print_line_info(label);
-        const auto& inv_pair = invariants.at(label);
-        os << "\nPre-invariant : " << inv_pair.pre << "\n";
-        os << cfg.get_node(label);
-        os << "\nPost-invariant: " << inv_pair.post << "\n";
+    if (thread_local_options.verbosity_opts.simplify) {
+        for (const auto& bb : basic_block_t::collect_basic_blocks(cfg)) {
+            os << "\nPre-invariant : " << invariants.at(bb.first_label()).pre << "\n";
+            print_from(os, cfg.get_node(bb.first_label()));
+            print_label(os, cfg.get_node(bb.first_label()));
+            for (const auto& label : bb) {
+                const auto& value = cfg.get_node(label);
+                print_assertions(os, value);
+                print_instruction(os, value);
+            }
+            print_goto(os, cfg.get_node(bb.last_label()));
+            os << "\nPost-invariant: " << invariants.at(bb.last_label()).post << "\n";
+        }
+    } else {
+        LineInfoPrinter printer{os};
+        for (const label_t& label : cfg.sorted_labels()) {
+            printer.print_line_info(label);
+            const auto& inv_pair = invariants.at(label);
+            os << "\nPre-invariant : " << inv_pair.pre << "\n";
+            const auto& value = cfg.get_node(label);
+            print_from(os, value);
+            print_label(os, value);
+            print_assertions(os, value);
+            print_instruction(os, value);
+            print_goto(os, value);
+            os << "\nPost-invariant: " << inv_pair.post << "\n";
+        }
     }
     os << "\n";
 }

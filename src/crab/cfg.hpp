@@ -114,6 +114,12 @@ class value_t final {
     }
 };
 
+void print_label(std::ostream& o, const value_t& value);
+void print_assertions(std::ostream& o, const value_t& value);
+void print_instruction(std::ostream& o, const value_t& value);
+void print_goto(std::ostream& o, const value_t& value);
+void print_from(std::ostream& o, const value_t& value);
+
 /// Control-Flow Graph
 class cfg_t final {
   public:
@@ -343,6 +349,18 @@ class cfg_t final {
         return get_node(*rng.begin());
     }
 
+    const value_t& get_child(const label_t& b) const {
+        assert(has_one_child(b));
+        const auto rng = next_nodes(b);
+        return get_node(*rng.begin());
+    }
+
+    const value_t& get_parent(const label_t& b) const {
+        assert(has_one_parent(b));
+        const auto rng = prev_nodes(b);
+        return get_node(*rng.begin());
+    }
+
   private:
     // Helpers
     [[nodiscard]]
@@ -359,88 +377,66 @@ class cfg_t final {
 };
 
 class basic_block_t final {
-    friend class cfg_t;
-
-  public:
-    basic_block_t(const basic_block_t&) = delete;
-
-    using label_vec_t = std::set<label_t>;
-    using stmt_list_t = std::vector<GuardedInstruction*>;
-    using iterator = stmt_list_t::iterator;
+    using stmt_list_t = std::vector<label_t>;
     using const_iterator = stmt_list_t::const_iterator;
-    using reverse_iterator = stmt_list_t::reverse_iterator;
-    using const_reverse_iterator = stmt_list_t::const_reverse_iterator;
 
-  private:
-    label_t m_label;
     stmt_list_t m_ts;
 
   public:
-    static std::map<label_t, basic_block_t> collect_basic_blocks(cfg_t& cfg) {
-        std::map<label_t, basic_block_t> res;
+    std::strong_ordering operator<=>(const basic_block_t& other) const { return first_label() <=> other.first_label(); }
+
+    static std::set<basic_block_t> collect_basic_blocks(const cfg_t& cfg) {
+        std::set<basic_block_t> res;
 
         std::set worklist(cfg.label_begin(), cfg.label_end());
         std::set<label_t> seen;
         while (!worklist.empty()) {
-            label_t label = *worklist.begin();
+            const label_t label = *worklist.begin();
             worklist.erase(label);
             if (seen.contains(label)) {
                 continue;
             }
             seen.insert(label);
 
-            const value_t& value = cfg.get_node(label);
-            if (value.in_degree() == 1 && cfg.get_parent(label).out_degree() == 1) {
+            const value_t* current_value = &cfg.get_node(label);
+            if (current_value->in_degree() == 1 && cfg.get_parent(label).out_degree() == 1) {
                 continue;
             }
-            res.emplace(label, label);
-            basic_block_t& bb = res.at(label);
-            while (value.out_degree() == 1) {
-                value_t& next_value = cfg.get_child(label);
+            basic_block_t bb{label};
+            while (current_value->out_degree() == 1) {
+                const value_t& next_value = cfg.get_child(bb.last_label());
+                const label_t& next_label = next_value.label();
 
-                if (&next_value == &value || next_value.in_degree() != 1) {
+                if (next_label == bb.first_label() || next_label == cfg.exit_label() || next_value.in_degree() != 1) {
                     break;
                 }
-                if (next_value.label() == cfg.exit_label()) {
-                    break;
-                }
-                worklist.erase(next_value.label());
 
-                bb.m_ts.push_back(&next_value.instruction());
+                bb.m_ts.push_back(next_label);
 
-                // delete next_bb entirely
-                // remove(next_value.label());
-                seen.insert(next_value.label());
+                worklist.erase(next_label);
+                seen.insert(next_label);
+
+                current_value = &next_value;
             }
+            res.emplace(std::move(bb));
         }
         return res;
     }
 
-    void insert(GuardedInstruction* arg) {
-        assert(label() != label_t::entry);
-        assert(label() != label_t::exit);
-        m_ts.push_back(arg);
-    }
-
-    /// Insert a GuardedInstruction at the front of the basic block.
-    /// @note Cannot modify entry or exit blocks.
-    void insert_front(GuardedInstruction* arg) {
-        assert(label() != label_t::entry);
-        assert(label() != label_t::exit);
-        m_ts.insert(m_ts.begin(), arg);
-    }
-
-    explicit basic_block_t(label_t _label) : m_label(std::move(_label)) {}
-
-    ~basic_block_t() = default;
+    explicit basic_block_t(const label_t& first_label) : m_ts{first_label} {}
+    basic_block_t(basic_block_t&&) noexcept = default;
+    basic_block_t(const basic_block_t&) = default;
 
     [[nodiscard]]
-    label_t label() const {
-        return m_label;
+    label_t first_label() const {
+        return m_ts.front();
     }
 
-    iterator begin() { return (m_ts.begin()); }
-    iterator end() { return (m_ts.end()); }
+    [[nodiscard]]
+    label_t last_label() const {
+        return m_ts.back();
+    }
+
     [[nodiscard]]
     const_iterator begin() const {
         return m_ts.begin();
@@ -450,35 +446,15 @@ class basic_block_t final {
         return m_ts.end();
     }
 
-    reverse_iterator rbegin() { return (m_ts.rbegin()); }
-    reverse_iterator rend() { return (m_ts.rend()); }
-    [[nodiscard]]
-    const_reverse_iterator rbegin() const {
-        return m_ts.rbegin();
-    }
-    [[nodiscard]]
-    const_reverse_iterator rend() const {
-        return m_ts.rend();
-    }
-
     [[nodiscard]]
     size_t size() const {
-        return gsl::narrow<size_t>(std::distance(begin(), end()));
+        return m_ts.size();
     }
-
-    // insert all statements of other at the back
-    void move_back(basic_block_t& other) {
-        m_ts.reserve(m_ts.size() + other.m_ts.size());
-        std::ranges::move(other.m_ts, std::back_inserter(m_ts));
-    }
-
-    void swap_instructions(stmt_list_t& ts) { std::swap(m_ts, ts); }
 };
 
 void print_dot(const cfg_t& cfg, std::ostream& out);
 void print_dot(const cfg_t& cfg, const std::string& outfile);
 
-std::ostream& operator<<(std::ostream& o, const value_t& value);
 std::ostream& operator<<(std::ostream& o, const cfg_t& cfg);
 
 } // end namespace crab
