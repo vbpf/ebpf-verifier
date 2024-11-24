@@ -14,13 +14,39 @@ class Report final {
     friend class Invariants;
 
   public:
-    void print_reachability(std::ostream& os) const;
-    void print_warnings(std::ostream& os) const;
-    void print_all_messages(std::ostream& os) const;
-    std::set<std::string> all_messages() const;
-    std::set<std::string> reachability_set() const;
-    std::set<std::string> warning_set() const;
-    bool verified() const;
+    friend void print_reachability(std::ostream& os, const Report& report);
+    friend void print_warnings(std::ostream& os, const Report& report);
+    friend void print_all_messages(std::ostream& os, const Report& report);
+
+    std::set<std::string> all_messages() const {
+        std::set<std::string> result = warning_set();
+        for (const auto& note : reachability_set()) {
+            result.insert(note);
+        }
+        return result;
+    }
+
+    std::set<std::string> reachability_set() const {
+        std::set<std::string> result;
+        for (const auto& [label, warnings] : reachability) {
+            for (const auto& msg : warnings) {
+                result.insert(to_string(label) + ": " + msg);
+            }
+        }
+        return result;
+    }
+
+    std::set<std::string> warning_set() const {
+        std::set<std::string> result;
+        for (const auto& [label, warnings] : warnings) {
+            for (const auto& msg : warnings) {
+                result.insert(to_string(label) + ": " + msg);
+            }
+        }
+        return result;
+    }
+
+    bool verified() const { return warnings.empty(); }
 };
 
 class Invariants final {
@@ -32,7 +58,6 @@ class Invariants final {
     Invariants(const Invariants& invariants) = default;
 
     bool is_valid_after(const label_t& label, const string_invariant& state) const;
-    void print_invariants(std::ostream& os, const cfg_t& cfg) const;
 
     string_invariant invariant_at(const label_t& label) const;
 
@@ -41,6 +66,8 @@ class Invariants final {
     int max_loop_count() const;
     bool verified(const cfg_t& cfg) const;
     Report check_assertions(const cfg_t& cfg) const;
+
+    friend void print_invariants(std::ostream& os, const cfg_t& cfg, bool simplify, const Invariants& invariants);
 };
 
 Invariants analyze(const cfg_t& cfg);

@@ -8,10 +8,12 @@
 
 #include "asm_syntax.hpp"
 #include "crab/cfg.hpp"
+#include "crab/fwd_analyzer.hpp"
 #include "crab/interval.hpp"
 #include "crab/type_encoding.hpp"
 #include "crab/variable.hpp"
 #include "crab_utils/num_big.hpp"
+#include "crab_verifier.hpp"
 #include "helpers.hpp"
 #include "platform.hpp"
 #include "spec_type_descriptors.hpp"
@@ -20,6 +22,23 @@ using crab::TypeGroup;
 using std::optional;
 using std::string;
 using std::vector;
+
+struct LineInfoPrinter {
+    std::ostream& os;
+    std::string previous_source_line;
+
+    void print_line_info(const label_t& label) {
+        if (thread_local_options.verbosity_opts.print_line_info) {
+            const auto& line_info_map = thread_local_program_info.get().line_info;
+            const auto& line_info = line_info_map.find(label.from);
+            // Print line info only once.
+            if (line_info != line_info_map.end() && line_info->second.source_line != previous_source_line) {
+                os << "\n" << line_info->second << "\n";
+                previous_source_line = line_info->second.source_line;
+            }
+        }
+    }
+};
 
 namespace crab {
 
@@ -134,22 +153,60 @@ void print_from(std::ostream& o, const value_t& value) {
     o << "\n";
 }
 
-std::ostream& operator<<(std::ostream& o, const cfg_t& cfg) {
-    for (const label_t& label : cfg.sorted_labels()) {
-        const auto& value = cfg.get_node(label);
-        print_label(o, value);
-        print_assertions(o, value);
-        print_instruction(o, value);
-        o << "edges to:";
-        for (const label_t& next_label : cfg.next_nodes(label)) {
-            o << " " << next_label;
+static void print_cfg(std::ostream& os, const cfg_t& cfg, const bool simplify, const invariant_table_t* invariants) {
+    LineInfoPrinter printer{os};
+    for (const auto& bb : basic_block_t::collect_basic_blocks(cfg, simplify)) {
+        if (invariants) {
+            os << "\nPre-invariant : " << invariants->at(bb.first_label()).pre << "\n";
         }
-        o << "\n";
+        const value_t& first_node = cfg.get_node(bb.first_label());
+        print_from(os, first_node);
+        print_label(os, first_node);
+        for (const label_t& label : bb) {
+            printer.print_line_info(label);
+            const value_t& node = cfg.get_node(label);
+            print_assertions(os, node);
+            print_instruction(os, node);
+        }
+        print_goto(os, cfg.get_node(bb.last_label()));
+        if (invariants) {
+            os << "\nPost-invariant: " << invariants->at(bb.last_label()).post << "\n";
+        }
     }
-    return o;
+    os << "\n";
 }
+void print_cfg(std::ostream& os, const cfg_t& cfg, const bool simplify) { print_cfg(os, cfg, simplify, nullptr); }
 
 } // namespace crab
+
+void print_reachability(std::ostream& os, const Report& report) {
+    for (const auto& [label, notes] : report.reachability) {
+        for (const auto& msg : notes) {
+            os << label << ": " << msg << "\n";
+        }
+    }
+    os << "\n";
+}
+
+void print_warnings(std::ostream& os, const Report& report) {
+    LineInfoPrinter printer{os};
+    for (const auto& [label, warnings] : report.warnings) {
+        for (const auto& msg : warnings) {
+            printer.print_line_info(label);
+            os << label << ": " << msg << "\n";
+        }
+    }
+    os << "\n";
+}
+
+void print_all_messages(std::ostream& os, const Report& report) {
+    print_reachability(os, report);
+    print_warnings(os, report);
+}
+
+void print_invariants(std::ostream& os, const cfg_t& cfg, const bool simplify, const Invariants& invariants) {
+    print_cfg(os, cfg, simplify, &invariants.invariants);
+}
 
 namespace asm_syntax {
 std::ostream& operator<<(std::ostream& os, const ArgSingle::Kind kind) {

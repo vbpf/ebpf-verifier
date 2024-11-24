@@ -385,43 +385,7 @@ class basic_block_t final {
   public:
     std::strong_ordering operator<=>(const basic_block_t& other) const { return first_label() <=> other.first_label(); }
 
-    static std::set<basic_block_t> collect_basic_blocks(const cfg_t& cfg) {
-        std::set<basic_block_t> res;
-
-        std::set worklist(cfg.label_begin(), cfg.label_end());
-        std::set<label_t> seen;
-        while (!worklist.empty()) {
-            const label_t label = *worklist.begin();
-            worklist.erase(label);
-            if (seen.contains(label)) {
-                continue;
-            }
-            seen.insert(label);
-
-            const value_t* current_value = &cfg.get_node(label);
-            if (current_value->in_degree() == 1 && cfg.get_parent(label).out_degree() == 1) {
-                continue;
-            }
-            basic_block_t bb{label};
-            while (current_value->out_degree() == 1) {
-                const value_t& next_value = cfg.get_child(bb.last_label());
-                const label_t& next_label = next_value.label();
-
-                if (next_label == bb.first_label() || next_label == cfg.exit_label() || next_value.in_degree() != 1) {
-                    break;
-                }
-
-                bb.m_ts.push_back(next_label);
-
-                worklist.erase(next_label);
-                seen.insert(next_label);
-
-                current_value = &next_value;
-            }
-            res.emplace(std::move(bb));
-        }
-        return res;
-    }
+    static std::set<basic_block_t> collect_basic_blocks(const cfg_t& cfg, bool simplify);
 
     explicit basic_block_t(const label_t& first_label) : m_ts{first_label} {}
     basic_block_t(basic_block_t&&) noexcept = default;
@@ -455,7 +419,7 @@ class basic_block_t final {
 void print_dot(const cfg_t& cfg, std::ostream& out);
 void print_dot(const cfg_t& cfg, const std::string& outfile);
 
-std::ostream& operator<<(std::ostream& o, const cfg_t& cfg);
+void print_cfg(std::ostream& os, const cfg_t& cfg, bool simplify);
 
 } // end namespace crab
 

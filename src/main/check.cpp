@@ -238,32 +238,30 @@ int main(int argc, char** argv) {
     if (domain == "zoneCrab" || domain == "cfg") {
         // Convert the instruction sequence to a control-flow graph.
         try {
+            const auto verbosity = ebpf_verifier_options.verbosity_opts;
             const cfg_t cfg = prepare_cfg(prog, raw_prog.info, ebpf_verifier_options.cfg_opts);
             if (domain == "cfg") {
-                std::cout << cfg;
-                std::cout << "\n";
+                print_cfg(std::cout, cfg, verbosity.simplify);
                 return 0;
             }
             const auto begin = std::chrono::steady_clock::now();
             auto invariants = analyze(cfg);
             const auto end = std::chrono::steady_clock::now();
             const auto seconds = std::chrono::duration<double>(end - begin).count();
-
-            if (ebpf_verifier_options.verbosity_opts.print_invariants) {
-                invariants.print_invariants(std::cout, cfg);
+            if (verbosity.print_invariants) {
+                print_invariants(std::cout, cfg, verbosity.simplify, invariants);
             }
 
             bool pass;
-            if (ebpf_verifier_options.verbosity_opts.print_failures) {
+            if (verbosity.print_failures) {
                 auto report = invariants.check_assertions(cfg);
-                report.print_warnings(std::cout);
+                print_warnings(std::cout, report);
                 pass = report.verified();
             } else {
                 pass = invariants.verified(cfg);
             }
             if (pass && ebpf_verifier_options.cfg_opts.check_for_termination &&
-                (ebpf_verifier_options.verbosity_opts.print_failures ||
-                 ebpf_verifier_options.verbosity_opts.print_invariants)) {
+                (verbosity.print_failures || verbosity.print_invariants)) {
                 std::cout << "Program terminates within " << invariants.max_loop_count() << " loop iterations\n";
             }
             std::cout << pass << "," << seconds << "," << resident_set_size_kb() << "\n";

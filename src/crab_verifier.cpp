@@ -26,59 +26,10 @@ thread_local crab::lazy_allocator<program_info> thread_local_program_info;
 thread_local ebpf_verifier_options_t thread_local_options;
 void ebpf_verifier_clear_before_analysis();
 
-struct LineInfoPrinter {
-    std::ostream& os;
-    std::string previous_source_line;
-
-    void print_line_info(const label_t& label) {
-        if (thread_local_options.verbosity_opts.print_line_info) {
-            const auto& line_info_map = thread_local_program_info.get().line_info;
-            const auto& line_info = line_info_map.find(label.from);
-            // Print line info only once.
-            if (line_info != line_info_map.end() && line_info->second.source_line != previous_source_line) {
-                os << "\n" << line_info->second << "\n";
-                previous_source_line = line_info->second.source_line;
-            }
-        }
-    }
-};
-
 bool Invariants::is_valid_after(const label_t& label, const string_invariant& state) const {
     const ebpf_domain_t abstract_state =
         ebpf_domain_t::from_constraints(state.value(), thread_local_options.setup_constraints);
     return abstract_state <= invariants.at(label).post;
-}
-
-void Invariants::print_invariants(std::ostream& os, const cfg_t& cfg) const {
-    if (thread_local_options.verbosity_opts.simplify) {
-        for (const auto& bb : basic_block_t::collect_basic_blocks(cfg)) {
-            os << "\nPre-invariant : " << invariants.at(bb.first_label()).pre << "\n";
-            print_from(os, cfg.get_node(bb.first_label()));
-            print_label(os, cfg.get_node(bb.first_label()));
-            for (const auto& label : bb) {
-                const auto& value = cfg.get_node(label);
-                print_assertions(os, value);
-                print_instruction(os, value);
-            }
-            print_goto(os, cfg.get_node(bb.last_label()));
-            os << "\nPost-invariant: " << invariants.at(bb.last_label()).post << "\n";
-        }
-    } else {
-        LineInfoPrinter printer{os};
-        for (const label_t& label : cfg.sorted_labels()) {
-            printer.print_line_info(label);
-            const auto& inv_pair = invariants.at(label);
-            os << "\nPre-invariant : " << inv_pair.pre << "\n";
-            const auto& value = cfg.get_node(label);
-            print_from(os, value);
-            print_label(os, value);
-            print_assertions(os, value);
-            print_instruction(os, value);
-            print_goto(os, value);
-            os << "\nPost-invariant: " << inv_pair.post << "\n";
-        }
-    }
-    os << "\n";
 }
 
 string_invariant Invariants::invariant_at(const label_t& label) const { return invariants.at(label).post.to_set(); }
@@ -112,61 +63,6 @@ Invariants analyze(const cfg_t& cfg, const string_invariant& entry_invariant) {
     return analyze(cfg,
                    ebpf_domain_t::from_constraints(entry_invariant.value(), thread_local_options.setup_constraints));
 }
-
-void Report::print_reachability(std::ostream& os) const {
-    for (const auto& [label, notes] : reachability) {
-        for (const auto& msg : notes) {
-            os << label << ": " << msg << "\n";
-        }
-    }
-    os << "\n";
-}
-
-void Report::print_warnings(std::ostream& os) const {
-    LineInfoPrinter printer{os};
-    for (const auto& [label, warnings] : warnings) {
-        for (const auto& msg : warnings) {
-            printer.print_line_info(label);
-            os << label << ": " << msg << "\n";
-        }
-    }
-    os << "\n";
-}
-
-void Report::print_all_messages(std::ostream& os) const {
-    print_reachability(os);
-    print_warnings(os);
-}
-
-std::set<std::string> Report::all_messages() const {
-    std::set<std::string> result = warning_set();
-    for (const auto& note : reachability_set()) {
-        result.insert(note);
-    }
-    return result;
-}
-
-std::set<std::string> Report::reachability_set() const {
-    std::set<std::string> result;
-    for (const auto& [label, warnings] : reachability) {
-        for (const auto& msg : warnings) {
-            result.insert(to_string(label) + ": " + msg);
-        }
-    }
-    return result;
-}
-
-std::set<std::string> Report::warning_set() const {
-    std::set<std::string> result;
-    for (const auto& [label, warnings] : warnings) {
-        for (const auto& msg : warnings) {
-            result.insert(to_string(label) + ": " + msg);
-        }
-    }
-    return result;
-}
-
-bool Report::verified() const { return warnings.empty(); }
 
 bool Invariants::verified(const cfg_t& cfg) const {
     for (const auto& [label, inv_pair] : invariants) {

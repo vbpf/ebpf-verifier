@@ -250,6 +250,57 @@ cfg_t prepare_cfg(const InstructionSeq& prog, const program_info& info, const pr
     return cfg;
 }
 
+std::set<basic_block_t> basic_block_t::collect_basic_blocks(const cfg_t& cfg, const bool simplify) {
+    if (!simplify) {
+        std::set<basic_block_t> res;
+        for (const label_t& label : cfg.labels()) {
+            if (label != cfg.entry_label() && label != cfg.exit_label()) {
+                res.insert(basic_block_t{label});
+            }
+        }
+        return res;
+    }
+
+    std::set<basic_block_t> res;
+    std::set worklist(cfg.label_begin(), cfg.label_end());
+    std::set<label_t> seen;
+    while (!worklist.empty()) {
+        const label_t label = *worklist.begin();
+        worklist.erase(label);
+        if (seen.contains(label)) {
+            continue;
+        }
+        seen.insert(label);
+
+        const value_t* current_value = &cfg.get_node(label);
+        if (current_value->in_degree() == 1 && cfg.get_parent(label).out_degree() == 1) {
+            continue;
+        }
+        basic_block_t bb{label};
+        while (current_value->out_degree() == 1) {
+            const value_t& next_value = cfg.get_child(bb.last_label());
+            const label_t& next_label = next_value.label();
+
+            if (seen.contains(next_label) || next_label == cfg.exit_label() || next_value.in_degree() != 1) {
+                break;
+            }
+
+            if (bb.first_label() == cfg.entry_label()) {
+                // Entry instruction is Undefined. We want to start with 0
+                bb.m_ts.clear();
+            }
+            bb.m_ts.push_back(next_label);
+
+            worklist.erase(next_label);
+            seen.insert(next_label);
+
+            current_value = &next_value;
+        }
+        res.emplace(std::move(bb));
+    }
+    return res;
+}
+
 template <typename T>
 static vector<label_t> unique(const std::pair<T, T>& be) {
     vector<label_t> res;
