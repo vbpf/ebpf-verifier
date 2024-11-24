@@ -245,10 +245,10 @@ std::optional<Failure> run_yaml_test_case(TestCase test_case, bool debug) {
     program_info info{&g_platform_test, {}, program_type};
     thread_local_options = test_case.options;
     try {
-        const cfg_t cfg = prepare_cfg(test_case.instruction_seq, info, test_case.options.cfg_opts);
-        const Invariants invariants = analyze(cfg, test_case.assumed_pre_invariant);
+        const auto [cfg, instructions] = prepare_cfg(test_case.instruction_seq, info, test_case.options.cfg_opts);
+        const Invariants invariants = analyze(cfg, instructions, test_case.assumed_pre_invariant);
         const string_invariant actual_last_invariant = invariants.invariant_at(label_t::exit);
-        const std::set<string> actual_messages = invariants.check_assertions(cfg).all_messages();
+        const std::set<string> actual_messages = invariants.check_assertions(instructions).all_messages();
 
         if (actual_last_invariant == test_case.expected_post_invariant &&
             actual_messages == test_case.expected_messages) {
@@ -365,9 +365,9 @@ ConformanceTestResult run_conformance_test_case(const std::vector<std::byte>& me
     thread_local_options = options;
 
     try {
-        const cfg_t cfg = prepare_cfg(prog, info, options.cfg_opts);
-        const Invariants invariants = analyze(cfg, pre_invariant);
-        return ConformanceTestResult{.success = invariants.verified(cfg), .r0_value = invariants.exit_value()};
+        const auto [cfg, instructions] = prepare_cfg(prog, info, options.cfg_opts);
+        const Invariants invariants = analyze(cfg, instructions, pre_invariant);
+        return ConformanceTestResult{.success = invariants.verified(instructions), .r0_value = invariants.exit_value()};
     } catch (const std::exception&) {
         // Catch exceptions thrown in ebpf_domain.cpp.
         return {};

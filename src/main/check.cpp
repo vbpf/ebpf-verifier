@@ -239,26 +239,26 @@ int main(int argc, char** argv) {
         // Convert the instruction sequence to a control-flow graph.
         try {
             const auto verbosity = ebpf_verifier_options.verbosity_opts;
-            const cfg_t cfg = prepare_cfg(prog, raw_prog.info, ebpf_verifier_options.cfg_opts);
+            const auto [cfg, instructions] = prepare_cfg(prog, raw_prog.info, ebpf_verifier_options.cfg_opts);
             if (domain == "cfg") {
-                print_cfg(std::cout, cfg, verbosity.simplify);
+                print_cfg(std::cout, cfg, instructions, verbosity.simplify);
                 return 0;
             }
             const auto begin = std::chrono::steady_clock::now();
-            auto invariants = analyze(cfg);
+            auto invariants = analyze(cfg, instructions);
             const auto end = std::chrono::steady_clock::now();
             const auto seconds = std::chrono::duration<double>(end - begin).count();
             if (verbosity.print_invariants) {
-                print_invariants(std::cout, cfg, verbosity.simplify, invariants);
+                print_invariants(std::cout, cfg, instructions, verbosity.simplify, invariants);
             }
 
             bool pass;
             if (verbosity.print_failures) {
-                auto report = invariants.check_assertions(cfg);
+                auto report = invariants.check_assertions(instructions);
                 print_warnings(std::cout, report);
                 pass = report.verified();
             } else {
-                pass = invariants.verified(cfg);
+                pass = invariants.verified(instructions);
             }
             if (pass && ebpf_verifier_options.cfg_opts.check_for_termination &&
                 (verbosity.print_failures || verbosity.print_invariants)) {
@@ -277,12 +277,12 @@ int main(int argc, char** argv) {
         return !res;
     } else if (domain == "stats") {
         // Convert the instruction sequence to a control-flow graph.
-        const cfg_t cfg = prepare_cfg(prog, raw_prog.info, ebpf_verifier_options.cfg_opts);
+        const auto [cfg, instructions] = prepare_cfg(prog, raw_prog.info, ebpf_verifier_options.cfg_opts);
 
         // Just print eBPF program stats.
-        auto stats = collect_stats(cfg);
+        auto stats = collect_stats(cfg, instructions);
         if (!dotfile.empty()) {
-            print_dot(cfg, dotfile);
+            print_dot(cfg, instructions, dotfile);
         }
         std::cout << std::hex << hash(raw_prog) << std::dec << "," << prog.size();
         for (const string& h : stats_headers()) {

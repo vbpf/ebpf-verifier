@@ -389,8 +389,8 @@ class basic_block_t final {
     }
 };
 
-void print_dot(const cfg_t& cfg, std::ostream& out);
-void print_dot(const cfg_t& cfg, const std::string& outfile);
+void print_dot(const cfg_t& cfg, const std::map<label_t, GuardedInstruction>& instructions, std::ostream& out);
+void print_dot(const cfg_t& cfg, const std::map<label_t, GuardedInstruction>& instructions, const std::string& outfile);
 
 void print_cfg(std::ostream& os, const cfg_t& cfg, const std::map<label_t, GuardedInstruction>& instructions,
                bool simplify);
@@ -401,7 +401,7 @@ using crab::cfg_t;
 
 std::vector<std::string> stats_headers();
 
-std::map<std::string, int> collect_stats(const cfg_t&);
+std::map<std::string, int> collect_stats(const cfg_t&, const std::map<label_t, GuardedInstruction>&);
 
 struct prepare_cfg_options {
     /// When true, verifies that the program terminates.
@@ -413,5 +413,5 @@ struct prepare_cfg_options {
 std::tuple<cfg_t, std::map<label_t, GuardedInstruction>>
 prepare_cfg(const InstructionSeq& prog, const program_info& info, const prepare_cfg_options& options);
 
-void explicate_assertions(cfg_t& cfg, const program_info& info);
+void explicate_assertions(std::map<label_t, GuardedInstruction>& instructions, const program_info& info);
 std::vector<Assertion> get_assertions(Instruction ins, const program_info& info, const std::optional<label_t>& label);

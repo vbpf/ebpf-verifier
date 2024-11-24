@@ -68,20 +68,19 @@ void wto_thresholds_t::operator()(const label_t& vertex) {
 
 void wto_thresholds_t::operator()(const std::shared_ptr<wto_cycle_t>& cycle) {
     thresholds_t thresholds(m_max_size);
-    const auto& bb = m_cfg.get_node(cycle->head());
-    get_thresholds(bb, thresholds);
+    const label_t head = cycle->head();
+    get_thresholds(head, thresholds);
 
     // XXX: if we want to consider constants from loop
     // initializations
-    for (const auto& pre : boost::make_iterator_range(bb.prev_labels())) {
-        if (pre != cycle->head()) {
-            auto& pred_bb = m_cfg.get_node(pre);
-            get_thresholds(pred_bb, thresholds);
+    for (const auto& pre : boost::make_iterator_range(m_cfg.get_parents(head))) {
+        if (pre != head) {
+            get_thresholds(pre, thresholds);
         }
     }
 
-    m_head_to_thresholds.insert(std::make_pair(cycle->head(), thresholds));
-    m_stack.push_back(cycle->head());
+    m_head_to_thresholds.insert(std::make_pair(head, thresholds));
+    m_stack.push_back(head);
     for (const auto& component : *cycle) {
         std::visit(*this, component);
     }

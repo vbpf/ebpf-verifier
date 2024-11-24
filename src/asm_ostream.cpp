@@ -97,12 +97,13 @@ void print_dot(const cfg_t& cfg, const std::map<label_t, GuardedInstruction>& in
     out << "}\n";
 }
 
-void print_dot(const cfg_t& cfg, const std::string& outfile) {
+void print_dot(const cfg_t& cfg, const std::map<label_t, GuardedInstruction>& instructions,
+               const std::string& outfile) {
     std::ofstream out{outfile};
     if (out.fail()) {
         throw std::runtime_error(std::string("Could not open file ") + outfile);
     }
-    print_dot(cfg, out);
+    print_dot(cfg, instructions, out);
 }
 
 void print_label(std::ostream& o, const label_t& label) { o << label << ":\n"; }

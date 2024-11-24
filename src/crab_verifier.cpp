@@ -49,8 +49,8 @@ int Invariants::max_loop_count() const {
     return std::numeric_limits<int>::max();
 }
 
-Invariants analyze(const cfg_t& cfg, const std::map<label_t, GuardedInstruction>& instructions,
-                   ebpf_domain_t&& entry_invariant) {
+static Invariants analyze(const cfg_t& cfg, const std::map<label_t, GuardedInstruction>& instructions,
+                          ebpf_domain_t&& entry_invariant) {
     return Invariants{run_forward_analyzer(cfg, instructions, std::move(entry_invariant))};
 }
 
@@ -80,13 +80,13 @@ bool Invariants::verified(const std::map<label_t, GuardedInstruction>& instructi
     return true;
 }
 
-Report Invariants::check_assertions(const cfg_t& cfg) const {
+Report Invariants::check_assertions(const std::map<label_t, GuardedInstruction>& instructions) const {
     Report report;
     for (const auto& [label, inv_pair] : invariants) {
         if (inv_pair.pre.is_bottom()) {
             continue;
         }
-        const auto ins = cfg.at(label);
+        const auto ins = instructions.at(label);
         for (const Assertion& assertion : ins.preconditions) {
             const auto warnings = ebpf_domain_check(inv_pair.pre, assertion);
             for (const auto& msg : warnings) {

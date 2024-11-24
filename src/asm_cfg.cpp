@@ -161,7 +161,7 @@ static std::tuple<cfg_t, std::map<label_t, GuardedInstruction>> instruction_seq_
             continue;
         }
         cfg.insert(label);
-        instructions.insert_or_assign(label, inst);
+        instructions.insert_or_assign(label, GuardedInstruction{.cmd = inst});
     }
 
     if (insts.size() == 0) {
@@ -250,7 +250,7 @@ prepare_cfg(const InstructionSeq& prog, const program_info& info, const prepare_
     }
 
     // Annotate the CFG by adding in assertions before every memory instruction.
-    explicate_assertions(cfg, info);
+    explicate_assertions(instructions, info);
 
     return {std::move(cfg), instructions};
 }

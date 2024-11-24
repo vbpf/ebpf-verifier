@@ -306,10 +306,8 @@ vector<Assertion> get_assertions(Instruction ins, const program_info& info, cons
 /// compare numbers and pointers, or pointers to potentially distinct memory
 /// regions. The verifier will use these assertions to treat the program as
 /// unsafe unless it can prove that the assertions can never fail.
-void explicate_assertions(cfg_t& cfg, const program_info& info) {
-    for (auto& [label, value] : cfg) {
-        (void)label; // unused
-        auto& ins = value.instruction();
-        ins.preconditions = get_assertions(ins.cmd, info, value.label());
+void explicate_assertions(std::map<label_t, GuardedInstruction>& instructions, const program_info& info) {
+    for (auto& [label, ins] : instructions) {
+        ins.preconditions = get_assertions(ins.cmd, info, label);
     }
 }
