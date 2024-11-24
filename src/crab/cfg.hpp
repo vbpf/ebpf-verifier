@@ -419,7 +419,7 @@ class basic_block_t final {
 void print_dot(const cfg_t& cfg, std::ostream& out);
 void print_dot(const cfg_t& cfg, const std::string& outfile);
 
-std::ostream& operator<<(std::ostream& o, const cfg_t& cfg);
+void print_cfg(std::ostream& os, const cfg_t& cfg, bool simplify);
 
 } // end namespace crab
 

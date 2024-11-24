@@ -281,7 +281,7 @@ std::set<basic_block_t> basic_block_t::collect_basic_blocks(const cfg_t& cfg, co
             const value_t& next_value = cfg.get_child(bb.last_label());
             const label_t& next_label = next_value.label();
 
-            if (next_label == bb.first_label() || next_label == cfg.exit_label() || next_value.in_degree() != 1) {
+            if (seen.contains(next_label) || next_label == cfg.exit_label() || next_value.in_degree() != 1) {
                 break;
             }
 
