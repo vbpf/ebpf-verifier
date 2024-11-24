@@ -33,11 +33,11 @@ class cfg_t;
 class cfg_t final {
 
     // Node type for the CFG
-    class value_t final {
+    class node_t final {
         friend class cfg_t;
 
       public:
-        value_t(const value_t&) = delete;
+        node_t(const node_t&) = delete;
 
         using label_vec_t = std::set<label_t>;
         using neighbour_const_iterator = label_vec_t::const_iterator;
@@ -48,9 +48,9 @@ class cfg_t final {
         label_vec_t m_prev, m_next;
 
       public:
-        explicit value_t(label_t _label) : m_label{std::move(_label)} {}
+        explicit node_t(label_t _label) : m_label{std::move(_label)} {}
 
-        ~value_t() = default;
+        ~node_t() = default;
 
         [[nodiscard]]
         label_t label() const {
@@ -82,7 +82,7 @@ class cfg_t final {
         }
 
         // Add a cfg_t edge from *this to b
-        void operator>>(value_t& b) {
+        void operator>>(node_t& b) {
             assert(b.label() != label_t::entry);
             assert(this->label() != label_t::exit);
             m_next.insert(b.m_label);
@@ -90,7 +90,7 @@ class cfg_t final {
         }
 
         // Remove a cfg_t edge from *this to b
-        void operator-=(value_t& b) {
+        void operator-=(node_t& b) {
             m_next.erase(b.m_label);
             b.m_prev.erase(m_label);
         }
@@ -107,14 +107,14 @@ class cfg_t final {
     };
 
   public:
-    using neighbour_const_iterator = value_t::neighbour_const_iterator;
-    using neighbour_const_reverse_iterator = value_t::neighbour_const_reverse_iterator;
+    using neighbour_const_iterator = node_t::neighbour_const_iterator;
+    using neighbour_const_reverse_iterator = node_t::neighbour_const_reverse_iterator;
 
     using neighbour_const_range = boost::iterator_range<neighbour_const_iterator>;
     using neighbour_const_reverse_range = boost::iterator_range<neighbour_const_reverse_iterator>;
 
   private:
-    using map_t = std::map<label_t, value_t>;
+    using map_t = std::map<label_t, node_t>;
     using binding_t = map_t::value_type;
 
     struct get_label {
@@ -169,7 +169,7 @@ class cfg_t final {
         return boost::make_iterator_range(get_node(_label).prev_labels());
     }
 
-    value_t& get_node(const label_t& _label) {
+    node_t& get_node(const label_t& _label) {
         const auto it = m_map.find(_label);
         if (it == m_map.end()) {
             CRAB_ERROR("Label ", to_string(_label), " not found in the CFG: ");
@@ -177,7 +177,7 @@ class cfg_t final {
         return it->second;
     }
 
-    const value_t& get_node(const label_t& _label) const {
+    const node_t& get_node(const label_t& _label) const {
         const auto it = m_map.find(_label);
         if (it == m_map.end()) {
             CRAB_ERROR("Label ", to_string(_label), " not found in the CFG: ");
@@ -185,9 +185,9 @@ class cfg_t final {
         return it->second;
     }
 
-    value_t& insert_after(const label_t& prev_label, const label_t& new_label) {
-        value_t& res = insert(new_label);
-        value_t& prev = get_node(prev_label);
+    node_t& insert_after(const label_t& prev_label, const label_t& new_label) {
+        node_t& res = insert(new_label);
+        node_t& prev = get_node(prev_label);
         std::vector<label_t> nexts;
         for (const label_t& next : prev.next_labels_set()) {
             nexts.push_back(next);
@@ -206,7 +206,7 @@ class cfg_t final {
         return res;
     }
 
-    value_t& insert(const label_t& _label) {
+    node_t& insert(const label_t& _label) {
         const auto it = m_map.find(_label);
         if (it != m_map.end()) {
             return it->second;
@@ -225,7 +225,7 @@ class cfg_t final {
             CRAB_ERROR("Cannot remove exit block");
         }
 
-        std::vector<std::pair<value_t*, value_t*>> dead_edges;
+        std::vector<std::pair<node_t*, node_t*>> dead_edges;
         auto& bb = get_node(_label);
 
         for (const auto& id : boost::make_iterator_range(bb.prev_labels())) {
@@ -312,13 +312,13 @@ class cfg_t final {
         return *get_node(b).prev_labels().first;
     }
 
-    value_t::label_vec_t get_children(const label_t& b) { return get_node(b).next_labels_set(); }
+    node_t::label_vec_t get_children(const label_t& b) { return get_node(b).next_labels_set(); }
 
-    value_t::label_vec_t get_parents(const label_t& b) { return get_node(b).prev_labels_set(); }
+    node_t::label_vec_t get_parents(const label_t& b) { return get_node(b).prev_labels_set(); }
 
-    value_t::label_vec_t get_children(const label_t& b) const { return get_node(b).next_labels_set(); }
+    node_t::label_vec_t get_children(const label_t& b) const { return get_node(b).next_labels_set(); }
 
-    value_t::label_vec_t get_parents(const label_t& b) const { return get_node(b).prev_labels_set(); }
+    node_t::label_vec_t get_parents(const label_t& b) const { return get_node(b).prev_labels_set(); }
 
     void add_child(const label_t& a, const label_t& b) { get_node(a) >> get_node(b); }
     void remove_child(const label_t& a, const label_t& b) { get_node(a) -= get_node(b); }
@@ -328,11 +328,11 @@ class cfg_t final {
     int in_degree(const label_t& b) const { return get_node(b).in_degree(); }
     int out_degree(const label_t& b) const { return get_node(b).out_degree(); }
 
-    friend void print_label(std::ostream& o, const value_t& value);
-    friend void print_assertions(std::ostream& o, const value_t& value);
-    friend void print_instruction(std::ostream& o, const value_t& value);
-    friend void print_goto(std::ostream& o, const value_t& value);
-    friend void print_from(std::ostream& o, const value_t& value);
+    friend void print_label(std::ostream& o, const node_t& value);
+    friend void print_assertions(std::ostream& o, const node_t& value);
+    friend void print_instruction(std::ostream& o, const node_t& value);
+    friend void print_goto(std::ostream& o, const node_t& value);
+    friend void print_from(std::ostream& o, const node_t& value);
 
   private:
     // Helpers

@@ -304,13 +304,6 @@ std::set<basic_block_t> basic_block_t::collect_basic_blocks(const cfg_t& cfg, co
     return res;
 }
 
-template <typename T>
-static vector<label_t> unique(const std::pair<T, T>& be) {
-    vector<label_t> res;
-    std::unique_copy(be.first, be.second, std::back_inserter(res));
-    return res;
-}
-
 /// Get the type of given Instruction.
 /// Most of these type names are also statistics header labels.
 static std::string instype(Instruction ins) {
