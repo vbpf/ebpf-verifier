@@ -91,7 +91,7 @@ static void add_cfg_nodes(cfg_t& cfg, std::map<label_t, GuardedInstruction>& ins
 
         // Clone the macro block into a new block with the new stack frame prefix.
         const label_t label{macro_label.from, macro_label.to, stack_frame_prefix};
-        auto inst = cfg.at(macro_label);
+        auto inst = instructions.at(macro_label);
         if (const auto pexit = std::get_if<Exit>(&inst.cmd)) {
             pexit->stack_frame_prefix = label.stack_frame_prefix;
         } else if (const auto pcall = std::get_if<Call>(&inst.cmd)) {
@@ -140,7 +140,7 @@ static void add_cfg_nodes(cfg_t& cfg, std::map<label_t, GuardedInstruction>& ins
     const long stack_frame_depth = std::ranges::count(caller_label_str, STACK_FRAME_DELIMITER) + 2;
     for (const auto& macro_label : seen_labels) {
         const label_t label(macro_label.from, macro_label.to, caller_label_str);
-        if (const auto pins = std::get_if<CallLocal>(&cfg.at(label).cmd)) {
+        if (const auto pins = std::get_if<CallLocal>(&instructions.at(label).cmd)) {
             if (stack_frame_depth >= MAX_CALL_STACK_FRAMES) {
                 throw crab::InvalidControlFlow{"too many call stack frames"};
             }
@@ -160,7 +160,8 @@ static std::tuple<cfg_t, std::map<label_t, GuardedInstruction>> instruction_seq_
         if (std::holds_alternative<Undefined>(inst)) {
             continue;
         }
-        cfg.insert(label, inst);
+        cfg.insert(label);
+        instructions.insert_or_assign(label, inst);
     }
 
     if (insts.size() == 0) {
@@ -200,7 +201,7 @@ static std::tuple<cfg_t, std::map<label_t, GuardedInstruction>> instruction_seq_
                 };
                 for (const auto& [next_label, cond1] : jumps) {
                     label_t jump_label = label_t::make_jump(label, next_label);
-                    cfg.insert(jump_label, Assume{.cond = cond1, .is_explicit = false});
+                    instructions.emplace(jump_label, Assume{.cond = cond1, .is_explicit = false});
                     cfg.add_child(label, jump_label);
                     cfg.add_child(jump_label, next_label);
                 }
@@ -242,7 +243,9 @@ prepare_cfg(const InstructionSeq& prog, const program_info& info, const prepare_
     if (options.check_for_termination) {
         const wto_t wto{cfg};
         wto.for_each_loop_head([&](const label_t& label) -> void {
-            cfg.insert_after(label, label_t::make_increment_counter(label), IncrementLoopCounter{label});
+            const label_t inclabel = label_t::make_increment_counter(label);
+            cfg.insert_after(label, inclabel);
+            instructions.emplace(inclabel, IncrementLoopCounter{label});
         });
     }
 

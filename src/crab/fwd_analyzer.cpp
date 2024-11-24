@@ -49,6 +49,7 @@ class member_component_visitor final {
 
 class interleaved_fwd_fixpoint_iterator_t final {
     const cfg_t& _cfg;
+    const std::map<label_t, GuardedInstruction>& _instructions;
     wto_t _wto;
     invariant_table_t _inv;
 
@@ -70,7 +71,7 @@ class interleaved_fwd_fixpoint_iterator_t final {
     ebpf_domain_t get_post(const label_t& node) { return _inv.at(node).post; }
 
     void transform_to_post(const label_t& label, ebpf_domain_t pre) {
-        const GuardedInstruction& ins = _cfg.at(label);
+        const GuardedInstruction& ins = _instructions.at(label);
 
         if (thread_local_options.assume_assertions) {
             for (const auto& assertion : ins.preconditions) {
@@ -115,7 +116,9 @@ class interleaved_fwd_fixpoint_iterator_t final {
     }
 
   public:
-    explicit interleaved_fwd_fixpoint_iterator_t(const cfg_t& cfg) : _cfg(cfg), _wto(cfg) {
+    explicit interleaved_fwd_fixpoint_iterator_t(const cfg_t& cfg,
+                                                 const std::map<label_t, GuardedInstruction>& instructions)
+        : _cfg(cfg), _instructions(instructions), _wto(cfg) {
         for (const auto& label : _cfg.labels()) {
             _inv.emplace(label, invariant_map_pair{ebpf_domain_t::bottom(), ebpf_domain_t::bottom()});
         }
@@ -125,12 +128,15 @@ class interleaved_fwd_fixpoint_iterator_t final {
 
     void operator()(const std::shared_ptr<wto_cycle_t>& cycle);
 
-    friend invariant_table_t run_forward_analyzer(const cfg_t& cfg, ebpf_domain_t entry_inv);
+    friend invariant_table_t run_forward_analyzer(const cfg_t& cfg,
+                                                  const std::map<label_t, GuardedInstruction>& instructions,
+                                                  ebpf_domain_t entry_inv);
 };
 
-invariant_table_t run_forward_analyzer(const cfg_t& cfg, ebpf_domain_t entry_inv) {
+invariant_table_t run_forward_analyzer(const cfg_t& cfg, const std::map<label_t, GuardedInstruction>& instructions,
+                                       ebpf_domain_t entry_inv) {
     // Go over the CFG in weak topological order (accounting for loops).
-    interleaved_fwd_fixpoint_iterator_t analyzer(cfg);
+    interleaved_fwd_fixpoint_iterator_t analyzer(cfg, instructions);
     if (thread_local_options.cfg_opts.check_for_termination) {
         // Initialize loop counters for potential loop headers.
         // This enables enforcement of upper bounds on loop iterations

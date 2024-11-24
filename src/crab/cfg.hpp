@@ -45,7 +45,6 @@ class cfg_t final {
 
       private:
         label_t m_label;
-        GuardedInstruction m_instruction{.cmd = Undefined{}};
         label_vec_t m_prev, m_next;
 
       public:
@@ -56,16 +55,6 @@ class cfg_t final {
         [[nodiscard]]
         label_t label() const {
             return m_label;
-        }
-
-        [[nodiscard]]
-        GuardedInstruction& instruction() {
-            return m_instruction;
-        }
-
-        [[nodiscard]]
-        const GuardedInstruction& instruction() const {
-            return m_instruction;
         }
 
         [[nodiscard]]
@@ -160,8 +149,6 @@ class cfg_t final {
         return label_t::exit;
     }
 
-    // --- Begin ikos fixpoint API
-
     [[nodiscard]]
     label_t entry_label() const {
         return label_t::entry;
@@ -198,27 +185,8 @@ class cfg_t final {
         return it->second;
     }
 
-    GuardedInstruction& at(const label_t& _label) {
-        const auto it = m_map.find(_label);
-        if (it == m_map.end()) {
-            CRAB_ERROR("Label ", to_string(_label), " not found in the CFG: ");
-        }
-        return it->second.instruction();
-    }
-
-    [[nodiscard]]
-    const GuardedInstruction& at(const label_t& _label) const {
-        const auto it = m_map.find(_label);
-        if (it == m_map.end()) {
-            CRAB_ERROR("Label ", to_string(_label), " not found in the CFG: ");
-        }
-        return it->second.instruction();
-    }
-
-    // --- End ikos fixpoint API
-
-    value_t& insert_after(const label_t& prev_label, const label_t& new_label, const Instruction& _ins) {
-        value_t& res = insert(new_label, GuardedInstruction{.cmd = _ins});
+    value_t& insert_after(const label_t& prev_label, const label_t& new_label) {
+        value_t& res = insert(new_label);
         value_t& prev = get_node(prev_label);
         std::vector<label_t> nexts;
         for (const label_t& next : prev.next_labels_set()) {
@@ -238,20 +206,14 @@ class cfg_t final {
         return res;
     }
 
-    value_t& insert(const label_t& _label, const Instruction& _ins) {
-        return insert(_label, GuardedInstruction{.cmd = _ins});
-    }
-
-    value_t& insert(const label_t& _label, GuardedInstruction&& _ins) {
+    value_t& insert(const label_t& _label) {
         const auto it = m_map.find(_label);
         if (it != m_map.end()) {
             return it->second;
         }
 
         m_map.emplace(_label, _label);
-        value_t& v = get_node(_label);
-        v.m_instruction = std::move(_ins);
-        return v;
+        return get_node(_label);
     }
 
     void remove(const label_t& _label) {
@@ -350,6 +312,14 @@ class cfg_t final {
         return *get_node(b).prev_labels().first;
     }
 
+    value_t::label_vec_t get_children(const label_t& b) { return get_node(b).next_labels_set(); }
+
+    value_t::label_vec_t get_parents(const label_t& b) { return get_node(b).prev_labels_set(); }
+
+    value_t::label_vec_t get_children(const label_t& b) const { return get_node(b).next_labels_set(); }
+
+    value_t::label_vec_t get_parents(const label_t& b) const { return get_node(b).prev_labels_set(); }
+
     void add_child(const label_t& a, const label_t& b) { get_node(a) >> get_node(b); }
     void remove_child(const label_t& a, const label_t& b) { get_node(a) -= get_node(b); }
     std::set<label_t> children(const label_t& a) const { return get_node(a).next_labels_set(); }
@@ -422,8 +392,8 @@ class basic_block_t final {
 void print_dot(const cfg_t& cfg, std::ostream& out);
 void print_dot(const cfg_t& cfg, const std::string& outfile);
 
-void print_cfg(std::ostream& os, const cfg_t& cfg, bool simplify);
-
+void print_cfg(std::ostream& os, const cfg_t& cfg, const std::map<label_t, GuardedInstruction>& instructions,
+               bool simplify);
 } // end namespace crab
 
 using crab::basic_block_t;

@@ -76,21 +76,20 @@ string to_string(label_t const& label) {
     return str.str();
 }
 
-void print_dot(const cfg_t& cfg, std::ostream& out) {
+void print_dot(const cfg_t& cfg, const std::map<label_t, GuardedInstruction>& instructions, std::ostream& out) {
     out << "digraph program {\n";
     out << "    node [shape = rectangle];\n";
     for (const auto& label : cfg.labels()) {
         out << "    \"" << label << "\"[xlabel=\"" << label << "\",label=\"";
 
-        const auto& value = cfg.get_node(label);
-        const auto& ins = value.instruction();
+        const auto& ins = instructions.at(label);
         for (const auto& pre : ins.preconditions) {
             out << "assert " << pre << "\\l";
         }
         out << ins.cmd << "\\l";
 
         out << "\"];\n";
-        for (const label_t& next : value.next_labels_set()) {
+        for (const label_t& next : cfg.next_nodes(label)) {
             out << "    \"" << label << "\" -> \"" << next << "\";\n";
         }
         out << "\n";
@@ -106,22 +105,21 @@ void print_dot(const cfg_t& cfg, const std::string& outfile) {
     print_dot(cfg, out);
 }
 
-void print_label(std::ostream& o, const value_t& value) { o << value.label() << ":\n"; }
+void print_label(std::ostream& o, const label_t& label) { o << label << ":\n"; }
 
-void print_assertions(std::ostream& o, const value_t& value) {
-    for (const auto& pre : value.instruction().preconditions) {
+void print_assertions(std::ostream& o, const GuardedInstruction& ins) {
+    for (const auto& pre : ins.preconditions) {
         o << "  "
           << "assert " << pre << ";\n";
     }
 }
 
-void print_instruction(std::ostream& o, const value_t& value) { o << "  " << value.instruction().cmd << ";\n"; }
+void print_command(std::ostream& o, const GuardedInstruction& ins) { o << "  " << ins.cmd << ";\n"; }
 
-void print_goto(std::ostream& o, const value_t& value) {
-    auto [it, et] = value.next_labels();
+void print_jump(std::ostream& o, const std::string& direction, const std::set<label_t>& labels) {
+    auto [it, et] = std::pair{labels.begin(), labels.end()};
     if (it != et) {
-        o << "  "
-          << "goto ";
+        o << "  " << direction << " ";
         while (it != et) {
             o << *it;
             ++it;
@@ -135,47 +133,31 @@ void print_goto(std::ostream& o, const value_t& value) {
     o << "\n";
 }
 
-void print_from(std::ostream& o, const value_t& value) {
-    auto [it, et] = value.prev_labels();
-    if (it != et) {
-        o << "  "
-          << "from ";
-        while (it != et) {
-            o << *it;
-            ++it;
-            if (it == et) {
-                o << ";";
-            } else {
-                o << ",";
-            }
-        }
-    }
-    o << "\n";
-}
-
-static void print_cfg(std::ostream& os, const cfg_t& cfg, const bool simplify, const invariant_table_t* invariants) {
+static void print_cfg(std::ostream& os, const cfg_t& cfg, const std::map<label_t, GuardedInstruction>& instructions,
+                      const bool simplify, const invariant_table_t* invariants) {
     LineInfoPrinter printer{os};
     for (const auto& bb : basic_block_t::collect_basic_blocks(cfg, simplify)) {
         if (invariants) {
             os << "\nPre-invariant : " << invariants->at(bb.first_label()).pre << "\n";
         }
-        const value_t& first_node = cfg.get_node(bb.first_label());
-        print_from(os, first_node);
-        print_label(os, first_node);
+        print_jump(os, "from", cfg.get_parents(bb.first_label()));
+        print_label(os, bb.first_label());
         for (const label_t& label : bb) {
             printer.print_line_info(label);
-            const value_t& node = cfg.get_node(label);
-            print_assertions(os, node);
-            print_instruction(os, node);
+            print_assertions(os, instructions.at(label));
+            print_command(os, instructions.at(label));
         }
-        print_goto(os, cfg.get_node(bb.last_label()));
+        print_jump(os, "goto", cfg.get_children(bb.last_label()));
         if (invariants) {
             os << "\nPost-invariant: " << invariants->at(bb.last_label()).post << "\n";
         }
     }
     os << "\n";
 }
-void print_cfg(std::ostream& os, const cfg_t& cfg, const bool simplify) { print_cfg(os, cfg, simplify, nullptr); }
+void print_cfg(std::ostream& os, const cfg_t& cfg, const std::map<label_t, GuardedInstruction>& instructions,
+               const bool simplify) {
+    print_cfg(os, cfg, instructions, simplify, nullptr);
+}
 
 } // namespace crab
 
@@ -204,8 +186,9 @@ void print_all_messages(std::ostream& os, const Report& report) {
     print_warnings(os, report);
 }
 
-void print_invariants(std::ostream& os, const cfg_t& cfg, const bool simplify, const Invariants& invariants) {
-    print_cfg(os, cfg, simplify, &invariants.invariants);
+void print_invariants(std::ostream& os, const cfg_t& cfg, const std::map<label_t, GuardedInstruction>& instructions,
+                      bool simplify, const Invariants& invariants) {
+    print_cfg(os, cfg, instructions, simplify, &invariants.invariants);
 }
 
 namespace asm_syntax {

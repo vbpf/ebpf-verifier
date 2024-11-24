@@ -49,27 +49,29 @@ int Invariants::max_loop_count() const {
     return std::numeric_limits<int>::max();
 }
 
-Invariants analyze(const cfg_t& cfg, ebpf_domain_t&& entry_invariant) {
-    return Invariants{run_forward_analyzer(cfg, std::move(entry_invariant))};
+Invariants analyze(const cfg_t& cfg, const std::map<label_t, GuardedInstruction>& instructions,
+                   ebpf_domain_t&& entry_invariant) {
+    return Invariants{run_forward_analyzer(cfg, instructions, std::move(entry_invariant))};
 }
 
-Invariants analyze(const cfg_t& cfg) {
+Invariants analyze(const cfg_t& cfg, const std::map<label_t, GuardedInstruction>& instructions) {
     ebpf_verifier_clear_before_analysis();
-    return analyze(cfg, ebpf_domain_t::setup_entry(thread_local_options.setup_constraints));
+    return analyze(cfg, instructions, ebpf_domain_t::setup_entry(thread_local_options.setup_constraints));
 }
 
-Invariants analyze(const cfg_t& cfg, const string_invariant& entry_invariant) {
+Invariants analyze(const cfg_t& cfg, const std::map<label_t, GuardedInstruction>& instructions,
+                   const string_invariant& entry_invariant) {
     ebpf_verifier_clear_before_analysis();
-    return analyze(cfg,
+    return analyze(cfg, instructions,
                    ebpf_domain_t::from_constraints(entry_invariant.value(), thread_local_options.setup_constraints));
 }
 
-bool Invariants::verified(const cfg_t& cfg) const {
+bool Invariants::verified(const std::map<label_t, GuardedInstruction>& instructions) const {
     for (const auto& [label, inv_pair] : invariants) {
         if (inv_pair.pre.is_bottom()) {
             continue;
         }
-        for (const Assertion& assertion : cfg.at(label).preconditions) {
+        for (const Assertion& assertion : instructions.at(label).preconditions) {
             if (!ebpf_domain_check(inv_pair.pre, assertion).empty()) {
                 return false;
             }

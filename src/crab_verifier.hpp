@@ -64,15 +64,20 @@ class Invariants final {
     crab::interval_t exit_value() const;
 
     int max_loop_count() const;
-    bool verified(const cfg_t& cfg) const;
-    Report check_assertions(const cfg_t& cfg) const;
+    bool verified(const std::map<label_t, GuardedInstruction>& instructions) const;
+    Report check_assertions(const std::map<label_t, GuardedInstruction>& instructions) const;
 
-    friend void print_invariants(std::ostream& os, const cfg_t& cfg, bool simplify, const Invariants& invariants);
+    friend void print_invariants(std::ostream& os, const cfg_t& cfg,
+                                 const std::map<label_t, GuardedInstruction>& instructions, bool simplify,
+                                 const Invariants& invariants);
 };
 
-Invariants analyze(const cfg_t& cfg);
-Invariants analyze(const cfg_t& cfg, const string_invariant& entry_invariant);
-inline bool verify(const cfg_t& cfg) { return analyze(cfg).verified(cfg); }
+Invariants analyze(const cfg_t& cfg, const std::map<label_t, GuardedInstruction>& instructions);
+Invariants analyze(const cfg_t& cfg, const std::map<label_t, GuardedInstruction>& instructions,
+                   const string_invariant& entry_invariant);
+inline bool verify(const cfg_t& cfg, const std::map<label_t, GuardedInstruction>& instructions) {
+    return analyze(cfg, instructions).verified(instructions);
+}
 
 int create_map_crab(const EbpfMapType& map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries,
                     ebpf_verifier_options_t options);
