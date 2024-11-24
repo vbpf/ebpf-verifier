@@ -205,16 +205,16 @@ struct function_relocation {
     string target_function_name;
 };
 
-static std::optional<std::reference_wrapper<raw_program>> find_subprogram(vector<raw_program>& programs,
-                                                                          const ELFIO::section& subprogram_section,
-                                                                          const std::string& symbol_name) {
+static raw_program* find_subprogram(vector<raw_program>& programs,
+                                    const ELFIO::section& subprogram_section,
+                                    const std::string& symbol_name) {
     // Find subprogram by name.
     for (auto& subprog : programs) {
         if ((subprog.section_name == subprogram_section.get_name()) && (subprog.function_name == symbol_name)) {
-            return std::ref(subprog);
+            return &subprog;
         }
     }
-    return {};
+    return nullptr;
 }
 
 // Returns an error message, or empty string on success.
@@ -249,25 +249,23 @@ static std::string append_subprograms(raw_program& prog, vector<raw_program>& pr
             }
             ELFIO::section& subprogram_section = *reader.sections[section_index];
 
-            auto subprogram = find_subprogram(programs, subprogram_section, symbol_name);
-            if (!subprogram) {
+            if (auto subprogram = find_subprogram(programs, subprogram_section, symbol_name)) {
+                // Make sure subprogram has already had any subprograms of its own appended.
+                std::string error = append_subprograms(*subprogram, programs, function_relocations, reader, symbols);
+                if (!error.empty()) {
+                    return error;
+                }
+
+                // Append subprogram to program.
+                prog.prog.insert(prog.prog.end(), subprogram->prog.begin(), subprogram->prog.end());
+                for (int i = 0; i < subprogram->info.line_info.size(); i++) {
+                    prog.info.line_info[prog.info.line_info.size()] = subprogram->info.line_info[i];
+                }
+            } else {
                 // The program will be invalid, but continue rather than throwing an exception
                 // since we might be verifying a different program in the file.
                 return std::string("Subprogram '" + symbol_name + "' not found in section '" +
                                    subprogram_section.get_name() + "'");
-            }
-            auto& subprog = subprogram->get();
-
-            // Make sure subprogram has already had any subprograms of its own appended.
-            std::string error = append_subprograms(subprog, programs, function_relocations, reader, symbols);
-            if (!error.empty()) {
-                return error;
-            }
-
-            // Append subprogram to program.
-            prog.prog.insert(prog.prog.end(), subprog.prog.begin(), subprog.prog.end());
-            for (int i = 0; i < subprog.info.line_info.size(); i++) {
-                prog.info.line_info[prog.info.line_info.size()] = subprog.info.line_info[i];
             }
         }
 
