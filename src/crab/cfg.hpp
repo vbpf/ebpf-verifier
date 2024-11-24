@@ -29,102 +29,95 @@ class InvalidControlFlow final : public std::runtime_error {
 
 class cfg_t;
 
-// Node type for the CFG
-class value_t final {
-    friend class cfg_t;
-
-  public:
-    value_t(const value_t&) = delete;
-
-    using label_vec_t = std::set<label_t>;
-    using neighbour_const_iterator = label_vec_t::const_iterator;
-    using neighbour_const_reverse_iterator = label_vec_t::const_reverse_iterator;
-
-  private:
-    label_t m_label;
-    GuardedInstruction m_instruction{.cmd = Undefined{}};
-    label_vec_t m_prev, m_next;
-
-  public:
-    explicit value_t(label_t _label) : m_label{std::move(_label)} {}
-
-    ~value_t() = default;
-
-    [[nodiscard]]
-    label_t label() const {
-        return m_label;
-    }
-
-    [[nodiscard]]
-    GuardedInstruction& instruction() {
-        return m_instruction;
-    }
-
-    [[nodiscard]]
-    const GuardedInstruction& instruction() const {
-        return m_instruction;
-    }
-
-    [[nodiscard]]
-    std::pair<neighbour_const_iterator, neighbour_const_iterator> next_labels() const {
-        return std::make_pair(m_next.begin(), m_next.end());
-    }
-    [[nodiscard]]
-    std::pair<neighbour_const_reverse_iterator, neighbour_const_reverse_iterator> next_labels_reversed() const {
-        return std::make_pair(m_next.rbegin(), m_next.rend());
-    }
-
-    [[nodiscard]]
-    std::pair<neighbour_const_iterator, neighbour_const_iterator> prev_labels() const {
-        return std::make_pair(m_prev.begin(), m_prev.end());
-    }
-
-    [[nodiscard]]
-    const label_vec_t& next_labels_set() const {
-        return m_next;
-    }
-
-    [[nodiscard]]
-    const label_vec_t& prev_labels_set() const {
-        return m_prev;
-    }
-
-    // Add a cfg_t edge from *this to b
-    void operator>>(value_t& b) {
-        assert(b.label() != label_t::entry);
-        assert(this->label() != label_t::exit);
-        m_next.insert(b.m_label);
-        b.m_prev.insert(m_label);
-    }
-
-    // Remove a cfg_t edge from *this to b
-    void operator-=(value_t& b) {
-        m_next.erase(b.m_label);
-        b.m_prev.erase(m_label);
-    }
-
-    [[nodiscard]]
-    size_t in_degree() const {
-        return m_prev.size();
-    }
-
-    [[nodiscard]]
-    size_t out_degree() const {
-        return m_next.size();
-    }
-};
-
-void print_label(std::ostream& o, const value_t& value);
-void print_assertions(std::ostream& o, const value_t& value);
-void print_instruction(std::ostream& o, const value_t& value);
-void print_goto(std::ostream& o, const value_t& value);
-void print_from(std::ostream& o, const value_t& value);
-
 /// Control-Flow Graph
 class cfg_t final {
-  public:
-    using node_t = label_t; // for Bgl graphs
 
+    // Node type for the CFG
+    class value_t final {
+        friend class cfg_t;
+
+      public:
+        value_t(const value_t&) = delete;
+
+        using label_vec_t = std::set<label_t>;
+        using neighbour_const_iterator = label_vec_t::const_iterator;
+        using neighbour_const_reverse_iterator = label_vec_t::const_reverse_iterator;
+
+      private:
+        label_t m_label;
+        GuardedInstruction m_instruction{.cmd = Undefined{}};
+        label_vec_t m_prev, m_next;
+
+      public:
+        explicit value_t(label_t _label) : m_label{std::move(_label)} {}
+
+        ~value_t() = default;
+
+        [[nodiscard]]
+        label_t label() const {
+            return m_label;
+        }
+
+        [[nodiscard]]
+        GuardedInstruction& instruction() {
+            return m_instruction;
+        }
+
+        [[nodiscard]]
+        const GuardedInstruction& instruction() const {
+            return m_instruction;
+        }
+
+        [[nodiscard]]
+        std::pair<neighbour_const_iterator, neighbour_const_iterator> next_labels() const {
+            return std::make_pair(m_next.begin(), m_next.end());
+        }
+        [[nodiscard]]
+        std::pair<neighbour_const_reverse_iterator, neighbour_const_reverse_iterator> next_labels_reversed() const {
+            return std::make_pair(m_next.rbegin(), m_next.rend());
+        }
+
+        [[nodiscard]]
+        std::pair<neighbour_const_iterator, neighbour_const_iterator> prev_labels() const {
+            return std::make_pair(m_prev.begin(), m_prev.end());
+        }
+
+        [[nodiscard]]
+        const label_vec_t& next_labels_set() const {
+            return m_next;
+        }
+
+        [[nodiscard]]
+        const label_vec_t& prev_labels_set() const {
+            return m_prev;
+        }
+
+        // Add a cfg_t edge from *this to b
+        void operator>>(value_t& b) {
+            assert(b.label() != label_t::entry);
+            assert(this->label() != label_t::exit);
+            m_next.insert(b.m_label);
+            b.m_prev.insert(m_label);
+        }
+
+        // Remove a cfg_t edge from *this to b
+        void operator-=(value_t& b) {
+            m_next.erase(b.m_label);
+            b.m_prev.erase(m_label);
+        }
+
+        [[nodiscard]]
+        size_t in_degree() const {
+            return m_prev.size();
+        }
+
+        [[nodiscard]]
+        size_t out_degree() const {
+            return m_next.size();
+        }
+    };
+
+  public:
     using neighbour_const_iterator = value_t::neighbour_const_iterator;
     using neighbour_const_reverse_iterator = value_t::neighbour_const_reverse_iterator;
 
@@ -337,29 +330,39 @@ class cfg_t final {
         return labels;
     }
 
-    value_t& get_child(const label_t& b) {
+    label_t get_child(const label_t& b) {
         assert(has_one_child(b));
-        const auto rng = next_nodes(b);
-        return get_node(*rng.begin());
+        return *get_node(b).next_labels().first;
     }
 
-    value_t& get_parent(const label_t& b) {
+    label_t get_parent(const label_t& b) {
         assert(has_one_parent(b));
-        const auto rng = prev_nodes(b);
-        return get_node(*rng.begin());
+        return *get_node(b).prev_labels().first;
     }
 
-    const value_t& get_child(const label_t& b) const {
+    label_t get_child(const label_t& b) const {
         assert(has_one_child(b));
-        const auto rng = next_nodes(b);
-        return get_node(*rng.begin());
+        return *get_node(b).next_labels().first;
     }
 
-    const value_t& get_parent(const label_t& b) const {
+    label_t get_parent(const label_t& b) const {
         assert(has_one_parent(b));
-        const auto rng = prev_nodes(b);
-        return get_node(*rng.begin());
+        return *get_node(b).prev_labels().first;
     }
+
+    void add_child(const label_t& a, const label_t& b) { get_node(a) >> get_node(b); }
+    void remove_child(const label_t& a, const label_t& b) { get_node(a) -= get_node(b); }
+    std::set<label_t> children(const label_t& a) const { return get_node(a).next_labels_set(); }
+    std::set<label_t> parents(const label_t& a) const { return get_node(a).prev_labels_set(); }
+    int num_siblings(const label_t& b) const { return get_node(b).out_degree(); }
+    int in_degree(const label_t& b) const { return get_node(b).in_degree(); }
+    int out_degree(const label_t& b) const { return get_node(b).out_degree(); }
+
+    friend void print_label(std::ostream& o, const value_t& value);
+    friend void print_assertions(std::ostream& o, const value_t& value);
+    friend void print_instruction(std::ostream& o, const value_t& value);
+    friend void print_goto(std::ostream& o, const value_t& value);
+    friend void print_from(std::ostream& o, const value_t& value);
 
   private:
     // Helpers
@@ -437,7 +440,8 @@ struct prepare_cfg_options {
     bool must_have_exit = true;
 };
 
-cfg_t prepare_cfg(const InstructionSeq& prog, const program_info& info, const prepare_cfg_options& options);
+std::tuple<cfg_t, std::map<label_t, GuardedInstruction>>
+prepare_cfg(const InstructionSeq& prog, const program_info& info, const prepare_cfg_options& options);
 
 void explicate_assertions(cfg_t& cfg, const program_info& info);
 std::vector<Assertion> get_assertions(Instruction ins, const program_info& info, const std::optional<label_t>& label);
