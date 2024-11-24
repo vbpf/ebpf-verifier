@@ -248,13 +248,13 @@ int main(int argc, char** argv) {
             auto invariants = analyze(cfg);
             const auto end = std::chrono::steady_clock::now();
             const auto seconds = std::chrono::duration<double>(end - begin).count();
-
-            if (ebpf_verifier_options.verbosity_opts.print_invariants) {
-                invariants.print_invariants(std::cout, cfg);
+            const auto verbosity = ebpf_verifier_options.verbosity_opts;
+            if (verbosity.print_invariants) {
+                invariants.print_invariants(std::cout, cfg, verbosity.simplify);
             }
 
             bool pass;
-            if (ebpf_verifier_options.verbosity_opts.print_failures) {
+            if (verbosity.print_failures) {
                 auto report = invariants.check_assertions(cfg);
                 report.print_warnings(std::cout);
                 pass = report.verified();
@@ -262,8 +262,7 @@ int main(int argc, char** argv) {
                 pass = invariants.verified(cfg);
             }
             if (pass && ebpf_verifier_options.cfg_opts.check_for_termination &&
-                (ebpf_verifier_options.verbosity_opts.print_failures ||
-                 ebpf_verifier_options.verbosity_opts.print_invariants)) {
+                (verbosity.print_failures || verbosity.print_invariants)) {
                 std::cout << "Program terminates within " << invariants.max_loop_count() << " loop iterations\n";
             }
             std::cout << pass << "," << seconds << "," << resident_set_size_kb() << "\n";

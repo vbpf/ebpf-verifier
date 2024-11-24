@@ -32,7 +32,7 @@ class Invariants final {
     Invariants(const Invariants& invariants) = default;
 
     bool is_valid_after(const label_t& label, const string_invariant& state) const;
-    void print_invariants(std::ostream& os, const cfg_t& cfg) const;
+    void print_invariants(std::ostream& os, const cfg_t& cfg, bool simplify) const;
 
     string_invariant invariant_at(const label_t& label) const;
 
