@@ -508,8 +508,9 @@ TEST_SECTION("raw_tracepoint/filler/proc_startupdate_2")
 TEST_SECTION("raw_tracepoint/filler/sys_recvfrom_x")
 */
 
-TEST_PROGRAM_REJECT_FAIL("build", "bpf2bpf.o", ".text", "plus1", 1); // Subprogram should fail verification.
-TEST_PROGRAM("build", "bpf2bpf.o", "test", "func", 1);               // Subprogram can be called from main program.
+TEST_PROGRAM("build", "bpf2bpf.o", ".text", "add1", 2);
+TEST_PROGRAM("build", "bpf2bpf.o", ".text", "add2", 2);
+TEST_PROGRAM("build", "bpf2bpf.o", "test", "func", 1);
 
 TEST_SECTION("build", "byteswap.o", ".text")
 TEST_SECTION("build", "stackok.o", ".text")
