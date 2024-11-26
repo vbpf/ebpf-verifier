@@ -13,43 +13,9 @@
 
 namespace crab {
 
-// Simple visitor to check if node is a member of the wto component.
-class member_component_visitor final {
-    label_t _node;
-    bool _found;
-
-  public:
-    explicit member_component_visitor(const label_t& node) : _node(node), _found(false) {}
-
-    void operator()(const label_t& vertex) {
-        if (!_found) {
-            _found = (vertex == _node);
-        }
-    }
-
-    void operator()(const std::shared_ptr<wto_cycle_t>& c) {
-        if (!_found) {
-            _found = (c->head() == _node);
-            if (!_found) {
-                for (const auto& component : *c) {
-                    if (_found) {
-                        break;
-                    }
-                    std::visit(*this, component);
-                }
-            }
-        }
-    }
-
-    [[nodiscard]]
-    bool is_member() const {
-        return _found;
-    }
-};
-
 class interleaved_fwd_fixpoint_iterator_t final {
     const cfg_t& _cfg;
-    wto_t _wto;
+    const wto_t _wto;
     invariant_table_t _inv;
 
     /// number of narrowing iterations. If the narrowing operator is
@@ -62,12 +28,11 @@ class interleaved_fwd_fixpoint_iterator_t final {
     /// Used to skip the analysis until _entry is found
     bool _skip{true};
 
-  private:
     void set_pre(const label_t& label, const ebpf_domain_t& v) { _inv.at(label).pre = v; }
 
-    ebpf_domain_t get_pre(const label_t& node) { return _inv.at(node).pre; }
+    ebpf_domain_t get_pre(const label_t& node) const { return _inv.at(node).pre; }
 
-    ebpf_domain_t get_post(const label_t& node) { return _inv.at(node).post; }
+    ebpf_domain_t get_post(const label_t& node) const { return _inv.at(node).post; }
 
     void transform_to_post(const label_t& label, ebpf_domain_t pre) {
         const GuardedInstruction& ins = _cfg.at(label);
@@ -83,27 +48,7 @@ class interleaved_fwd_fixpoint_iterator_t final {
         _inv.at(label).post = std::move(pre);
     }
 
-    [[nodiscard]]
-    static ebpf_domain_t extrapolate(const ebpf_domain_t& before, const ebpf_domain_t& after,
-                                     const unsigned int iteration) {
-        /// number of iterations until triggering widening
-        constexpr auto _widening_delay = 2;
-
-        if (iteration < _widening_delay) {
-            return before | after;
-        }
-        return before.widen(after, iteration == _widening_delay);
-    }
-
-    static ebpf_domain_t refine(const ebpf_domain_t& before, const ebpf_domain_t& after, const unsigned int iteration) {
-        if (iteration == 1) {
-            return before & after;
-        } else {
-            return before.narrow(after);
-        }
-    }
-
-    ebpf_domain_t join_all_prevs(const label_t& node) {
+    ebpf_domain_t join_all_prevs(const label_t& node) const {
         if (node == _cfg.entry_label()) {
             return get_pre(node);
         }
@@ -114,13 +59,13 @@ class interleaved_fwd_fixpoint_iterator_t final {
         return res;
     }
 
-  public:
     explicit interleaved_fwd_fixpoint_iterator_t(const cfg_t& cfg) : _cfg(cfg), _wto(cfg) {
         for (const auto& label : _cfg.labels()) {
             _inv.emplace(label, invariant_map_pair{ebpf_domain_t::bottom(), ebpf_domain_t::bottom()});
         }
     }
 
+  public:
     void operator()(const label_t& node);
 
     void operator()(const std::shared_ptr<wto_cycle_t>& cycle);
@@ -146,6 +91,25 @@ invariant_table_t run_forward_analyzer(const cfg_t& cfg, ebpf_domain_t entry_inv
     return std::move(analyzer._inv);
 }
 
+static ebpf_domain_t extrapolate(const ebpf_domain_t& before, const ebpf_domain_t& after,
+                                 const unsigned int iteration) {
+    /// number of iterations until triggering widening
+    constexpr auto _widening_delay = 2;
+
+    if (iteration < _widening_delay) {
+        return before | after;
+    }
+    return before.widen(after, iteration == _widening_delay);
+}
+
+static ebpf_domain_t refine(const ebpf_domain_t& before, const ebpf_domain_t& after, const unsigned int iteration) {
+    if (iteration == 1) {
+        return before & after;
+    } else {
+        return before.narrow(after);
+    }
+}
+
 void interleaved_fwd_fixpoint_iterator_t::operator()(const label_t& node) {
     /** decide whether skip vertex or not **/
     if (_skip && node == _cfg.entry_label()) {
@@ -167,11 +131,9 @@ void interleaved_fwd_fixpoint_iterator_t::operator()(const std::shared_ptr<wto_c
     /** decide whether to skip cycle or not **/
     bool entry_in_this_cycle = false;
     if (_skip) {
-        // We only skip the analysis of cycle if _entry is not a
+        // We only skip the analysis of cycle if entry_label is not a
         // component of it, included nested components.
-        member_component_visitor vis(_cfg.entry_label());
-        vis(cycle);
-        entry_in_this_cycle = vis.is_member();
+        entry_in_this_cycle = is_component_member(_cfg.entry_label(), cycle);
         _skip = !entry_in_this_cycle;
         if (_skip) {
             return;

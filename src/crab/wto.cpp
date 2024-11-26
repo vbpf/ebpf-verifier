@@ -10,6 +10,22 @@
 // where _visit_stack is roughly equivalent to a stack trace in the recursive algorithm.
 // However, this scales much higher since it does not run out of stack memory.
 
+bool is_component_member(const label_t& label, const cycle_or_label& component) {
+    if (const auto plabel = std::get_if<label_t>(&component)) {
+        return *plabel == label;
+    }
+    const auto cycle = std::get<std::shared_ptr<wto_cycle_t>>(component);
+    if (cycle->head() == label) {
+        return true;
+    }
+    for (const auto& sub_component : *cycle) {
+        if (is_component_member(label, sub_component)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 bool wto_nesting_t::operator>(const wto_nesting_t& nesting) const {
     const size_t this_size = this->_heads.size();
     const size_t other_size = nesting._heads.size();
@@ -249,7 +265,7 @@ std::ostream& operator<<(std::ostream& o, const wto_t& wto) {
 // is itself a head of a component, we want the head of whatever
 // contains that entire component.  Returns nullopt if the label is
 // not nested, i.e., the head is logically the entry point of the CFG.
-std::optional<label_t> wto_t::head(const label_t& label) {
+std::optional<label_t> wto_t::head(const label_t& label) const {
     const auto it = _containing_cycle.find(label);
     if (it == _containing_cycle.end()) {
         // Label is not in any cycle.
@@ -273,7 +289,7 @@ std::optional<label_t> wto_t::head(const label_t& label) {
 
 wto_t::wto_t(const cfg_t& cfg) : wto_t{std::move(wto_builder_t(cfg).wto)} {}
 
-std::vector<label_t> wto_t::collect_heads(const label_t& label) {
+std::vector<label_t> wto_t::collect_heads(const label_t& label) const {
     std::vector<label_t> heads;
     for (auto h = head(label); h; h = head(*h)) {
         heads.push_back(*h);
@@ -283,7 +299,7 @@ std::vector<label_t> wto_t::collect_heads(const label_t& label) {
 
 // Compute the set of heads of the nested components containing a given label.
 // See section 3.1 of the paper for discussion, which uses the notation w(c).
-const wto_nesting_t& wto_t::nesting(const label_t& label) {
+const wto_nesting_t& wto_t::nesting(const label_t& label) const {
     if (!_nesting.contains(label)) {
         // Not found in the cache yet, so construct the list of heads of the
         // nested components containing the label, stored in reverse order.
