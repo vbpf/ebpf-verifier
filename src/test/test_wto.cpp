@@ -30,7 +30,7 @@ TEST_CASE("wto figure 1", "[wto]") {
     cfg.add_child(label_t{7}, label_t{8});
     cfg.add_child(label_t{8}, label_t::exit);
 
-    const crab::wto_t wto(cfg.cfg());
+    const crab::wto_t wto(cfg.cfg);
 
     std::ostringstream os;
     os << wto;
@@ -58,7 +58,7 @@ TEST_CASE("wto figure 2a", "[wto]") {
     cfg.add_child(label_t{4}, label_t{5});
     cfg.add_child(label_t{5}, label_t{4});
 
-    const crab::wto_t wto(cfg.cfg());
+    const crab::wto_t wto(cfg.cfg);
 
     std::ostringstream os;
     os << wto;
@@ -85,7 +85,7 @@ TEST_CASE("wto figure 2b", "[wto]") {
     cfg.add_child(label_t{3}, label_t::exit);
     cfg.add_child(label_t{4}, label_t{3});
 
-    const crab::wto_t wto(cfg.cfg());
+    const crab::wto_t wto(cfg.cfg);
 
     std::ostringstream os;
     os << wto;

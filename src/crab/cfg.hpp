@@ -19,7 +19,7 @@ namespace crab {
 
 /// Control-Flow Graph
 class cfg_t final {
-    friend class cfg_builder_t;
+    friend struct cfg_builder_t;
 
     // the choice to use set means that unmarshaling a conditional jump to the same target may be different
     using label_vec_t = std::set<label_t>;

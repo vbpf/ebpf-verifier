@@ -73,7 +73,7 @@ static void add_cfg_nodes(cfg_builder_t& cfg, std::map<label_t, Instruction>& in
     bool first = true;
 
     // Get the label of the node to go to on returning from the macro.
-    label_t exit_to_label = cfg.cfg().get_child(caller_label);
+    label_t exit_to_label = cfg.cfg.get_child(caller_label);
 
     // Construct the variable prefix to use for the new stack frame,
     // and store a copy in the CallLocal instruction since the instruction-specific
@@ -113,18 +113,18 @@ static void add_cfg_nodes(cfg_builder_t& cfg, std::map<label_t, Instruction>& in
         }
 
         // Add an edge from any other predecessors.
-        for (const auto& prev_macro_nodes = cfg.cfg().parents_of(macro_label);
+        for (const auto& prev_macro_nodes = cfg.cfg.parents_of(macro_label);
              const auto& prev_macro_label : prev_macro_nodes) {
             const label_t prev_label(prev_macro_label.from, prev_macro_label.to, to_string(caller_label));
-            if (const auto& labels = cfg.cfg().labels(); std::ranges::find(labels, prev_label) != labels.end()) {
+            if (const auto& labels = cfg.cfg.labels(); std::ranges::find(labels, prev_label) != labels.end()) {
                 cfg.add_child(prev_label, label);
             }
         }
 
         // Walk all successor nodes.
-        for (const auto& next_macro_nodes = cfg.cfg().children_of(macro_label);
+        for (const auto& next_macro_nodes = cfg.cfg.children_of(macro_label);
              const auto& next_macro_label : next_macro_nodes) {
-            if (next_macro_label == cfg.cfg().exit_label()) {
+            if (next_macro_label == cfg.cfg.exit_label()) {
                 // This is an exit transition, so add edge to the block to execute
                 // upon returning from the macro.
                 cfg.add_child(label, exit_to_label);
@@ -175,7 +175,7 @@ static std::tuple<cfg_builder_t, std::map<label_t, Instruction>> instruction_seq
         throw crab::InvalidControlFlow{"empty instruction sequence"};
     } else {
         const auto& [label, inst, _0] = insts[0];
-        builder.add_child(builder.cfg().entry_label(), label);
+        builder.add_child(builder.cfg.entry_label(), label);
     }
 
     // Do a first pass ignoring all function macro calls.
@@ -186,7 +186,7 @@ static std::tuple<cfg_builder_t, std::map<label_t, Instruction>> instruction_seq
             continue;
         }
 
-        label_t fallthrough{builder.cfg().exit_label()};
+        label_t fallthrough{builder.cfg.exit_label()};
         if (i + 1 < insts.size()) {
             fallthrough = std::get<0>(insts[i + 1]);
         } else {
@@ -201,7 +201,7 @@ static std::tuple<cfg_builder_t, std::map<label_t, Instruction>> instruction_seq
                     builder.add_child(label, fallthrough);
                     continue;
                 }
-                if (!builder.cfg().contains(target_label)) {
+                if (!builder.cfg.contains(target_label)) {
                     throw crab::InvalidControlFlow{"jump to undefined label " + to_string(target_label)};
                 }
                 const label_t if_true = builder.make_jump(label, target_label);
@@ -217,7 +217,7 @@ static std::tuple<cfg_builder_t, std::map<label_t, Instruction>> instruction_seq
             }
         }
         if (std::holds_alternative<Exit>(inst)) {
-            builder.add_child(label, builder.cfg().exit_label());
+            builder.add_child(label, builder.cfg.exit_label());
         }
     }
 
@@ -259,7 +259,7 @@ Program Program::construct(const InstructionSeq& instruction_seq, const program_
     // hierarchical decomposition of the CFG that identifies all strongly connected components (cycles) and their entry
     // points. These entry points serve as natural locations for loop counters that help verify program termination.
     if (options.check_for_termination) {
-        const crab::wto_t wto{builder.cfg()};
+        const crab::wto_t wto{builder.cfg};
         wto.for_each_loop_head([&](const label_t& label) -> void {
             const label_t inclabel = label_t::make_increment_counter(label);
             builder.insert_after(label, inclabel);
@@ -270,7 +270,7 @@ Program Program::construct(const InstructionSeq& instruction_seq, const program_
     // Annotate the CFG by adding in assertions before every memory instruction.
     // explicate_assertions(instructions, info);
 
-    return Program(std::move(builder.cfg()), std::move(instructions));
+    return Program(std::move(builder.cfg), std::move(instructions));
 }
 
 std::set<basic_block_t> basic_block_t::collect_basic_blocks(const cfg_t& cfg, const bool simplify) {
