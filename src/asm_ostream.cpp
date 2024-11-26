@@ -16,29 +16,13 @@
 #include "crab_verifier.hpp"
 #include "helpers.hpp"
 #include "platform.hpp"
+#include "program.hpp"
 #include "spec_type_descriptors.hpp"
 
 using crab::TypeGroup;
 using std::optional;
 using std::string;
 using std::vector;
-
-struct LineInfoPrinter {
-    std::ostream& os;
-    std::string previous_source_line;
-
-    void print_line_info(const label_t& label) {
-        if (thread_local_options.verbosity_opts.print_line_info) {
-            const auto& line_info_map = thread_local_program_info.get().line_info;
-            const auto& line_info = line_info_map.find(label.from);
-            // Print line info only once.
-            if (line_info != line_info_map.end() && line_info->second.source_line != previous_source_line) {
-                os << "\n" << line_info->second << "\n";
-                previous_source_line = line_info->second.source_line;
-            }
-        }
-    }
-};
 
 namespace crab {
 
@@ -76,46 +60,35 @@ string to_string(label_t const& label) {
     return str.str();
 }
 
-void print_dot(const cfg_t& cfg, const std::map<label_t, GuardedInstruction>& instructions, std::ostream& out) {
-    out << "digraph program {\n";
-    out << "    node [shape = rectangle];\n";
-    for (const auto& label : cfg.labels()) {
-        out << "    \"" << label << "\"[xlabel=\"" << label << "\",label=\"";
+} // namespace crab
 
-        const auto& ins = instructions.at(label);
-        for (const auto& pre : ins.preconditions) {
-            out << "assert " << pre << "\\l";
+struct LineInfoPrinter {
+    std::ostream& os;
+    std::string previous_source_line;
+
+    void print_line_info(const label_t& label) {
+        if (thread_local_options.verbosity_opts.print_line_info) {
+            const auto& line_info_map = thread_local_program_info.get().line_info;
+            const auto& line_info = line_info_map.find(label.from);
+            // Print line info only once.
+            if (line_info != line_info_map.end() && line_info->second.source_line != previous_source_line) {
+                os << "\n" << line_info->second << "\n";
+                previous_source_line = line_info->second.source_line;
+            }
         }
-        out << ins.cmd << "\\l";
-
-        out << "\"];\n";
-        for (const label_t& next : cfg.next_nodes(label)) {
-            out << "    \"" << label << "\" -> \"" << next << "\";\n";
-        }
-        out << "\n";
     }
-    out << "}\n";
-}
-
-void print_dot(const cfg_t& cfg, const std::map<label_t, GuardedInstruction>& instructions,
-               const std::string& outfile) {
-    std::ofstream out{outfile};
-    if (out.fail()) {
-        throw std::runtime_error(std::string("Could not open file ") + outfile);
-    }
-    print_dot(cfg, instructions, out);
-}
+};
 
 void print_label(std::ostream& o, const label_t& label) { o << label << ":\n"; }
 
-void print_assertions(std::ostream& o, const GuardedInstruction& ins) {
-    for (const auto& pre : ins.preconditions) {
+void print_assertions(std::ostream& o, const std::vector<Assertion>& assertions) {
+    for (const auto& pre : assertions) {
         o << "  "
           << "assert " << pre << ";\n";
     }
 }
 
-void print_command(std::ostream& o, const GuardedInstruction& ins) { o << "  " << ins.cmd << ";\n"; }
+void print_command(std::ostream& o, const Instruction& ins) { o << "  " << ins << ";\n"; }
 
 void print_jump(std::ostream& o, const std::string& direction, const std::set<label_t>& labels) {
     auto [it, et] = std::pair{labels.begin(), labels.end()};
@@ -134,33 +107,55 @@ void print_jump(std::ostream& o, const std::string& direction, const std::set<la
     o << "\n";
 }
 
-static void print_cfg(std::ostream& os, const cfg_t& cfg, const std::map<label_t, GuardedInstruction>& instructions,
-                      const bool simplify, const invariant_table_t* invariants) {
+void Program::print_cfg(std::ostream& os, const bool simplify, const printfunc& prefunc,
+                        const printfunc& postfunc) const {
     LineInfoPrinter printer{os};
-    for (const auto& bb : basic_block_t::collect_basic_blocks(cfg, simplify)) {
-        if (invariants) {
-            os << "\nPre-invariant : " << invariants->at(bb.first_label()).pre << "\n";
-        }
-        print_jump(os, "from", cfg.get_parents(bb.first_label()));
+    for (const auto& bb : crab::basic_block_t::collect_basic_blocks(cfg, simplify)) {
+        prefunc(os, bb.first_label());
+        print_jump(os, "from", parents_of(bb.first_label()));
         print_label(os, bb.first_label());
         for (const label_t& label : bb) {
             printer.print_line_info(label);
-            print_assertions(os, instructions.at(label));
-            print_command(os, instructions.at(label));
+            print_assertions(os, assertions_at(label));
+            print_command(os, instruction_at(label));
         }
-        print_jump(os, "goto", cfg.get_children(bb.last_label()));
-        if (invariants) {
-            os << "\nPost-invariant: " << invariants->at(bb.last_label()).post << "\n";
-        }
+        print_jump(os, "goto", children_of(bb.last_label()));
+        postfunc(os, bb.last_label());
     }
     os << "\n";
 }
-void print_cfg(std::ostream& os, const cfg_t& cfg, const std::map<label_t, GuardedInstruction>& instructions,
-               const bool simplify) {
-    print_cfg(os, cfg, instructions, simplify, nullptr);
+
+static void nop(std::ostream&, const label_t&) {}
+
+void Program::print_cfg(std::ostream& os, const bool simplify) const { print_cfg(os, simplify, nop, nop); }
+
+void Program::print_dot(std::ostream& out) const {
+    out << "digraph program {\n";
+    out << "    node [shape = rectangle];\n";
+    for (const auto& label : cfg.labels()) {
+        out << "    \"" << label << "\"[xlabel=\"" << label << "\",label=\"";
+
+        for (const auto& pre : assertions_at(label)) {
+            out << "assert " << pre << "\\l";
+        }
+        out << instruction_at(label) << "\\l";
+
+        out << "\"];\n";
+        for (const label_t& next : cfg.children(label)) {
+            out << "    \"" << label << "\" -> \"" << next << "\";\n";
+        }
+        out << "\n";
+    }
+    out << "}\n";
 }
 
-} // namespace crab
+void Program::print_dot(const std::string& outfile) const {
+    std::ofstream out{outfile};
+    if (out.fail()) {
+        throw std::runtime_error(std::string("Could not open file ") + outfile);
+    }
+    print_dot(out);
+}
 
 void print_reachability(std::ostream& os, const Report& report) {
     for (const auto& [label, notes] : report.reachability) {
@@ -187,9 +182,15 @@ void print_all_messages(std::ostream& os, const Report& report) {
     print_warnings(os, report);
 }
 
-void print_invariants(std::ostream& os, const cfg_t& cfg, const std::map<label_t, GuardedInstruction>& instructions,
-                      bool simplify, const Invariants& invariants) {
-    print_cfg(os, cfg, instructions, simplify, &invariants.invariants);
+void print_invariants(std::ostream& os, const Program& prog, const bool simplify, const Invariants& invariants) {
+    prog.print_cfg(
+        os, simplify,
+        [&](std::ostream& os, const label_t& label) {
+            os << "\nPre-invariant : " << invariants.invariants.at(label).pre << "\n";
+        },
+        [&](std::ostream& os, const label_t& label) {
+            os << "\nPost-invariant : " << invariants.invariants.at(label).post << "\n";
+        });
 }
 
 namespace asm_syntax {

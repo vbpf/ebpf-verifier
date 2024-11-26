@@ -15,6 +15,7 @@
 #include "crab_utils/num_safety.hpp"
 #include "dsl_syntax.hpp"
 #include "platform.hpp"
+#include "program.hpp" // for get_assertions
 #include "string_constraints.hpp"
 
 using crab::domains::NumAbsDomain;
@@ -248,8 +249,9 @@ void ebpf_checker::operator()(const FuncConstraint& s) const {
                 return;
             }
             const Call call = make_call(imm, *thread_local_program_info->platform);
+            // TODO: Looks like it should be the transformer's job to produce all the assertions implied by the
+            //       invariants, so the last pass is only to check that the explicit assertions pass.
             for (const Assertion& sub_assertion : get_assertions(call, *thread_local_program_info, {})) {
-                // TODO: create explicit sub assertions elsewhere
                 ebpf_checker{dom, sub_assertion, on_require}.visit(sub_assertion);
             }
             return;

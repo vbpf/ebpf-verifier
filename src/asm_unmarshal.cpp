@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "asm_unmarshal.hpp"
+#include "crab_utils/debug.hpp"
 #include "crab_utils/num_safety.hpp"
 #include "ebpf_vm_isa.hpp"
 
@@ -793,7 +794,7 @@ struct Unmarshaller {
     }
 };
 
-std::variant<InstructionSeq, std::string> unmarshal(const raw_program& raw_prog, vector<vector<string>>& notes) {
+std::variant<InstructionSeq, std::string> unmarshal(const raw_program_t& raw_prog, vector<vector<string>>& notes) {
     thread_local_program_info = raw_prog.info;
     try {
         return Unmarshaller{notes, raw_prog.info}.unmarshal(raw_prog.prog);
@@ -804,7 +805,7 @@ std::variant<InstructionSeq, std::string> unmarshal(const raw_program& raw_prog,
     }
 }
 
-std::variant<InstructionSeq, std::string> unmarshal(const raw_program& raw_prog) {
+std::variant<InstructionSeq, std::string> unmarshal(const raw_program_t& raw_prog) {
     vector<vector<string>> notes;
     return unmarshal(raw_prog, notes);
 }

@@ -29,6 +29,7 @@
 
 #include "crab/cfg.hpp"
 
+namespace crab {
 // Bourdoncle, "Efficient chaotic iteration strategies with widenings", 1993
 // uses the notation w(c) to refer to the set of heads of the nested components
 // containing a vertex c.  This class holds such a set of heads.  The table
@@ -141,3 +142,4 @@ class wto_t final {
         }
     }
 };
+} // namespace crab

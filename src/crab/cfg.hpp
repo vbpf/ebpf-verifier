@@ -3,147 +3,75 @@
 #pragma once
 
 /*
- * Build a CFG to interface with the abstract domains and fixpoint iterators.
+ * a CFG to interface with the fixpoint iterators.
  */
 #include <map>
 #include <memory>
+#include <ranges>
 #include <set>
 #include <variant>
 #include <vector>
 
-#include <boost/iterator/transform_iterator.hpp>
-#include <boost/lexical_cast.hpp>
-#include <gsl/gsl>
-
-#include "asm_syntax.hpp"
+#include "crab/label.hpp"
 #include "crab_utils/debug.hpp"
-#include "crab_utils/num_big.hpp"
-#include "spec_type_descriptors.hpp"
 
 namespace crab {
 
-class InvalidControlFlow final : public std::runtime_error {
-  public:
-    explicit InvalidControlFlow(const std::string& what) : std::runtime_error(what) {}
-};
-
-class cfg_t;
-
 /// Control-Flow Graph
 class cfg_t final {
+    friend class cfg_builder_t;
 
-    // Node type for the CFG
-    class node_t final {
-        friend class cfg_t;
+    // the choice to use set means that unmarshaling a conditional jump to the same target may be different
+    using label_vec_t = std::set<label_t>;
 
-      public:
-        node_t(const node_t&) = delete;
-
-        using label_vec_t = std::set<label_t>;
-        using neighbour_const_iterator = label_vec_t::const_iterator;
-        using neighbour_const_reverse_iterator = label_vec_t::const_reverse_iterator;
-
-      private:
-        label_t m_label;
-        label_vec_t m_prev, m_next;
-
-      public:
-        explicit node_t(label_t _label) : m_label{std::move(_label)} {}
-
-        ~node_t() = default;
-
-        [[nodiscard]]
-        label_t label() const {
-            return m_label;
-        }
-
-        [[nodiscard]]
-        std::pair<neighbour_const_iterator, neighbour_const_iterator> next_labels() const {
-            return std::make_pair(m_next.begin(), m_next.end());
-        }
-        [[nodiscard]]
-        std::pair<neighbour_const_reverse_iterator, neighbour_const_reverse_iterator> next_labels_reversed() const {
-            return std::make_pair(m_next.rbegin(), m_next.rend());
-        }
-
-        [[nodiscard]]
-        std::pair<neighbour_const_iterator, neighbour_const_iterator> prev_labels() const {
-            return std::make_pair(m_prev.begin(), m_prev.end());
-        }
-
-        [[nodiscard]]
-        const label_vec_t& next_labels_set() const {
-            return m_next;
-        }
-
-        [[nodiscard]]
-        const label_vec_t& prev_labels_set() const {
-            return m_prev;
-        }
-
-        // Add a cfg_t edge from *this to b
-        void operator>>(node_t& b) {
-            assert(b.label() != label_t::entry);
-            assert(this->label() != label_t::exit);
-            m_next.insert(b.m_label);
-            b.m_prev.insert(m_label);
-        }
-
-        // Remove a cfg_t edge from *this to b
-        void operator-=(node_t& b) {
-            m_next.erase(b.m_label);
-            b.m_prev.erase(m_label);
-        }
+    struct adjacent_t final {
+        label_vec_t parents;
+        label_vec_t children;
 
         [[nodiscard]]
         size_t in_degree() const {
-            return m_prev.size();
+            return parents.size();
         }
 
         [[nodiscard]]
         size_t out_degree() const {
-            return m_next.size();
+            return children.size();
         }
     };
 
-  public:
-    using neighbour_const_iterator = node_t::neighbour_const_iterator;
-    using neighbour_const_reverse_iterator = node_t::neighbour_const_reverse_iterator;
+    using map_t = std::map<label_t, adjacent_t>;
+    map_t m_map{{label_t::entry, adjacent_t{}}, {label_t::exit, adjacent_t{}}};
 
-    using neighbour_const_range = boost::iterator_range<neighbour_const_iterator>;
-    using neighbour_const_reverse_range = boost::iterator_range<neighbour_const_reverse_iterator>;
-
-  private:
-    using map_t = std::map<label_t, node_t>;
-    using binding_t = map_t::value_type;
-
-    struct get_label {
-        label_t operator()(const binding_t& p) const { return p.second.label(); }
-    };
-
-  public:
-    using iterator = map_t::iterator;
-    using const_iterator = map_t::const_iterator;
-    using label_iterator = boost::transform_iterator<get_label, map_t::iterator>;
-    using const_label_iterator = boost::transform_iterator<get_label, map_t::const_iterator>;
-
-  private:
-    map_t m_map;
-
-    using visited_t = std::set<label_t>;
-
-  public:
-    cfg_t() {
-        m_map.emplace(entry_label(), entry_label());
-        m_map.emplace(exit_label(), exit_label());
+    // Helpers
+    [[nodiscard]]
+    bool has_one_child(const label_t& label) const {
+        return out_degree(label) == 1;
     }
 
-    cfg_t(const cfg_t&) = delete;
+    [[nodiscard]]
+    bool has_one_parent(const label_t& label) const {
+        return in_degree(label) == 1;
+    }
 
-    cfg_t(cfg_t&& o) noexcept : m_map(std::move(o.m_map)) {}
+    [[nodiscard]]
+    adjacent_t& get_node(const label_t& _label) {
+        const auto it = m_map.find(_label);
+        if (it == m_map.end()) {
+            CRAB_ERROR("Label ", to_string(_label), " not found in the CFG: ");
+        }
+        return it->second;
+    }
 
-    ~cfg_t() = default;
+    [[nodiscard]]
+    const adjacent_t& get_node(const label_t& _label) const {
+        const auto it = m_map.find(_label);
+        if (it == m_map.end()) {
+            CRAB_ERROR("Label ", to_string(_label), " not found in the CFG: ");
+        }
+        return it->second;
+    }
 
+  public:
     [[nodiscard]]
     label_t exit_label() const {
         return label_t::exit;
@@ -155,197 +83,60 @@ class cfg_t final {
     }
 
     [[nodiscard]]
-    neighbour_const_range next_nodes(const label_t& _label) const {
-        return boost::make_iterator_range(get_node(_label).next_labels());
+    const label_vec_t& children(const label_t& _label) const {
+        return get_node(_label).children;
     }
 
     [[nodiscard]]
-    neighbour_const_reverse_range next_nodes_reversed(const label_t& _label) const {
-        return boost::make_iterator_range(get_node(_label).next_labels_reversed());
+    const label_vec_t& parents_of(const label_t& _label) const {
+        return get_node(_label).parents;
     }
 
+    //! return a view of the labels
     [[nodiscard]]
-    neighbour_const_range prev_nodes(const label_t& _label) const {
-        return boost::make_iterator_range(get_node(_label).prev_labels());
-    }
-
-    node_t& get_node(const label_t& _label) {
-        const auto it = m_map.find(_label);
-        if (it == m_map.end()) {
-            CRAB_ERROR("Label ", to_string(_label), " not found in the CFG: ");
-        }
-        return it->second;
-    }
-
-    const node_t& get_node(const label_t& _label) const {
-        const auto it = m_map.find(_label);
-        if (it == m_map.end()) {
-            CRAB_ERROR("Label ", to_string(_label), " not found in the CFG: ");
-        }
-        return it->second;
-    }
-
-    node_t& insert_after(const label_t& prev_label, const label_t& new_label) {
-        node_t& res = insert(new_label);
-        node_t& prev = get_node(prev_label);
-        std::vector<label_t> nexts;
-        for (const label_t& next : prev.next_labels_set()) {
-            nexts.push_back(next);
-        }
-        prev.m_next.clear();
-
-        std::vector<label_t> prevs;
-        for (const label_t& next_label : nexts) {
-            get_node(next_label).m_prev.erase(prev_label);
-        }
-
-        for (const label_t& next : nexts) {
-            get_node(prev_label) >> res;
-            res >> get_node(next);
-        }
-        return res;
-    }
-
-    node_t& insert(const label_t& _label) {
-        const auto it = m_map.find(_label);
-        if (it != m_map.end()) {
-            return it->second;
-        }
-
-        m_map.emplace(_label, _label);
-        return get_node(_label);
-    }
-
-    void remove(const label_t& _label) {
-        if (_label == entry_label()) {
-            CRAB_ERROR("Cannot remove entry block");
-        }
-
-        if (_label == exit_label()) {
-            CRAB_ERROR("Cannot remove exit block");
-        }
-
-        std::vector<std::pair<node_t*, node_t*>> dead_edges;
-        auto& bb = get_node(_label);
-
-        for (const auto& id : boost::make_iterator_range(bb.prev_labels())) {
-            if (_label != id) {
-                dead_edges.emplace_back(&get_node(id), &bb);
-            }
-        }
-
-        for (const auto& id : boost::make_iterator_range(bb.next_labels())) {
-            if (_label != id) {
-                dead_edges.emplace_back(&bb, &get_node(id));
-            }
-        }
-
-        for (const auto& p : dead_edges) {
-            *p.first -= *p.second;
-        }
-
-        m_map.erase(_label);
-    }
-
-    //! return a begin iterator of basic_block_t's
-    iterator begin() { return m_map.begin(); }
-
-    //! return an end iterator of basic_block_t's
-    iterator end() { return m_map.end(); }
-
-    [[nodiscard]]
-    const_iterator begin() const {
-        return m_map.begin();
-    }
-
-    [[nodiscard]]
-    const_iterator end() const {
-        return m_map.end();
-    }
-
-    //! return a begin iterator of label_t's
-    const_label_iterator label_begin() const { return boost::make_transform_iterator(m_map.begin(), get_label()); }
-
-    //! return an end iterator of label_t's
-    const_label_iterator label_end() const { return boost::make_transform_iterator(m_map.end(), get_label()); }
-
-    //! return a begin iterator of label_t's
-    [[nodiscard]]
-    std::vector<label_t> labels() const {
-        std::vector<label_t> res;
-        res.reserve(m_map.size());
-        for (const auto& p : m_map) {
-            res.push_back(p.first);
-        }
-        return res;
+    auto labels() const {
+        return std::views::keys(m_map);
     }
 
     [[nodiscard]]
     size_t size() const {
-        return gsl::narrow<size_t>(std::distance(begin(), end()));
+        return m_map.size();
     }
 
     [[nodiscard]]
-    std::vector<label_t> sorted_labels() const {
-        std::vector<label_t> labels = this->labels();
-        std::ranges::sort(labels);
-        return labels;
-    }
-
-    label_t get_child(const label_t& b) {
-        assert(has_one_child(b));
-        return *get_node(b).next_labels().first;
-    }
-
-    label_t get_parent(const label_t& b) {
-        assert(has_one_parent(b));
-        return *get_node(b).prev_labels().first;
-    }
-
-    label_t get_child(const label_t& b) const {
-        assert(has_one_child(b));
-        return *get_node(b).next_labels().first;
-    }
-
-    label_t get_parent(const label_t& b) const {
-        assert(has_one_parent(b));
-        return *get_node(b).prev_labels().first;
-    }
-
-    node_t::label_vec_t get_children(const label_t& b) { return get_node(b).next_labels_set(); }
-
-    node_t::label_vec_t get_parents(const label_t& b) { return get_node(b).prev_labels_set(); }
-
-    node_t::label_vec_t get_children(const label_t& b) const { return get_node(b).next_labels_set(); }
-
-    node_t::label_vec_t get_parents(const label_t& b) const { return get_node(b).prev_labels_set(); }
-
-    void add_child(const label_t& a, const label_t& b) { get_node(a) >> get_node(b); }
-    void remove_child(const label_t& a, const label_t& b) { get_node(a) -= get_node(b); }
-    std::set<label_t> children(const label_t& a) const { return get_node(a).next_labels_set(); }
-    std::set<label_t> parents(const label_t& a) const { return get_node(a).prev_labels_set(); }
-    int num_siblings(const label_t& b) const { return get_node(b).out_degree(); }
-    int in_degree(const label_t& b) const { return get_node(b).in_degree(); }
-    int out_degree(const label_t& b) const { return get_node(b).out_degree(); }
-
-    friend void print_label(std::ostream& o, const node_t& value);
-    friend void print_assertions(std::ostream& o, const node_t& value);
-    friend void print_instruction(std::ostream& o, const node_t& value);
-    friend void print_goto(std::ostream& o, const node_t& value);
-    friend void print_from(std::ostream& o, const node_t& value);
-
-  private:
-    // Helpers
-    [[nodiscard]]
-    bool has_one_child(const label_t& b) const {
-        const auto rng = next_nodes(b);
-        return std::distance(rng.begin(), rng.end()) == 1;
+    label_t get_child(const label_t& label) const {
+        if (!has_one_child(label)) {
+            CRAB_ERROR("Label ", to_string(label), " does not have a single child");
+        }
+        return *get_node(label).children.begin();
     }
 
     [[nodiscard]]
-    bool has_one_parent(const label_t& b) const {
-        const auto rng = prev_nodes(b);
-        return std::distance(rng.begin(), rng.end()) == 1;
+    label_t get_parent(const label_t& label) const {
+        if (!has_one_parent(label)) {
+            CRAB_ERROR("Label ", to_string(label), " does not have a single parent");
+        }
+        return *get_node(label).parents.begin();
+    }
+
+    [[nodiscard]]
+    bool contains(const label_t& label) const {
+        return m_map.contains(label);
+    }
+
+    [[nodiscard]]
+    int num_siblings(const label_t& label) const {
+        return get_node(get_parent(label)).out_degree();
+    }
+
+    [[nodiscard]]
+    int in_degree(const label_t& label) const {
+        return get_node(label).in_degree();
+    }
+
+    [[nodiscard]]
+    int out_degree(const label_t& label) const {
+        return get_node(label).out_degree();
     }
 };
 
@@ -389,29 +180,4 @@ class basic_block_t final {
     }
 };
 
-void print_dot(const cfg_t& cfg, const std::map<label_t, GuardedInstruction>& instructions, std::ostream& out);
-void print_dot(const cfg_t& cfg, const std::map<label_t, GuardedInstruction>& instructions, const std::string& outfile);
-
-void print_cfg(std::ostream& os, const cfg_t& cfg, const std::map<label_t, GuardedInstruction>& instructions,
-               bool simplify);
 } // end namespace crab
-
-using crab::basic_block_t;
-using crab::cfg_t;
-
-std::vector<std::string> stats_headers();
-
-std::map<std::string, int> collect_stats(const cfg_t&, const std::map<label_t, GuardedInstruction>&);
-
-struct prepare_cfg_options {
-    /// When true, verifies that the program terminates.
-    bool check_for_termination = false;
-    /// When true, ensures the program has a valid exit block.
-    bool must_have_exit = true;
-};
-
-std::tuple<cfg_t, std::map<label_t, GuardedInstruction>>
-prepare_cfg(const InstructionSeq& prog, const program_info& info, const prepare_cfg_options& options);
-
-void explicate_assertions(std::map<label_t, GuardedInstruction>& instructions, const program_info& info);
-std::vector<Assertion> get_assertions(Instruction ins, const program_info& info, const std::optional<label_t>& label);

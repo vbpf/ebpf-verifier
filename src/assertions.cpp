@@ -1,7 +1,7 @@
 // Copyright (c) Prevail Verifier contributors.
 // SPDX-License-Identifier: MIT
+#include <cassert>
 #include <cinttypes>
-
 #include <utility>
 #include <vector>
 
@@ -177,7 +177,7 @@ class AssertExtractor {
     }
 
     vector<Assertion> operator()(const Assume& ins) const {
-        if (ins.is_explicit) {
+        if (!ins.is_implicit) {
             return explicate(ins.cond);
         }
         return {};
@@ -297,17 +297,7 @@ class AssertExtractor {
     }
 };
 
-vector<Assertion> get_assertions(Instruction ins, const program_info& info, const std::optional<label_t>& label) {
+vector<Assertion> get_assertions(const Instruction& ins, const program_info& info,
+                                 const std::optional<label_t>& label) {
     return std::visit(AssertExtractor{info, label}, ins);
-}
-
-/// Annotate the CFG by adding explicit assertions for all the preconditions
-/// of any instruction. For example, jump instructions are asserted not to
-/// compare numbers and pointers, or pointers to potentially distinct memory
-/// regions. The verifier will use these assertions to treat the program as
-/// unsafe unless it can prove that the assertions can never fail.
-void explicate_assertions(std::map<label_t, GuardedInstruction>& instructions, const program_info& info) {
-    for (auto& [label, ins] : instructions) {
-        ins.preconditions = get_assertions(ins.cmd, info, label);
-    }
 }

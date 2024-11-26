@@ -9,7 +9,7 @@
 // http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.38.3574
 // where _visit_stack is roughly equivalent to a stack trace in the recursive algorithm.
 // However, this scales much higher since it does not run out of stack memory.
-
+namespace crab {
 bool wto_nesting_t::operator>(const wto_nesting_t& nesting) const {
     const size_t this_size = this->_heads.size();
     const size_t other_size = nesting._heads.size();
@@ -93,7 +93,7 @@ void wto_builder_t::push_successors(const label_t& vertex, wto_partition_t& part
     // Schedule the next task for this vertex once we're done with anything else.
     _visit_stack.emplace(visit_task_type_t::StartVisit, vertex, partition, containing_cycle);
 
-    for (const label_t& succ : _cfg.next_nodes_reversed(vertex)) {
+    for (const label_t& succ : std::ranges::reverse_view(_cfg.children(vertex))) {
         if (_vertex_data[succ].dfn == 0) {
             _visit_stack.emplace(visit_task_type_t::PushSuccessors, succ, partition, containing_cycle);
         }
@@ -105,7 +105,7 @@ void wto_builder_t::start_visit(const label_t& vertex, wto_partition_t& partitio
     wto_vertex_data_t& vertex_data = _vertex_data[vertex];
     int head_dfn = vertex_data.dfn;
     bool loop = false;
-    for (const label_t& succ : _cfg.next_nodes(vertex)) {
+    for (const label_t& succ : _cfg.children(vertex)) {
         const wto_vertex_data_t& data = _vertex_data[succ];
         int min_dfn = data.dfn;
         if (data.head_dfn != 0 && data.dfn != DFN_INF) {
@@ -141,7 +141,7 @@ void wto_builder_t::start_visit(const label_t& vertex, wto_partition_t& partitio
 
             // Walk the control flow graph, adding nodes to this cycle.
             // This is the Component() function described in figure 4 of the paper.
-            for (const label_t& succ : _cfg.next_nodes_reversed(vertex)) {
+            for (const label_t& succ : std::ranges::reverse_view(_cfg.children(vertex))) {
                 if (_vertex_data.at(succ).dfn == 0) {
                     _visit_stack.emplace(visit_task_type_t::PushSuccessors, succ, cycle->_components, cycle);
                 }
@@ -291,3 +291,5 @@ const wto_nesting_t& wto_t::nesting(const label_t& label) {
     }
     return _nesting.at(label);
 }
+
+}; // namespace crab

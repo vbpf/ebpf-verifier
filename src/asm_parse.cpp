@@ -212,7 +212,7 @@ Instruction parse_instruction(const std::string& line, const std::map<std::strin
             .cond =
                 Condition{
                     .op = str_to_cmpop.at(m[2]), .left = reg(m[1]), .right = reg_or_imm(m[3]), .is64 = is64_reg(m[1])},
-            .is_explicit = true,
+            .is_implicit = true,
         };
         return res;
     }

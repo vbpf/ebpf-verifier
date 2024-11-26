@@ -124,8 +124,8 @@ static size_t parse_map_sections(const ebpf_verifier_options_t& options, const e
     return map_record_size;
 }
 
-vector<raw_program> read_elf(const string& path, const string& desired_section, const ebpf_verifier_options_t& options,
-                             const ebpf_platform_t* platform) {
+vector<raw_program_t> read_elf(const string& path, const string& desired_section,
+                               const ebpf_verifier_options_t& options, const ebpf_platform_t* platform) {
     if (std::ifstream stream{path, std::ios::in | std::ios::binary}) {
         return read_elf(stream, path, desired_section, options, platform);
     }
@@ -226,7 +226,7 @@ static vector<ebpf_inst> read_subprogram(const ELFIO::section& subprogram_sectio
                          "'");
 }
 
-static void append_subprograms(raw_program& prog, const vector<raw_program>& programs,
+static void append_subprograms(raw_program_t& prog, const vector<raw_program_t>& programs,
                                const vector<function_relocation>& function_relocations, const ELFIO::elfio& reader,
                                const ELFIO::const_symbol_section_accessor& symbols) {
     // Perform function relocations and fill in the inst.imm values of CallLocal instructions.
@@ -282,8 +282,8 @@ std::map<std::string, size_t> parse_map_section(const libbtf::btf_type_data& btf
     return map_offsets;
 }
 
-vector<raw_program> read_elf(std::istream& input_stream, const std::string& path, const std::string& desired_section,
-                             const ebpf_verifier_options_t& options, const ebpf_platform_t* platform) {
+vector<raw_program_t> read_elf(std::istream& input_stream, const std::string& path, const std::string& desired_section,
+                               const ebpf_verifier_options_t& options, const ebpf_platform_t* platform) {
     ELFIO::elfio reader;
     if (!reader.load(input_stream)) {
         throw UnmarshalError("Can't process ELF file " + path);
@@ -354,7 +354,7 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
         map_section_indices.insert(reader.sections[".maps"]->get_index());
     }
 
-    vector<raw_program> res;
+    vector<raw_program_t> res;
     vector<string> unresolved_symbols_errors;
     vector<function_relocation> function_relocations;
     for (const auto& section : reader.sections) {
@@ -380,12 +380,12 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
 
         for (ELFIO::Elf_Xword program_offset = 0; program_offset < section_size;) {
             auto [program_name, program_size] = get_program_name_and_size(*section, program_offset, symbols);
-            raw_program prog{path,
-                             name,
-                             gsl::narrow_cast<uint32_t>(program_offset),
-                             program_name,
-                             vector_of<ebpf_inst>(section_data + program_offset, program_size),
-                             info};
+            raw_program_t prog{path,
+                               name,
+                               gsl::narrow_cast<uint32_t>(program_offset),
+                               program_name,
+                               vector_of<ebpf_inst>(section_data + program_offset, program_size),
+                               info};
 
             auto prelocs = reader.sections[".rel" + name];
             if (!prelocs) {

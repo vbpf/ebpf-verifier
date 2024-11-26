@@ -7,6 +7,7 @@
 #include <functional>
 #include <optional>
 
+#include "asm_syntax.hpp" // for Reg
 #include "crab/array_domain.hpp"
 #include "crab/split_dbm.hpp"
 #include "crab/type_encoding.hpp"

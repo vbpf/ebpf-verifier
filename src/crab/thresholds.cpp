@@ -73,7 +73,7 @@ void wto_thresholds_t::operator()(const std::shared_ptr<wto_cycle_t>& cycle) {
 
     // XXX: if we want to consider constants from loop
     // initializations
-    for (const auto& pre : boost::make_iterator_range(m_cfg.get_parents(head))) {
+    for (const auto& pre : m_cfg.parents_of(head)) {
         if (pre != head) {
             get_thresholds(pre, thresholds);
         }

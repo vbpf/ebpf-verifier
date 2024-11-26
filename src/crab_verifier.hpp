@@ -2,10 +2,8 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 
-#include "config.hpp"
-#include "crab/cfg.hpp"
 #include "crab/fwd_analyzer.hpp"
-#include "spec_type_descriptors.hpp"
+#include "program.hpp"
 #include "string_constraints.hpp"
 
 class Report final {
@@ -64,24 +62,17 @@ class Invariants final {
     crab::interval_t exit_value() const;
 
     int max_loop_count() const;
-    bool verified(const std::map<label_t, GuardedInstruction>& instructions) const;
-    Report check_assertions(const std::map<label_t, GuardedInstruction>& instructions) const;
+    bool verified(const Program& prog) const;
+    Report check_assertions(const Program& prog) const;
 
-    friend void print_invariants(std::ostream& os, const cfg_t& cfg,
-                                 const std::map<label_t, GuardedInstruction>& instructions, bool simplify,
-                                 const Invariants& invariants);
+    friend void print_invariants(std::ostream& os, const Program&, bool simplify, const Invariants& invariants);
 };
 
-Invariants analyze(const cfg_t& cfg, const std::map<label_t, GuardedInstruction>& instructions);
-Invariants analyze(const cfg_t& cfg, const std::map<label_t, GuardedInstruction>& instructions,
-                   const string_invariant& entry_invariant);
-inline bool verify(const cfg_t& cfg, const std::map<label_t, GuardedInstruction>& instructions) {
-    return analyze(cfg, instructions).verified(instructions);
+Invariants analyze(const Program& prog);
+Invariants analyze(const Program& prog, const string_invariant& entry_invariant);
+inline bool verify(const Program& prog) { return analyze(prog).verified(prog); }
+inline bool verify(const Program& prog, const string_invariant& entry_invariant) {
+    return analyze(prog, entry_invariant).verified(prog);
 }
-
-int create_map_crab(const EbpfMapType& map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries,
-                    ebpf_verifier_options_t options);
-
-EbpfMapDescriptor* find_map_descriptor(int map_fd);
 
 void ebpf_verifier_clear_thread_local_state();

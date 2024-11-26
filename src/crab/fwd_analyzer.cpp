@@ -4,14 +4,127 @@
 #include <variant>
 
 #include "crab/cfg.hpp"
-#include "crab/wto.hpp"
-
 #include "crab/ebpf_domain.hpp"
 #include "crab/fwd_analyzer.hpp"
+#include "crab/wto.hpp"
+#include "program.hpp"
 
 #include "config.hpp"
 
 namespace crab {
+
+class interleaved_fwd_fixpoint_iterator_t final {
+    const Program& prog;
+    wto_t _wto; // simple cache
+    invariant_table_t _inv;
+
+    /// number of narrowing iterations. If the narrowing operator is
+    /// indeed a narrowing operator this parameter is not
+    /// needed. However, there are abstract domains for which an actual
+    /// narrowing operation is not available so we must enforce
+    /// termination.
+    static constexpr unsigned int _descending_iterations = 2000000;
+
+    /// Used to skip the analysis until _entry is found
+    bool _skip{true};
+
+  private:
+    void set_pre(const label_t& label, const ebpf_domain_t& v) { _inv.at(label).pre = v; }
+    void set_post(const label_t& label, const ebpf_domain_t& v) { _inv.at(label).post = v; }
+
+    ebpf_domain_t get_pre(const label_t& node) { return _inv.at(node).pre; }
+    ebpf_domain_t get_post(const label_t& node) { return _inv.at(node).post; }
+
+    void transform_to_post(const label_t& label, ebpf_domain_t pre) {
+
+        if (thread_local_options.assume_assertions) {
+            for (const auto& assertion : prog.assertions_at(label)) {
+                // avoid redundant errors
+                ebpf_domain_assume(pre, assertion);
+            }
+        }
+        ebpf_domain_transform(pre, prog.instruction_at(label));
+
+        _inv.at(label).post = std::move(pre);
+    }
+
+    [[nodiscard]]
+    static ebpf_domain_t extrapolate(const ebpf_domain_t& before, const ebpf_domain_t& after,
+                                     const unsigned int iteration) {
+        /// number of iterations until triggering widening
+        constexpr auto _widening_delay = 2;
+
+        if (iteration < _widening_delay) {
+            return before | after;
+        }
+        return before.widen(after, iteration == _widening_delay);
+    }
+
+    static ebpf_domain_t refine(const ebpf_domain_t& before, const ebpf_domain_t& after, const unsigned int iteration) {
+        if (iteration == 1) {
+            return before & after;
+        } else {
+            return before.narrow(after);
+        }
+    }
+
+    ebpf_domain_t join_all_prevs(const label_t& node) {
+        if (node == prog.get_cfg().entry_label()) {
+            return get_pre(node);
+        }
+        ebpf_domain_t res = ebpf_domain_t::bottom();
+        for (const label_t& prev : prog.parents_of(node)) {
+            res |= get_post(prev);
+        }
+        return res;
+    }
+
+  public:
+    explicit interleaved_fwd_fixpoint_iterator_t(const Program& prog) : prog(prog), _wto(prog.get_cfg()) {
+        for (const auto& label : prog.labels()) {
+            _inv.emplace(label, invariant_map_pair{ebpf_domain_t::bottom(), ebpf_domain_t::bottom()});
+        }
+    }
+
+    void operator()(const label_t& node);
+
+    void operator()(const std::shared_ptr<wto_cycle_t>& cycle);
+
+    friend invariant_table_t run_forward_analyzer(const Program& prog, ebpf_domain_t entry_inv);
+};
+
+invariant_table_t run_forward_analyzer(const Program& prog, ebpf_domain_t entry_inv) {
+    // Go over the CFG in weak topological order (accounting for loops).
+    interleaved_fwd_fixpoint_iterator_t analyzer(prog);
+    if (thread_local_options.cfg_opts.check_for_termination) {
+        // Initialize loop counters for potential loop headers.
+        // This enables enforcement of upper bounds on loop iterations
+        // during program verification.
+        // TODO: Consider making this an instruction instead of an explicit call.
+        analyzer._wto.for_each_loop_head(
+            [&](const label_t& label) { ebpf_domain_initialize_loop_counter(entry_inv, label); });
+    }
+    analyzer.set_post(prog.get_cfg().entry_label(), entry_inv);
+    for (const auto& component : analyzer._wto) {
+        std::visit(analyzer, component);
+    }
+    return std::move(analyzer._inv);
+}
+
+void interleaved_fwd_fixpoint_iterator_t::operator()(const label_t& node) {
+    /** decide whether skip vertex or not **/
+    if (_skip && node == prog.get_cfg().entry_label()) {
+        _skip = false;
+    }
+    if (_skip) {
+        return;
+    }
+
+    ebpf_domain_t pre = join_all_prevs(node);
+
+    set_pre(node, pre);
+    transform_to_post(node, std::move(pre));
+}
 
 // Simple visitor to check if node is a member of the wto component.
 class member_component_visitor final {
@@ -47,126 +160,6 @@ class member_component_visitor final {
     }
 };
 
-class interleaved_fwd_fixpoint_iterator_t final {
-    const cfg_t& _cfg;
-    const std::map<label_t, GuardedInstruction>& _instructions;
-    wto_t _wto;
-    invariant_table_t _inv;
-
-    /// number of narrowing iterations. If the narrowing operator is
-    /// indeed a narrowing operator this parameter is not
-    /// needed. However, there are abstract domains for which an actual
-    /// narrowing operation is not available so we must enforce
-    /// termination.
-    static constexpr unsigned int _descending_iterations = 2000000;
-
-    /// Used to skip the analysis until _entry is found
-    bool _skip{true};
-
-  private:
-    void set_pre(const label_t& label, const ebpf_domain_t& v) { _inv.at(label).pre = v; }
-
-    ebpf_domain_t get_pre(const label_t& node) { return _inv.at(node).pre; }
-
-    ebpf_domain_t get_post(const label_t& node) { return _inv.at(node).post; }
-
-    void transform_to_post(const label_t& label, ebpf_domain_t pre) {
-        const GuardedInstruction& ins = _instructions.at(label);
-
-        if (thread_local_options.assume_assertions) {
-            for (const auto& assertion : ins.preconditions) {
-                // avoid redundant errors
-                ebpf_domain_assume(pre, assertion);
-            }
-        }
-        ebpf_domain_transform(pre, ins.cmd);
-
-        _inv.at(label).post = std::move(pre);
-    }
-
-    [[nodiscard]]
-    static ebpf_domain_t extrapolate(const ebpf_domain_t& before, const ebpf_domain_t& after,
-                                     const unsigned int iteration) {
-        /// number of iterations until triggering widening
-        constexpr auto _widening_delay = 2;
-
-        if (iteration < _widening_delay) {
-            return before | after;
-        }
-        return before.widen(after, iteration == _widening_delay);
-    }
-
-    static ebpf_domain_t refine(const ebpf_domain_t& before, const ebpf_domain_t& after, const unsigned int iteration) {
-        if (iteration == 1) {
-            return before & after;
-        } else {
-            return before.narrow(after);
-        }
-    }
-
-    ebpf_domain_t join_all_prevs(const label_t& node) {
-        if (node == _cfg.entry_label()) {
-            return get_pre(node);
-        }
-        ebpf_domain_t res = ebpf_domain_t::bottom();
-        for (const label_t& prev : _cfg.prev_nodes(node)) {
-            res |= get_post(prev);
-        }
-        return res;
-    }
-
-  public:
-    explicit interleaved_fwd_fixpoint_iterator_t(const cfg_t& cfg,
-                                                 const std::map<label_t, GuardedInstruction>& instructions)
-        : _cfg(cfg), _instructions(instructions), _wto(cfg) {
-        for (const auto& label : _cfg.labels()) {
-            _inv.emplace(label, invariant_map_pair{ebpf_domain_t::bottom(), ebpf_domain_t::bottom()});
-        }
-    }
-
-    void operator()(const label_t& node);
-
-    void operator()(const std::shared_ptr<wto_cycle_t>& cycle);
-
-    friend invariant_table_t run_forward_analyzer(const cfg_t& cfg,
-                                                  const std::map<label_t, GuardedInstruction>& instructions,
-                                                  ebpf_domain_t entry_inv);
-};
-
-invariant_table_t run_forward_analyzer(const cfg_t& cfg, const std::map<label_t, GuardedInstruction>& instructions,
-                                       ebpf_domain_t entry_inv) {
-    // Go over the CFG in weak topological order (accounting for loops).
-    interleaved_fwd_fixpoint_iterator_t analyzer(cfg, instructions);
-    if (thread_local_options.cfg_opts.check_for_termination) {
-        // Initialize loop counters for potential loop headers.
-        // This enables enforcement of upper bounds on loop iterations
-        // during program verification.
-        // TODO: Consider making this an instruction instead of an explicit call.
-        analyzer._wto.for_each_loop_head(
-            [&](const label_t& label) { ebpf_domain_initialize_loop_counter(entry_inv, label); });
-    }
-    analyzer.set_pre(cfg.entry_label(), entry_inv);
-    for (const auto& component : analyzer._wto) {
-        std::visit(analyzer, component);
-    }
-    return std::move(analyzer._inv);
-}
-
-void interleaved_fwd_fixpoint_iterator_t::operator()(const label_t& node) {
-    /** decide whether skip vertex or not **/
-    if (_skip && node == _cfg.entry_label()) {
-        _skip = false;
-    }
-    if (_skip) {
-        return;
-    }
-
-    ebpf_domain_t pre = join_all_prevs(node);
-
-    set_pre(node, pre);
-    transform_to_post(node, std::move(pre));
-}
-
 void interleaved_fwd_fixpoint_iterator_t::operator()(const std::shared_ptr<wto_cycle_t>& cycle) {
     const label_t head = cycle->head();
 
@@ -175,7 +168,7 @@ void interleaved_fwd_fixpoint_iterator_t::operator()(const std::shared_ptr<wto_c
     if (_skip) {
         // We only skip the analysis of cycle if _entry is not a
         // component of it, included nested components.
-        member_component_visitor vis(_cfg.entry_label());
+        member_component_visitor vis(prog.get_cfg().entry_label());
         vis(cycle);
         entry_in_this_cycle = vis.is_member();
         _skip = !entry_in_this_cycle;
@@ -186,10 +179,10 @@ void interleaved_fwd_fixpoint_iterator_t::operator()(const std::shared_ptr<wto_c
 
     ebpf_domain_t invariant = ebpf_domain_t::bottom();
     if (entry_in_this_cycle) {
-        invariant = get_pre(_cfg.entry_label());
+        invariant = get_pre(prog.get_cfg().entry_label());
     } else {
         const wto_nesting_t cycle_nesting = _wto.nesting(head);
-        for (const label_t& prev : _cfg.prev_nodes(head)) {
+        for (const label_t& prev : prog.parents_of(head)) {
             if (!(_wto.nesting(prev) > cycle_nesting)) {
                 invariant |= get_post(prev);
             }

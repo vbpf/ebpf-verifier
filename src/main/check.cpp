@@ -19,7 +19,7 @@
 using std::string;
 using std::vector;
 
-static size_t hash(const raw_program& raw_prog) {
+static size_t hash(const raw_program_t& raw_prog) {
     const char* start = reinterpret_cast<const char*>(raw_prog.prog.data());
     const char* end = start + raw_prog.prog.size() * sizeof(ebpf_inst);
     return boost::hash_range(start, end);
@@ -52,12 +52,12 @@ static std::set<std::string> _get_conformance_group_names() {
     return result;
 }
 
-static std::optional<raw_program> find_program(vector<raw_program>& raw_progs, const std::string& desired_program) {
+static std::optional<raw_program_t> find_program(vector<raw_program_t>& raw_progs, const std::string& desired_program) {
     if (desired_program.empty() && raw_progs.size() == 1) {
         // Select the last program section.
         return raw_progs.back();
     }
-    for (raw_program current_program : raw_progs) {
+    for (raw_program_t current_program : raw_progs) {
         if (current_program.function_name == desired_program) {
             return current_program;
         }
@@ -194,7 +194,7 @@ int main(int argc, char** argv) {
     }
 
     // Read a set of raw program sections from an ELF file.
-    vector<raw_program> raw_progs;
+    vector<raw_program_t> raw_progs;
     try {
         raw_progs = read_elf(filename, desired_section, ebpf_verifier_options, &platform);
     } catch (std::runtime_error& e) {
@@ -202,7 +202,7 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    std::optional<raw_program> found_prog = find_program(raw_progs, desired_program);
+    std::optional<raw_program_t> found_prog = find_program(raw_progs, desired_program);
     if (list || !found_prog) {
         if (!list) {
             std::cout << "please specify a program\n";
@@ -213,25 +213,25 @@ int main(int argc, char** argv) {
             // of possibilities.
             raw_progs = read_elf(filename, string(), ebpf_verifier_options, &platform);
         }
-        for (const raw_program& raw_prog : raw_progs) {
+        for (const raw_program_t& raw_prog : raw_progs) {
             std::cout << "section=" << raw_prog.section_name << " function=" << raw_prog.function_name << std::endl;
         }
         std::cout << "\n";
         return list ? 0 : 64;
     }
-    raw_program raw_prog = *found_prog;
+    raw_program_t raw_prog = *found_prog;
 
     // Convert the raw program section to a set of instructions.
     std::variant<InstructionSeq, std::string> prog_or_error = unmarshal(raw_prog);
-    if (auto prog = std::get_if<string>(&prog_or_error)) {
-        std::cout << "unmarshaling error at " << *prog << "\n";
+    if (auto error = std::get_if<string>(&prog_or_error)) {
+        std::cout << "unmarshaling error at " << *error << "\n";
         return 1;
     }
 
-    auto& prog = std::get<InstructionSeq>(prog_or_error);
+    auto& instrunction_seq = std::get<InstructionSeq>(prog_or_error);
     if (!asmfile.empty()) {
         std::ofstream out{asmfile};
-        print(prog, out, {});
+        print(instrunction_seq, out, {});
         print_map_descriptors(thread_local_program_info->map_descriptors, out);
     }
 
@@ -239,26 +239,26 @@ int main(int argc, char** argv) {
         // Convert the instruction sequence to a control-flow graph.
         try {
             const auto verbosity = ebpf_verifier_options.verbosity_opts;
-            const auto [cfg, instructions] = prepare_cfg(prog, raw_prog.info, ebpf_verifier_options.cfg_opts);
+            const Program prog(instrunction_seq, raw_prog.info, ebpf_verifier_options.cfg_opts);
             if (domain == "cfg") {
-                print_cfg(std::cout, cfg, instructions, verbosity.simplify);
+                prog.print_cfg(std::cout, verbosity.simplify);
                 return 0;
             }
             const auto begin = std::chrono::steady_clock::now();
-            auto invariants = analyze(cfg, instructions);
+            auto invariants = analyze(prog);
             const auto end = std::chrono::steady_clock::now();
             const auto seconds = std::chrono::duration<double>(end - begin).count();
             if (verbosity.print_invariants) {
-                print_invariants(std::cout, cfg, instructions, verbosity.simplify, invariants);
+                print_invariants(std::cout, prog, verbosity.simplify, invariants);
             }
 
             bool pass;
             if (verbosity.print_failures) {
-                auto report = invariants.check_assertions(instructions);
+                auto report = invariants.check_assertions(prog);
                 print_warnings(std::cout, report);
                 pass = report.verified();
             } else {
-                pass = invariants.verified(instructions);
+                pass = invariants.verified(prog);
             }
             if (pass && ebpf_verifier_options.cfg_opts.check_for_termination &&
                 (verbosity.print_failures || verbosity.print_invariants)) {
@@ -277,14 +277,14 @@ int main(int argc, char** argv) {
         return !res;
     } else if (domain == "stats") {
         // Convert the instruction sequence to a control-flow graph.
-        const auto [cfg, instructions] = prepare_cfg(prog, raw_prog.info, ebpf_verifier_options.cfg_opts);
+        const Program prog(instrunction_seq, raw_prog.info, ebpf_verifier_options.cfg_opts);
 
         // Just print eBPF program stats.
-        auto stats = collect_stats(cfg, instructions);
+        auto stats = prog.collect_stats();
         if (!dotfile.empty()) {
-            print_dot(cfg, instructions, dotfile);
+            prog.print_dot(dotfile);
         }
-        std::cout << std::hex << hash(raw_prog) << std::dec << "," << prog.size();
+        std::cout << std::hex << hash(raw_prog) << std::dec << "," << instrunction_seq.size();
         for (const string& h : stats_headers()) {
             std::cout << "," << stats.at(h);
         }

@@ -237,8 +237,8 @@ struct Undefined {
 struct Assume {
     Condition cond;
 
-    // True if the condition is explicitly written in the program (for tests).
-    bool is_explicit{};
+    // False if the condition is implicitly written in the program (True for tests).
+    bool is_implicit{};
 
     constexpr bool operator==(const Assume&) const = default;
 };

@@ -2,13 +2,14 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 
-#include "ebpf_base.h"
-#include "ebpf_vm_isa.hpp"
 #include <map>
 #include <string>
 #include <vector>
 
+#include "config.hpp"
 #include "crab_utils/lazy_allocator.hpp"
+#include "ebpf_base.h"
+#include "ebpf_vm_isa.hpp"
 
 enum class EbpfMapValueType { ANY, MAP, PROGRAM };
 
@@ -63,7 +64,7 @@ struct program_info {
     std::map<int, btf_line_info_t> line_info{};
 };
 
-struct raw_program {
+struct raw_program_t {
     std::string filename{};
     std::string section_name{};
     uint32_t insn_off{}; // Byte offset in section of first instruction in this program.
@@ -72,7 +73,11 @@ struct raw_program {
     program_info info{};
 };
 
+int create_map_crab(const EbpfMapType& map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries,
+                    ebpf_verifier_options_t options);
 void print_map_descriptors(const std::vector<EbpfMapDescriptor>& descriptors, std::ostream& o);
+
+EbpfMapDescriptor* find_map_descriptor(int map_fd);
 
 std::ostream& operator<<(std::ostream& os, const btf_line_info_t& line_info);
 

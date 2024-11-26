@@ -17,8 +17,10 @@
 #include "crab/fwd_analyzer.hpp"
 #include "crab_utils/lazy_allocator.hpp"
 #include "crab_verifier.hpp"
+#include "program.hpp"
 #include "string_constraints.hpp"
 
+using crab::cfg_t;
 using crab::ebpf_domain_t;
 using std::string;
 
@@ -49,29 +51,27 @@ int Invariants::max_loop_count() const {
     return std::numeric_limits<int>::max();
 }
 
-static Invariants analyze(const cfg_t& cfg, const std::map<label_t, GuardedInstruction>& instructions,
-                          ebpf_domain_t&& entry_invariant) {
-    return Invariants{run_forward_analyzer(cfg, instructions, std::move(entry_invariant))};
+static Invariants analyze(const Program& prog, ebpf_domain_t&& entry_invariant) {
+    return Invariants{run_forward_analyzer(prog, std::move(entry_invariant))};
 }
 
-Invariants analyze(const cfg_t& cfg, const std::map<label_t, GuardedInstruction>& instructions) {
+Invariants analyze(const Program& prog) {
     ebpf_verifier_clear_before_analysis();
-    return analyze(cfg, instructions, ebpf_domain_t::setup_entry(thread_local_options.setup_constraints));
+    return analyze(prog, ebpf_domain_t::setup_entry(thread_local_options.setup_constraints));
 }
 
-Invariants analyze(const cfg_t& cfg, const std::map<label_t, GuardedInstruction>& instructions,
-                   const string_invariant& entry_invariant) {
+Invariants analyze(const Program& prog, const string_invariant& entry_invariant) {
     ebpf_verifier_clear_before_analysis();
-    return analyze(cfg, instructions,
+    return analyze(prog,
                    ebpf_domain_t::from_constraints(entry_invariant.value(), thread_local_options.setup_constraints));
 }
 
-bool Invariants::verified(const std::map<label_t, GuardedInstruction>& instructions) const {
+bool Invariants::verified(const Program& prog) const {
     for (const auto& [label, inv_pair] : invariants) {
         if (inv_pair.pre.is_bottom()) {
             continue;
         }
-        for (const Assertion& assertion : instructions.at(label).preconditions) {
+        for (const Assertion& assertion : prog.assertions_at(label)) {
             if (!ebpf_domain_check(inv_pair.pre, assertion).empty()) {
                 return false;
             }
@@ -80,22 +80,22 @@ bool Invariants::verified(const std::map<label_t, GuardedInstruction>& instructi
     return true;
 }
 
-Report Invariants::check_assertions(const std::map<label_t, GuardedInstruction>& instructions) const {
+Report Invariants::check_assertions(const Program& prog) const {
     Report report;
     for (const auto& [label, inv_pair] : invariants) {
         if (inv_pair.pre.is_bottom()) {
             continue;
         }
-        const auto ins = instructions.at(label);
-        for (const Assertion& assertion : ins.preconditions) {
+        for (const Assertion& assertion : prog.assertions_at(label)) {
             const auto warnings = ebpf_domain_check(inv_pair.pre, assertion);
             for (const auto& msg : warnings) {
                 report.warnings[label].emplace_back(msg);
             }
         }
-        if (std::holds_alternative<Assume>(ins.cmd)) {
+        const auto ins = prog.instruction_at(label);
+        if (std::holds_alternative<Assume>(ins)) {
             if (inv_pair.post.is_bottom()) {
-                const auto s = to_string(std::get<Assume>(ins.cmd));
+                const auto s = to_string(std::get<Assume>(ins));
                 report.reachability[label].emplace_back("Code becomes unreachable (" + s + ")");
             }
         }
