@@ -42,7 +42,7 @@ FAIL_UNMARSHAL("invalid", "invalid-lddw.o", ".text")
         std::variant<InstructionSeq, std::string> prog_or_error = unmarshal(raw_prog);                            \
         const auto instruction_seq = std::get_if<InstructionSeq>(&prog_or_error);                                 \
         REQUIRE(instruction_seq != nullptr);                                                                      \
-        const Program prog(*instruction_seq, raw_prog.info, thread_local_options.cfg_opts);                       \
+        const Program prog = Program::construct(*instruction_seq, raw_prog.info, thread_local_options.cfg_opts);  \
         REQUIRE_THROWS_AS(analyze(prog), UnmarshalError);                                                         \
     }
 
@@ -59,7 +59,8 @@ FAIL_ANALYZE("build", "badmapptr.o", "test")
                 const auto prog_or_error = unmarshal(raw_prog);                                               \
                 const auto instruction_seq = std::get_if<InstructionSeq>(&prog_or_error);                     \
                 REQUIRE(instruction_seq != nullptr);                                                          \
-                const Program prog(*instruction_seq, raw_prog.info, thread_local_options.cfg_opts);           \
+                const Program prog =                                                                          \
+                    Program::construct(*instruction_seq, raw_prog.info, thread_local_options.cfg_opts);       \
                 REQUIRE(verify(prog) == should_pass);                                                         \
             }                                                                                                 \
         }                                                                                                     \
@@ -617,7 +618,7 @@ TEST_CASE("multithreading", "[verify][multithreading]") {
     auto prog_or_error1 = unmarshal(raw_prog1);
     auto instruction_seq1 = std::get_if<InstructionSeq>(&prog_or_error1);
     REQUIRE(instruction_seq1 != nullptr);
-    const Program prog1(*instruction_seq1, raw_prog1.info, {});
+    const Program prog1 = Program::construct(*instruction_seq1, raw_prog1.info, {});
 
     auto raw_progs2 = read_elf("ebpf-samples/bpf_cilium_test/bpf_netdev.o", "2/2", {}, &g_ebpf_platform_linux);
     REQUIRE(raw_progs2.size() == 1);
@@ -625,7 +626,7 @@ TEST_CASE("multithreading", "[verify][multithreading]") {
     auto prog_or_error2 = unmarshal(raw_prog2);
     auto instruction_seq2 = std::get_if<InstructionSeq>(&prog_or_error2);
     REQUIRE(instruction_seq2 != nullptr);
-    const Program prog2(*instruction_seq2, raw_prog2.info, {});
+    const Program prog2 = Program::construct(*instruction_seq2, raw_prog2.info, {});
 
     bool res1, res2;
     std::thread a(test_analyze_thread, &prog1, &raw_prog1.info, &res1);

@@ -12,6 +12,7 @@
 
 #include "asm_parse.hpp"
 #include "asm_syntax.hpp"
+#include "crab/cfg_builder.hpp"
 #include "ebpf_verifier.hpp"
 #include "ebpf_yaml.hpp"
 #include "program.hpp"
@@ -245,7 +246,7 @@ std::optional<Failure> run_yaml_test_case(TestCase test_case, bool debug) {
     program_info info{&g_platform_test, {}, program_type};
     thread_local_options = test_case.options;
     try {
-        const Program prog(test_case.instruction_seq, info, test_case.options.cfg_opts);
+        const Program prog = Program::construct(test_case.instruction_seq, info, test_case.options.cfg_opts);
         const Invariants invariants = analyze(prog, test_case.assumed_pre_invariant);
         const string_invariant actual_last_invariant = invariants.invariant_at(label_t::exit);
         const std::set<string> actual_messages = invariants.check_assertions(prog).all_messages();
@@ -258,7 +259,7 @@ std::optional<Failure> run_yaml_test_case(TestCase test_case, bool debug) {
             .invariant = make_diff(actual_last_invariant, test_case.expected_post_invariant),
             .messages = make_diff(actual_messages, test_case.expected_messages),
         };
-    } catch (InvalidControlFlow& ex) {
+    } catch (crab::InvalidControlFlow& ex) {
         const std::set<string> actual_messages{ex.what()};
         if (test_case.expected_post_invariant == string_invariant::top() &&
             actual_messages == test_case.expected_messages) {
@@ -365,7 +366,7 @@ ConformanceTestResult run_conformance_test_case(const std::vector<std::byte>& me
     thread_local_options = options;
 
     try {
-        const Program prog(instruction_seq, info, options.cfg_opts);
+        const Program prog = Program::construct(instruction_seq, info, options.cfg_opts);
         const Invariants invariants = analyze(prog, pre_invariant);
         return ConformanceTestResult{.success = invariants.verified(prog), .r0_value = invariants.exit_value()};
     } catch (const std::exception&) {

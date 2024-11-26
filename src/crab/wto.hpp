@@ -103,10 +103,10 @@ class wto_t final {
     // Table mapping label to the list of heads of cycles containing the label.
     // This is an on-demand cache, since for most vertices the nesting is never
     // looked at so we only create a wto_nesting_t for cases we actually need it.
-    std::map<label_t, wto_nesting_t> _nesting;
+    mutable std::map<label_t, wto_nesting_t> _nesting;
 
-    std::vector<label_t> collect_heads(const label_t& label);
-    std::optional<label_t> head(const label_t& label);
+    std::vector<label_t> collect_heads(const label_t& label) const;
+    std::optional<label_t> head(const label_t& label) const;
 
     wto_t() = default;
     friend class wto_builder_t;
@@ -125,7 +125,7 @@ class wto_t final {
     }
 
     friend std::ostream& operator<<(std::ostream& o, const wto_t& wto);
-    const wto_nesting_t& nesting(const label_t& label);
+    const wto_nesting_t& nesting(const label_t& label) const;
 
     /**
      * Visit the heads of all loops in the WTO.

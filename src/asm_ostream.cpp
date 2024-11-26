@@ -141,7 +141,7 @@ void Program::print_dot(std::ostream& out) const {
         out << instruction_at(label) << "\\l";
 
         out << "\"];\n";
-        for (const label_t& next : cfg.children(label)) {
+        for (const label_t& next : cfg.children_of(label)) {
             out << "    \"" << label << "\" -> \"" << next << "\";\n";
         }
         out << "\n";

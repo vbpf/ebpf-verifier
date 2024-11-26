@@ -41,7 +41,7 @@ struct visit_args_t {
     std::weak_ptr<wto_cycle_t> containing_cycle;
 
     visit_args_t(const visit_task_type_t t, label_t v, wto_partition_t& p, std::weak_ptr<wto_cycle_t> cc)
-        : type(t), vertex(std::move(v)), partition(p), containing_cycle(std::move(cc)) {};
+        : type(t), vertex(std::move(v)), partition(p), containing_cycle(std::move(cc)){};
 };
 
 struct wto_vertex_data_t {
@@ -93,7 +93,7 @@ void wto_builder_t::push_successors(const label_t& vertex, wto_partition_t& part
     // Schedule the next task for this vertex once we're done with anything else.
     _visit_stack.emplace(visit_task_type_t::StartVisit, vertex, partition, containing_cycle);
 
-    for (const label_t& succ : std::ranges::reverse_view(_cfg.children(vertex))) {
+    for (const label_t& succ : std::ranges::reverse_view(_cfg.children_of(vertex))) {
         if (_vertex_data[succ].dfn == 0) {
             _visit_stack.emplace(visit_task_type_t::PushSuccessors, succ, partition, containing_cycle);
         }
@@ -105,7 +105,7 @@ void wto_builder_t::start_visit(const label_t& vertex, wto_partition_t& partitio
     wto_vertex_data_t& vertex_data = _vertex_data[vertex];
     int head_dfn = vertex_data.dfn;
     bool loop = false;
-    for (const label_t& succ : _cfg.children(vertex)) {
+    for (const label_t& succ : _cfg.children_of(vertex)) {
         const wto_vertex_data_t& data = _vertex_data[succ];
         int min_dfn = data.dfn;
         if (data.head_dfn != 0 && data.dfn != DFN_INF) {
@@ -141,7 +141,7 @@ void wto_builder_t::start_visit(const label_t& vertex, wto_partition_t& partitio
 
             // Walk the control flow graph, adding nodes to this cycle.
             // This is the Component() function described in figure 4 of the paper.
-            for (const label_t& succ : std::ranges::reverse_view(_cfg.children(vertex))) {
+            for (const label_t& succ : std::ranges::reverse_view(_cfg.children_of(vertex))) {
                 if (_vertex_data.at(succ).dfn == 0) {
                     _visit_stack.emplace(visit_task_type_t::PushSuccessors, succ, cycle->_components, cycle);
                 }
@@ -249,7 +249,7 @@ std::ostream& operator<<(std::ostream& o, const wto_t& wto) {
 // is itself a head of a component, we want the head of whatever
 // contains that entire component.  Returns nullopt if the label is
 // not nested, i.e., the head is logically the entry point of the CFG.
-std::optional<label_t> wto_t::head(const label_t& label) {
+std::optional<label_t> wto_t::head(const label_t& label) const {
     const auto it = _containing_cycle.find(label);
     if (it == _containing_cycle.end()) {
         // Label is not in any cycle.
@@ -273,7 +273,7 @@ std::optional<label_t> wto_t::head(const label_t& label) {
 
 wto_t::wto_t(const cfg_t& cfg) : wto_t{std::move(wto_builder_t(cfg).wto)} {}
 
-std::vector<label_t> wto_t::collect_heads(const label_t& label) {
+std::vector<label_t> wto_t::collect_heads(const label_t& label) const {
     std::vector<label_t> heads;
     for (auto h = head(label); h; h = head(*h)) {
         heads.push_back(*h);
@@ -283,7 +283,7 @@ std::vector<label_t> wto_t::collect_heads(const label_t& label) {
 
 // Compute the set of heads of the nested components containing a given label.
 // See section 3.1 of the paper for discussion, which uses the notation w(c).
-const wto_nesting_t& wto_t::nesting(const label_t& label) {
+const wto_nesting_t& wto_t::nesting(const label_t& label) const {
     if (!_nesting.contains(label)) {
         // Not found in the cache yet, so construct the list of heads of the
         // nested components containing the label, stored in reverse order.

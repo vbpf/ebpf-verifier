@@ -83,7 +83,7 @@ class cfg_t final {
     }
 
     [[nodiscard]]
-    const label_vec_t& children(const label_t& _label) const {
+    const label_vec_t& children_of(const label_t& _label) const {
         return get_node(_label).children;
     }
 

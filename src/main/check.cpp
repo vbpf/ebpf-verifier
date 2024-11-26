@@ -170,7 +170,7 @@ int main(int argc, char** argv) {
         if (domain == "stats") {
             std::cout << "hash";
             std::cout << ",instructions";
-            for (const string& h : stats_headers()) {
+            for (const string& h : Program::stats_headers()) {
                 std::cout << "," << h;
             }
         } else {
@@ -239,7 +239,7 @@ int main(int argc, char** argv) {
         // Convert the instruction sequence to a control-flow graph.
         try {
             const auto verbosity = ebpf_verifier_options.verbosity_opts;
-            const Program prog(instrunction_seq, raw_prog.info, ebpf_verifier_options.cfg_opts);
+            const Program prog = Program::construct(instrunction_seq, raw_prog.info, ebpf_verifier_options.cfg_opts);
             if (domain == "cfg") {
                 prog.print_cfg(std::cout, verbosity.simplify);
                 return 0;
@@ -277,7 +277,7 @@ int main(int argc, char** argv) {
         return !res;
     } else if (domain == "stats") {
         // Convert the instruction sequence to a control-flow graph.
-        const Program prog(instrunction_seq, raw_prog.info, ebpf_verifier_options.cfg_opts);
+        const Program prog = Program::construct(instrunction_seq, raw_prog.info, ebpf_verifier_options.cfg_opts);
 
         // Just print eBPF program stats.
         auto stats = prog.collect_stats();
@@ -285,7 +285,7 @@ int main(int argc, char** argv) {
             prog.print_dot(dotfile);
         }
         std::cout << std::hex << hash(raw_prog) << std::dec << "," << instrunction_seq.size();
-        for (const string& h : stats_headers()) {
+        for (const string& h : Program::stats_headers()) {
             std::cout << "," << stats.at(h);
         }
         std::cout << "\n";

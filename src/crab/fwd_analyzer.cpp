@@ -15,7 +15,6 @@ namespace crab {
 
 class interleaved_fwd_fixpoint_iterator_t final {
     const Program& prog;
-    wto_t _wto; // simple cache
     invariant_table_t _inv;
 
     /// number of narrowing iterations. If the narrowing operator is
@@ -32,8 +31,8 @@ class interleaved_fwd_fixpoint_iterator_t final {
     void set_pre(const label_t& label, const ebpf_domain_t& v) { _inv.at(label).pre = v; }
     void set_post(const label_t& label, const ebpf_domain_t& v) { _inv.at(label).post = v; }
 
-    ebpf_domain_t get_pre(const label_t& node) { return _inv.at(node).pre; }
-    ebpf_domain_t get_post(const label_t& node) { return _inv.at(node).post; }
+    ebpf_domain_t get_pre(const label_t& node) const { return _inv.at(node).pre; }
+    ebpf_domain_t get_post(const label_t& node) const { return _inv.at(node).post; }
 
     void transform_to_post(const label_t& label, ebpf_domain_t pre) {
 
@@ -68,8 +67,8 @@ class interleaved_fwd_fixpoint_iterator_t final {
         }
     }
 
-    ebpf_domain_t join_all_prevs(const label_t& node) {
-        if (node == prog.get_cfg().entry_label()) {
+    ebpf_domain_t join_all_prevs(const label_t& node) const {
+        if (node == prog.entry_label()) {
             return get_pre(node);
         }
         ebpf_domain_t res = ebpf_domain_t::bottom();
@@ -80,7 +79,7 @@ class interleaved_fwd_fixpoint_iterator_t final {
     }
 
   public:
-    explicit interleaved_fwd_fixpoint_iterator_t(const Program& prog) : prog(prog), _wto(prog.get_cfg()) {
+    explicit interleaved_fwd_fixpoint_iterator_t(const Program& prog) : prog(prog) {
         for (const auto& label : prog.labels()) {
             _inv.emplace(label, invariant_map_pair{ebpf_domain_t::bottom(), ebpf_domain_t::bottom()});
         }
@@ -101,11 +100,11 @@ invariant_table_t run_forward_analyzer(const Program& prog, ebpf_domain_t entry_
         // This enables enforcement of upper bounds on loop iterations
         // during program verification.
         // TODO: Consider making this an instruction instead of an explicit call.
-        analyzer._wto.for_each_loop_head(
+        analyzer.prog.wto().for_each_loop_head(
             [&](const label_t& label) { ebpf_domain_initialize_loop_counter(entry_inv, label); });
     }
-    analyzer.set_post(prog.get_cfg().entry_label(), entry_inv);
-    for (const auto& component : analyzer._wto) {
+    analyzer.set_post(prog.entry_label(), entry_inv);
+    for (const auto& component : analyzer.prog.wto()) {
         std::visit(analyzer, component);
     }
     return std::move(analyzer._inv);
@@ -113,7 +112,7 @@ invariant_table_t run_forward_analyzer(const Program& prog, ebpf_domain_t entry_
 
 void interleaved_fwd_fixpoint_iterator_t::operator()(const label_t& node) {
     /** decide whether skip vertex or not **/
-    if (_skip && node == prog.get_cfg().entry_label()) {
+    if (_skip && node == prog.entry_label()) {
         _skip = false;
     }
     if (_skip) {
@@ -168,7 +167,7 @@ void interleaved_fwd_fixpoint_iterator_t::operator()(const std::shared_ptr<wto_c
     if (_skip) {
         // We only skip the analysis of cycle if _entry is not a
         // component of it, included nested components.
-        member_component_visitor vis(prog.get_cfg().entry_label());
+        member_component_visitor vis(prog.entry_label());
         vis(cycle);
         entry_in_this_cycle = vis.is_member();
         _skip = !entry_in_this_cycle;
@@ -179,11 +178,11 @@ void interleaved_fwd_fixpoint_iterator_t::operator()(const std::shared_ptr<wto_c
 
     ebpf_domain_t invariant = ebpf_domain_t::bottom();
     if (entry_in_this_cycle) {
-        invariant = get_pre(prog.get_cfg().entry_label());
+        invariant = get_pre(prog.entry_label());
     } else {
-        const wto_nesting_t cycle_nesting = _wto.nesting(head);
+        const wto_nesting_t cycle_nesting = prog.wto().nesting(head);
         for (const label_t& prev : prog.parents_of(head)) {
-            if (!(_wto.nesting(prev) > cycle_nesting)) {
+            if (!(prog.wto().nesting(prev) > cycle_nesting)) {
                 invariant |= get_post(prev);
             }
         }

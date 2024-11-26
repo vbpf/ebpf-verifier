@@ -353,12 +353,6 @@ struct BoundedLoopCount {
 using Assertion = std::variant<Comparable, Addable, ValidDivisor, ValidAccess, ValidStore, ValidSize, ValidMapKeyValue,
                                ValidCall, TypeConstraint, FuncConstraint, ZeroCtxOffset, BoundedLoopCount>;
 
-struct GuardedInstruction {
-    Instruction cmd;
-    std::vector<Assertion> preconditions;
-    bool operator==(const GuardedInstruction&) const = default;
-};
-
 std::ostream& operator<<(std::ostream& os, Instruction const& ins);
 std::string to_string(Instruction const& ins);
 

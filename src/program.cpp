@@ -68,8 +68,8 @@ static bool has_fall(const Instruction& ins) {
 }
 
 /// Update a control-flow graph to inline function macros.
-static void add_cfg_nodes(cfg_builder_t& cfg, std::map<label_t, GuardedInstruction>& instructions,
-                          const label_t& caller_label, const label_t& entry_label) {
+static void add_cfg_nodes(cfg_builder_t& cfg, std::map<label_t, Instruction>& instructions, const label_t& caller_label,
+                          const label_t& entry_label) {
     bool first = true;
 
     // Get the label of the node to go to on returning from the macro.
@@ -79,7 +79,7 @@ static void add_cfg_nodes(cfg_builder_t& cfg, std::map<label_t, GuardedInstructi
     // and store a copy in the CallLocal instruction since the instruction-specific
     // labels may only exist until the CFG is simplified.
     const std::string stack_frame_prefix = to_string(caller_label);
-    if (const auto pcall = std::get_if<CallLocal>(&instructions.at(caller_label).cmd)) {
+    if (const auto pcall = std::get_if<CallLocal>(&instructions.at(caller_label))) {
         pcall->stack_frame_prefix = stack_frame_prefix;
     }
 
@@ -92,19 +92,19 @@ static void add_cfg_nodes(cfg_builder_t& cfg, std::map<label_t, GuardedInstructi
         macro_labels.erase(macro_label);
 
         if (stack_frame_prefix == macro_label.stack_frame_prefix) {
-            throw InvalidControlFlow{stack_frame_prefix + ": illegal recursion"};
+            throw crab::InvalidControlFlow{stack_frame_prefix + ": illegal recursion"};
         }
 
         // Clone the macro block into a new block with the new stack frame prefix.
         const label_t label{macro_label.from, macro_label.to, stack_frame_prefix};
         auto inst = instructions.at(macro_label);
-        if (const auto pexit = std::get_if<Exit>(&inst.cmd)) {
+        if (const auto pexit = std::get_if<Exit>(&inst)) {
             pexit->stack_frame_prefix = label.stack_frame_prefix;
-        } else if (const auto pcall = std::get_if<Call>(&inst.cmd)) {
+        } else if (const auto pcall = std::get_if<Call>(&inst)) {
             pcall->stack_frame_prefix = label.stack_frame_prefix;
         }
         cfg.insert(label);
-        instructions.emplace(label, inst.cmd);
+        instructions.emplace(label, inst);
 
         if (first) {
             // Add an edge from the caller to the new block.
@@ -122,7 +122,7 @@ static void add_cfg_nodes(cfg_builder_t& cfg, std::map<label_t, GuardedInstructi
         }
 
         // Walk all successor nodes.
-        for (const auto& next_macro_nodes = cfg.cfg().children(macro_label);
+        for (const auto& next_macro_nodes = cfg.cfg().children_of(macro_label);
              const auto& next_macro_label : next_macro_nodes) {
             if (next_macro_label == cfg.cfg().exit_label()) {
                 // This is an exit transition, so add edge to the block to execute
@@ -147,9 +147,9 @@ static void add_cfg_nodes(cfg_builder_t& cfg, std::map<label_t, GuardedInstructi
     const long stack_frame_depth = std::ranges::count(caller_label_str, STACK_FRAME_DELIMITER) + 2;
     for (const auto& macro_label : seen_labels) {
         const label_t label(macro_label.from, macro_label.to, caller_label_str);
-        if (const auto pins = std::get_if<CallLocal>(&instructions.at(label).cmd)) {
+        if (const auto pins = std::get_if<CallLocal>(&instructions.at(label))) {
             if (stack_frame_depth >= MAX_CALL_STACK_FRAMES) {
-                throw InvalidControlFlow{"too many call stack frames"};
+                throw crab::InvalidControlFlow{"too many call stack frames"};
             }
             add_cfg_nodes(cfg, instructions, label, pins->target);
         }
@@ -157,10 +157,10 @@ static void add_cfg_nodes(cfg_builder_t& cfg, std::map<label_t, GuardedInstructi
 }
 
 /// Convert an instruction sequence to a control-flow graph (CFG).
-static std::tuple<cfg_builder_t, std::map<label_t, GuardedInstruction>>
-instruction_seq_to_cfg(const InstructionSeq& insts, const bool must_have_exit) {
+static std::tuple<cfg_builder_t, std::map<label_t, Instruction>> instruction_seq_to_cfg(const InstructionSeq& insts,
+                                                                                        const bool must_have_exit) {
     cfg_builder_t builder;
-    std::map<label_t, GuardedInstruction> instructions;
+    std::map<label_t, Instruction> instructions;
 
     // First add all instructions to the CFG without connecting
     for (const auto& [label, inst, _] : insts) {
@@ -168,11 +168,11 @@ instruction_seq_to_cfg(const InstructionSeq& insts, const bool must_have_exit) {
             continue;
         }
         builder.insert(label);
-        instructions.insert_or_assign(label, GuardedInstruction{.cmd = inst});
+        instructions.insert_or_assign(label, inst);
     }
 
     if (insts.size() == 0) {
-        throw InvalidControlFlow{"empty instruction sequence"};
+        throw crab::InvalidControlFlow{"empty instruction sequence"};
     } else {
         const auto& [label, inst, _0] = insts[0];
         builder.add_child(builder.cfg().entry_label(), label);
@@ -191,7 +191,7 @@ instruction_seq_to_cfg(const InstructionSeq& insts, const bool must_have_exit) {
             fallthrough = std::get<0>(insts[i + 1]);
         } else {
             if (has_fall(inst) && must_have_exit) {
-                throw InvalidControlFlow{"fallthrough in last instruction"};
+                throw crab::InvalidControlFlow{"fallthrough in last instruction"};
             }
         }
         if (const auto jmp = std::get_if<Jmp>(&inst)) {
@@ -202,7 +202,7 @@ instruction_seq_to_cfg(const InstructionSeq& insts, const bool must_have_exit) {
                     continue;
                 }
                 if (!builder.cfg().contains(target_label)) {
-                    throw InvalidControlFlow{"jump to undefined label " + to_string(target_label)};
+                    throw crab::InvalidControlFlow{"jump to undefined label " + to_string(target_label)};
                 }
                 const label_t if_true = builder.make_jump(label, target_label);
                 instructions.emplace(if_true, Assume{.cond = *cond, .is_implicit = true});
@@ -238,13 +238,18 @@ instruction_seq_to_cfg(const InstructionSeq& insts, const bool must_have_exit) {
 /// compare numbers and pointers, or pointers to potentially distinct memory
 /// regions. The verifier will use these assertions to treat the program as
 /// unsafe unless it can prove that the assertions can never fail.
-static void explicate_assertions(std::map<label_t, GuardedInstruction>& instructions, const program_info& info) {
-    for (auto& [label, ins] : instructions) {
-        ins.preconditions = get_assertions(ins.cmd, info, label);
-    }
+// static void explicate_assertions(std::map<label_t, Instruction>& instructions, const program_info& info) {
+//     for (auto& [label, ins] : instructions) {
+//         assertions = get_assertions(ins, info, label);
+//     }
+// }
+
+std::vector<Assertion> Program::assertions_at(const label_t& label) const {
+    return get_assertions(instruction_at(label), thread_local_program_info.get(), label);
 }
 
-Program::Program(const InstructionSeq& instruction_seq, const program_info& info, const prepare_cfg_options& options) {
+Program Program::construct(const InstructionSeq& instruction_seq, const program_info& info,
+                           const prepare_cfg_options& options) {
     thread_local_program_info.set(info);
 
     // Convert the instruction sequence to a deterministic control-flow graph.
@@ -263,10 +268,9 @@ Program::Program(const InstructionSeq& instruction_seq, const program_info& info
     }
 
     // Annotate the CFG by adding in assertions before every memory instruction.
-    explicate_assertions(instructions, info);
+    // explicate_assertions(instructions, info);
 
-    this->cfg = std::move(builder.cfg());
-    this->instructions = std::move(instructions);
+    return Program(std::move(builder.cfg()), std::move(instructions));
 }
 
 std::set<basic_block_t> basic_block_t::collect_basic_blocks(const cfg_t& cfg, const bool simplify) {
@@ -364,7 +368,7 @@ static std::string instype(Instruction ins) {
     }
 }
 
-std::vector<std::string> stats_headers() {
+std::vector<std::string> Program::stats_headers() {
     return {
         "instructions", "joins",      "other",      "jumps",         "assign",  "arith",
         "load",         "store",      "load_store", "packet_access", "call_1",  "call_mem",
@@ -379,21 +383,20 @@ std::map<std::string, int> Program::collect_stats() const {
     }
     for (const auto& [label, ins] : instructions) {
         res["instructions"]++;
-        const auto cmd = ins.cmd;
-        if (const auto pins = std::get_if<LoadMapFd>(&cmd)) {
+        if (const auto pins = std::get_if<LoadMapFd>(&ins)) {
             if (pins->mapfd == -1) {
                 res["map_in_map"] = 1;
             }
         }
-        if (const auto pins = std::get_if<Call>(&cmd)) {
+        if (const auto pins = std::get_if<Call>(&ins)) {
             if (pins->reallocate_packet) {
                 res["reallocate"] = 1;
             }
         }
-        if (const auto pins = std::get_if<Bin>(&cmd)) {
+        if (const auto pins = std::get_if<Bin>(&ins)) {
             res[pins->is64 ? "arith64" : "arith32"]++;
         }
-        res[instype(cmd)]++;
+        res[instype(ins)]++;
         if (cfg.in_degree(label) > 1) {
             res["joins"]++;
         }
