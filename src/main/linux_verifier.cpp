@@ -5,6 +5,7 @@
 #include <linux/bpf.h>
 #include <tuple>
 #include <unistd.h>
+#include <cstring>
 
 #include "config.hpp"
 #include "linux_verifier.hpp"
@@ -21,10 +22,10 @@ std::tuple<bool, double> bpf_verify_program(const EbpfProgramType& type, const s
                                             ebpf_verifier_options_t* options) {
     std::vector<char> buf(options->verbosity_opts.print_failures ? 1000000 : 10);
     buf[0] = 0;
-    memset(buf.data(), '\0', buf.size());
+    std::memset(buf.data(), '\0', buf.size());
 
     union bpf_attr attr {};
-    memset(&attr, '\0', sizeof(attr));
+    std::memset(&attr, '\0', sizeof(attr));
     attr.prog_type = gsl::narrow<__u32>(type.platform_specific_data);
     attr.insn_cnt = gsl::narrow<__u32>(raw_prog.size());
     attr.insns = reinterpret_cast<__u64>(raw_prog.data());
