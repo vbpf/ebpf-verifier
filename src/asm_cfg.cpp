@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "asm_syntax.hpp"
+#include "config.hpp"
 #include "crab/cfg.hpp"
 #include "crab/wto.hpp"
 
@@ -16,6 +17,69 @@ using std::set;
 using std::string;
 using std::to_string;
 using std::vector;
+
+namespace crab {
+struct cfg_builder_t final {
+    cfg_t cfg;
+
+    // TODO: ins should be inserted elsewhere
+    void insert_after(const label_t& prev_label, const label_t& new_label, const GuardedInstruction& ins) {
+        if (prev_label == new_label) {
+            CRAB_ERROR("Cannot insert after the same label ", to_string(new_label));
+        }
+        std::set<label_t> prev_children;
+        std::swap(prev_children, cfg.get_node(prev_label).children);
+
+        for (const label_t& next_label : prev_children) {
+            cfg.get_node(next_label).parents.erase(prev_label);
+        }
+
+        insert(new_label, ins);
+        for (const label_t& next_label : prev_children) {
+            add_child(prev_label, new_label);
+            add_child(new_label, next_label);
+        }
+    }
+
+    // TODO: ins should be inserted elsewhere
+    void insert(const label_t& _label, const GuardedInstruction& ins) {
+        const auto it = cfg.neighbours.find(_label);
+        if (it != cfg.neighbours.end()) {
+            CRAB_ERROR("Label ", to_string(_label), " already exists");
+        }
+        cfg.neighbours.emplace(_label, cfg_t::adjacent_t{});
+        cfg.instructions.emplace(_label, ins);
+    }
+
+    // TODO: ins should be inserted elsewhere
+    label_t insert_jump(const label_t& from, const label_t& to, const GuardedInstruction& ins) {
+        const label_t jump_label = label_t::make_jump(from, to);
+        if (cfg.contains(jump_label)) {
+            CRAB_ERROR("Jump label ", to_string(jump_label), " already exists");
+        }
+        insert(jump_label, ins);
+        add_child(from, jump_label);
+        add_child(jump_label, to);
+        return jump_label;
+    }
+
+    void add_child(const label_t& a, const label_t& b) {
+        assert(b != label_t::entry);
+        assert(a != label_t::exit);
+        cfg.neighbours.at(a).children.insert(b);
+        cfg.neighbours.at(b).parents.insert(a);
+    }
+
+    void remove_child(const label_t& a, const label_t& b) {
+        cfg.get_node(a).children.erase(b);
+        cfg.get_node(b).parents.erase(a);
+    }
+};
+} // namespace crab
+
+using crab::basic_block_t;
+using crab::cfg_builder_t;
+using crab::cfg_t;
 
 /// Get the inverse of a given comparison operation.
 static Condition::Op reverse(const Condition::Op op) {
@@ -62,18 +126,17 @@ static bool has_fall(const Instruction& ins) {
 }
 
 /// Update a control-flow graph to inline function macros.
-static void add_cfg_nodes(cfg_t& cfg, const label_t& caller_label, const label_t& entry_label) {
+static void add_cfg_nodes(cfg_builder_t& builder, const label_t& caller_label, const label_t& entry_label) {
     bool first = true;
 
     // Get the label of the node to go to on returning from the macro.
-    crab::value_t& exit_to_node = cfg.get_node(cfg.next_nodes(caller_label).front());
+    label_t exit_to_label = builder.cfg.get_child(caller_label);
 
     // Construct the variable prefix to use for the new stack frame,
     // and store a copy in the CallLocal instruction since the instruction-specific
     // labels may only exist until the CFG is simplified.
-    crab::value_t& caller_node = cfg.get_node(caller_label);
     const std::string stack_frame_prefix = to_string(caller_label);
-    if (const auto pcall = std::get_if<CallLocal>(&caller_node.instruction().cmd)) {
+    if (const auto pcall = std::get_if<CallLocal>(&builder.cfg.instruction_at(caller_label))) {
         pcall->stack_frame_prefix = stack_frame_prefix;
     }
 
@@ -91,36 +154,36 @@ static void add_cfg_nodes(cfg_t& cfg, const label_t& caller_label, const label_t
 
         // Clone the macro block into a new block with the new stack frame prefix.
         const label_t label{macro_label.from, macro_label.to, stack_frame_prefix};
-        auto inst = cfg.at(macro_label);
-        if (const auto pexit = std::get_if<Exit>(&inst.cmd)) {
+        auto inst = builder.cfg.instruction_at(macro_label);
+        if (const auto pexit = std::get_if<Exit>(&inst)) {
             pexit->stack_frame_prefix = label.stack_frame_prefix;
-        } else if (const auto pcall = std::get_if<Call>(&inst.cmd)) {
+        } else if (const auto pcall = std::get_if<Call>(&inst)) {
             pcall->stack_frame_prefix = label.stack_frame_prefix;
         }
-        crab::value_t& bb = cfg.insert(label, inst.cmd);
+        builder.insert(label, {.cmd = inst});
 
         if (first) {
             // Add an edge from the caller to the new block.
             first = false;
-            caller_node >> bb;
+            builder.add_child(caller_label, label);
         }
 
         // Add an edge from any other predecessors.
-        for (const auto& prev_macro_nodes = cfg.prev_nodes(macro_label);
+        for (const auto& prev_macro_nodes = builder.cfg.parents_of(macro_label);
              const auto& prev_macro_label : prev_macro_nodes) {
             const label_t prev_label(prev_macro_label.from, prev_macro_label.to, to_string(caller_label));
-            if (const auto& labels = cfg.labels(); std::ranges::find(labels, prev_label) != labels.end()) {
-                cfg.get_node(prev_label) >> bb;
+            if (const auto& labels = builder.cfg.labels(); std::ranges::find(labels, prev_label) != labels.end()) {
+                builder.add_child(prev_label, label);
             }
         }
 
         // Walk all successor nodes.
-        for (const auto& next_macro_nodes = cfg.next_nodes(macro_label);
+        for (const auto& next_macro_nodes = builder.cfg.children_of(macro_label);
              const auto& next_macro_label : next_macro_nodes) {
-            if (next_macro_label == cfg.exit_label()) {
+            if (next_macro_label == builder.cfg.exit_label()) {
                 // This is an exit transition, so add edge to the block to execute
                 // upon returning from the macro.
-                bb >> exit_to_node;
+                builder.add_child(label, exit_to_label);
             } else if (!seen_labels.contains(next_macro_label)) {
                 // Push any other unprocessed successor label onto the list to be processed.
                 if (!macro_labels.contains(next_macro_label)) {
@@ -133,39 +196,39 @@ static void add_cfg_nodes(cfg_t& cfg, const label_t& caller_label, const label_t
 
     // Remove the original edge from the caller node to its successor,
     // since processing now goes through the function macro instead.
-    caller_node -= exit_to_node;
+    builder.remove_child(caller_label, exit_to_label);
 
     // Finally, recurse to replace any nested function macros.
     string caller_label_str = to_string(caller_label);
     const long stack_frame_depth = std::ranges::count(caller_label_str, STACK_FRAME_DELIMITER) + 2;
     for (const auto& macro_label : seen_labels) {
-        const label_t label(macro_label.from, macro_label.to, caller_label_str);
-        if (const auto pins = std::get_if<CallLocal>(&cfg.at(label).cmd)) {
+        const label_t label{macro_label.from, macro_label.to, caller_label_str};
+        if (const auto pins = std::get_if<CallLocal>(&builder.cfg.instruction_at(label))) {
             if (stack_frame_depth >= MAX_CALL_STACK_FRAMES) {
                 throw crab::InvalidControlFlow{"too many call stack frames"};
             }
-            add_cfg_nodes(cfg, label, pins->target);
+            add_cfg_nodes(builder, label, pins->target);
         }
     }
 }
 
 /// Convert an instruction sequence to a control-flow graph (CFG).
-static cfg_t instruction_seq_to_cfg(const InstructionSeq& insts, const bool must_have_exit) {
-    cfg_t cfg;
+static cfg_builder_t instruction_seq_to_cfg(const InstructionSeq& insts, const bool must_have_exit) {
+    cfg_builder_t builder;
 
     // First add all instructions to the CFG without connecting
     for (const auto& [label, inst, _] : insts) {
         if (std::holds_alternative<Undefined>(inst)) {
             continue;
         }
-        cfg.insert(label, inst);
+        builder.insert(label, GuardedInstruction{.cmd = inst});
     }
 
     if (insts.size() == 0) {
         throw crab::InvalidControlFlow{"empty instruction sequence"};
     } else {
         const auto& [label, inst, _0] = insts[0];
-        cfg.get_node(cfg.entry_label()) >> cfg.get_node(label);
+        builder.add_child(builder.cfg.entry_label(), label);
     }
 
     // Do a first pass ignoring all function macro calls.
@@ -175,9 +238,8 @@ static cfg_t instruction_seq_to_cfg(const InstructionSeq& insts, const bool must
         if (std::holds_alternative<Undefined>(inst)) {
             continue;
         }
-        auto& value = cfg.get_node(label);
 
-        label_t fallthrough{cfg.exit_label()};
+        label_t fallthrough{builder.cfg.exit_label()};
         if (i + 1 < insts.size()) {
             fallthrough = std::get<0>(insts[i + 1]);
         } else {
@@ -189,30 +251,26 @@ static cfg_t instruction_seq_to_cfg(const InstructionSeq& insts, const bool must
             if (const auto cond = jmp->cond) {
                 label_t target_label = jmp->target;
                 if (target_label == fallthrough) {
-                    value >> cfg.get_node(fallthrough);
+                    builder.add_child(label, fallthrough);
                     continue;
                 }
-
-                vector<std::tuple<label_t, Condition>> jumps{
-                    {target_label, *cond},
-                    {fallthrough, reverse(*cond)},
-                };
-                for (const auto& [next_label, cond1] : jumps) {
-                    label_t jump_label = label_t::make_jump(label, next_label);
-                    crab::value_t& jump_node = cfg.insert(jump_label, Assume{.cond = cond1, .is_explicit = false});
-                    value >> jump_node;
-                    jump_node >> cfg.get_node(next_label);
+                if (!builder.cfg.contains(target_label)) {
+                    throw crab::InvalidControlFlow{"jump to undefined label " + to_string(target_label)};
                 }
+                builder.insert_jump(label, target_label,
+                                    GuardedInstruction{.cmd = Assume{.cond = *cond, .is_implicit = true}});
+                builder.insert_jump(label, fallthrough,
+                                    GuardedInstruction{.cmd = Assume{.cond = reverse(*cond), .is_implicit = true}});
             } else {
-                value >> cfg.get_node(jmp->target);
+                builder.add_child(label, jmp->target);
             }
         } else {
             if (has_fall(inst)) {
-                value >> cfg.get_node(fallthrough);
+                builder.add_child(label, fallthrough);
             }
         }
         if (std::holds_alternative<Exit>(inst)) {
-            value >> cfg.get_node(cfg.exit_label());
+            builder.add_child(label, builder.cfg.exit_label());
         }
     }
 
@@ -221,33 +279,35 @@ static cfg_t instruction_seq_to_cfg(const InstructionSeq& insts, const bool must
     // results of the first pass.
     for (const auto& [label, inst, _] : insts) {
         if (const auto pins = std::get_if<CallLocal>(&inst)) {
-            add_cfg_nodes(cfg, label, pins->target);
+            add_cfg_nodes(builder, label, pins->target);
         }
     }
 
-    return cfg;
+    return builder;
 }
 
 cfg_t prepare_cfg(const InstructionSeq& prog, const program_info& info, const prepare_cfg_options& options) {
     thread_local_program_info.set(info);
 
     // Convert the instruction sequence to a deterministic control-flow graph.
-    cfg_t cfg = instruction_seq_to_cfg(prog, options.must_have_exit);
+    cfg_builder_t builder = instruction_seq_to_cfg(prog, options.must_have_exit);
 
     // Detect loops using Weak Topological Ordering (WTO) and insert counters at loop entry points. WTO provides a
     // hierarchical decomposition of the CFG that identifies all strongly connected components (cycles) and their entry
     // points. These entry points serve as natural locations for loop counters that help verify program termination.
     if (options.check_for_termination) {
-        const wto_t wto{cfg};
+        const wto_t wto{builder.cfg};
         wto.for_each_loop_head([&](const label_t& label) -> void {
-            cfg.insert_after(label, label_t::make_increment_counter(label), IncrementLoopCounter{label});
+            builder.insert_after(label, label_t::make_increment_counter(label),
+                                 GuardedInstruction{.cmd = IncrementLoopCounter{label}});
         });
     }
 
     // Annotate the CFG by adding in assertions before every memory instruction.
-    explicate_assertions(cfg, info);
-
-    return cfg;
+    for (auto& [label, ins] : builder.cfg.instructions) {
+        builder.cfg.set_assertions(label, get_assertions(ins.cmd, info, label));
+    }
+    return builder.cfg;
 }
 
 std::set<basic_block_t> basic_block_t::collect_basic_blocks(const cfg_t& cfg, const bool simplify) {
@@ -262,26 +322,27 @@ std::set<basic_block_t> basic_block_t::collect_basic_blocks(const cfg_t& cfg, co
     }
 
     std::set<basic_block_t> res;
-    std::set worklist(cfg.label_begin(), cfg.label_end());
+    std::set<label_t> worklist;
+    for (const label_t& label : cfg.labels()) {
+        worklist.insert(label);
+    }
     std::set<label_t> seen;
     while (!worklist.empty()) {
-        const label_t label = *worklist.begin();
+        label_t label = *worklist.begin();
         worklist.erase(label);
         if (seen.contains(label)) {
             continue;
         }
         seen.insert(label);
 
-        const value_t* current_value = &cfg.get_node(label);
-        if (current_value->in_degree() == 1 && cfg.get_parent(label).out_degree() == 1) {
+        if (cfg.in_degree(label) == 1 && cfg.num_siblings(label) == 1) {
             continue;
         }
         basic_block_t bb{label};
-        while (current_value->out_degree() == 1) {
-            const value_t& next_value = cfg.get_child(bb.last_label());
-            const label_t& next_label = next_value.label();
+        while (cfg.out_degree(label) == 1) {
+            const label_t& next_label = cfg.get_child(bb.last_label());
 
-            if (seen.contains(next_label) || next_label == cfg.exit_label() || next_value.in_degree() != 1) {
+            if (seen.contains(next_label) || next_label == cfg.exit_label() || cfg.in_degree(next_label) != 1) {
                 break;
             }
 
@@ -294,17 +355,10 @@ std::set<basic_block_t> basic_block_t::collect_basic_blocks(const cfg_t& cfg, co
             worklist.erase(next_label);
             seen.insert(next_label);
 
-            current_value = &next_value;
+            label = next_label;
         }
         res.emplace(std::move(bb));
     }
-    return res;
-}
-
-template <typename T>
-static vector<label_t> unique(const std::pair<T, T>& be) {
-    vector<label_t> res;
-    std::unique_copy(be.first, be.second, std::back_inserter(res));
     return res;
 }
 
@@ -351,7 +405,7 @@ static std::string instype(Instruction ins) {
 
 std::vector<std::string> stats_headers() {
     return {
-        "basic_blocks", "joins",      "other",      "jumps",         "assign",  "arith",
+        "instructions", "joins",      "other",      "jumps",         "assign",  "arith",
         "load",         "store",      "load_store", "packet_access", "call_1",  "call_mem",
         "call_nomem",   "reallocate", "map_in_map", "arith64",       "arith32",
     };
@@ -362,10 +416,9 @@ std::map<std::string, int> collect_stats(const cfg_t& cfg) {
     for (const auto& h : stats_headers()) {
         res[h] = 0;
     }
-    for (const auto& this_label : cfg.labels()) {
-        res["basic_blocks"]++;
-        const crab::value_t& value = cfg.get_node(this_label);
-        const auto cmd = value.instruction().cmd;
+    for (const auto& label : cfg.labels()) {
+        res["instructions"]++;
+        const auto cmd = cfg.instruction_at(label);
         if (const auto pins = std::get_if<LoadMapFd>(&cmd)) {
             if (pins->mapfd == -1) {
                 res["map_in_map"] = 1;
@@ -380,12 +433,28 @@ std::map<std::string, int> collect_stats(const cfg_t& cfg) {
             res[pins->is64 ? "arith64" : "arith32"]++;
         }
         res[instype(cmd)]++;
-        if (unique(value.prev_labels()).size() > 1) {
+        if (cfg.in_degree(label) > 1) {
             res["joins"]++;
         }
-        if (unique(value.prev_labels()).size() > 1) {
+        if (cfg.out_degree(label) > 1) {
             res["jumps"]++;
         }
     }
     return res;
+}
+
+cfg_t crab::cfg_from_adjacency_list(const std::map<label_t, std::vector<label_t>>& adj_list) {
+    cfg_builder_t builder;
+    for (const auto& [label, children] : adj_list) {
+        if (label == label_t::entry || label == label_t::exit) {
+            continue;
+        }
+        builder.insert(label, {.cmd = Undefined{}});
+    }
+    for (const auto& [label, children] : adj_list) {
+        for (const auto& child : children) {
+            builder.add_child(label, child);
+        }
+    }
+    return builder.cfg;
 }

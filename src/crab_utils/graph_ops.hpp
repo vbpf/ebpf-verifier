@@ -725,7 +725,6 @@ class GraphOps {
         }
 
         // Run Bellman-ford on each SCC.
-        // for(std::vector<vert_id>& scc : sccs)
         // Current implementation returns sccs in reverse topological order.
         for (std::vector<vert_id>& scc : sccs) {
 
@@ -741,7 +740,8 @@ class GraphOps {
                 ++qtail;
             }
 
-            for (vert_id _ : scc) {
+            for ([[maybe_unused]]
+                 vert_id _ : scc) {
                 while (qtail != qhead) {
                     vert_id s = *--qtail;
                     // If it _was_ on the queue, it must be in the SCC

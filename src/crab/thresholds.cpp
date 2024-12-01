@@ -49,7 +49,7 @@ std::ostream& operator<<(std::ostream& o, const thresholds_t& t) {
     return o;
 }
 
-void wto_thresholds_t::get_thresholds(const value_t& bb, thresholds_t& thresholds) const {}
+void wto_thresholds_t::get_thresholds(const label_t& label, thresholds_t& thresholds) const {}
 
 void wto_thresholds_t::operator()(const label_t& vertex) {
     if (m_stack.empty()) {
@@ -60,8 +60,7 @@ void wto_thresholds_t::operator()(const label_t& vertex) {
     const auto it = m_head_to_thresholds.find(head);
     if (it != m_head_to_thresholds.end()) {
         thresholds_t& thresholds = it->second;
-        const value_t& bb = m_cfg.get_node(vertex);
-        get_thresholds(bb, thresholds);
+        get_thresholds(vertex, thresholds);
     } else {
         CRAB_ERROR("No head found while gathering thresholds");
     }
@@ -69,15 +68,14 @@ void wto_thresholds_t::operator()(const label_t& vertex) {
 
 void wto_thresholds_t::operator()(const std::shared_ptr<wto_cycle_t>& cycle) {
     thresholds_t thresholds(m_max_size);
-    const auto& bb = m_cfg.get_node(cycle->head());
-    get_thresholds(bb, thresholds);
+    const auto& head = cycle->head();
+    get_thresholds(head, thresholds);
 
     // XXX: if we want to consider constants from loop
     // initializations
-    for (const auto& pre : boost::make_iterator_range(bb.prev_labels())) {
-        if (pre != cycle->head()) {
-            auto& pred_bb = m_cfg.get_node(pre);
-            get_thresholds(pred_bb, thresholds);
+    for (const auto& pre : m_cfg.parents_of(head)) {
+        if (pre != head) {
+            get_thresholds(pre, thresholds);
         }
     }
 

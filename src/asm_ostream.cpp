@@ -23,23 +23,6 @@ using std::optional;
 using std::string;
 using std::vector;
 
-struct LineInfoPrinter {
-    std::ostream& os;
-    std::string previous_source_line;
-
-    void print_line_info(const label_t& label) {
-        if (thread_local_options.verbosity_opts.print_line_info) {
-            const auto& line_info_map = thread_local_program_info.get().line_info;
-            const auto& line_info = line_info_map.find(label.from);
-            // Print line info only once.
-            if (line_info != line_info_map.end() && line_info->second.source_line != previous_source_line) {
-                os << "\n" << line_info->second << "\n";
-                previous_source_line = line_info->second.source_line;
-            }
-        }
-    }
-};
-
 namespace crab {
 
 std::string number_t::to_string() const { return _n.str(); }
@@ -76,21 +59,81 @@ string to_string(label_t const& label) {
     return str.str();
 }
 
-void print_dot(const cfg_t& cfg, std::ostream& out) {
+} // namespace crab
+
+struct LineInfoPrinter {
+    std::ostream& os;
+    std::string previous_source_line;
+
+    void print_line_info(const label_t& label) {
+        if (thread_local_options.verbosity_opts.print_line_info) {
+            const auto& line_info_map = thread_local_program_info.get().line_info;
+            const auto& line_info = line_info_map.find(label.from);
+            // Print line info only once.
+            if (line_info != line_info_map.end() && line_info->second.source_line != previous_source_line) {
+                os << "\n" << line_info->second << "\n";
+                previous_source_line = line_info->second.source_line;
+            }
+        }
+    }
+};
+
+void print_jump(std::ostream& o, const std::string& direction, const std::set<label_t>& labels) {
+    auto [it, et] = std::pair{labels.begin(), labels.end()};
+    if (it != et) {
+        o << "  " << direction << " ";
+        while (it != et) {
+            o << *it;
+            ++it;
+            if (it == et) {
+                o << ";";
+            } else {
+                o << ",";
+            }
+        }
+    }
+    o << "\n";
+}
+
+void print_cfg(const crab::cfg_t& cfg, std::ostream& os, const bool simplify, const printfunc& prefunc,
+               const printfunc& postfunc) {
+    LineInfoPrinter printer{os};
+    for (const crab::basic_block_t& bb : crab::basic_block_t::collect_basic_blocks(cfg, simplify)) {
+        prefunc(os, bb.first_label());
+        print_jump(os, "from", cfg.parents_of(bb.first_label()));
+        os << bb.first_label() << ":\n";
+        for (const label_t& label : bb) {
+            printer.print_line_info(label);
+            for (const auto& pre : cfg.assertions_at(label)) {
+                os << "  " << "assert " << pre << ";\n";
+            }
+            os << "  " << cfg.instruction_at(label) << ";\n";
+        }
+        print_jump(os, "goto", cfg.children_of(bb.last_label()));
+        postfunc(os, bb.last_label());
+    }
+    os << "\n";
+}
+
+static void nop(std::ostream&, const label_t&) {}
+
+void print_cfg(const crab::cfg_t& cfg, std::ostream& os, const bool simplify) {
+    print_cfg(cfg, os, simplify, nop, nop);
+}
+
+void print_dot(const crab::cfg_t& cfg, std::ostream& out) {
     out << "digraph program {\n";
     out << "    node [shape = rectangle];\n";
     for (const auto& label : cfg.labels()) {
         out << "    \"" << label << "\"[xlabel=\"" << label << "\",label=\"";
 
-        const auto& value = cfg.get_node(label);
-        const auto& ins = value.instruction();
-        for (const auto& pre : ins.preconditions) {
+        for (const auto& pre : cfg.assertions_at(label)) {
             out << "assert " << pre << "\\l";
         }
-        out << ins.cmd << "\\l";
+        out << cfg.instruction_at(label) << "\\l";
 
         out << "\"];\n";
-        for (const label_t& next : value.next_labels_set()) {
+        for (const label_t& next : cfg.children_of(label)) {
             out << "    \"" << label << "\" -> \"" << next << "\";\n";
         }
         out << "\n";
@@ -98,86 +141,13 @@ void print_dot(const cfg_t& cfg, std::ostream& out) {
     out << "}\n";
 }
 
-void print_dot(const cfg_t& cfg, const std::string& outfile) {
+void print_dot(const crab::cfg_t& cfg, const std::string& outfile) {
     std::ofstream out{outfile};
     if (out.fail()) {
         throw std::runtime_error(std::string("Could not open file ") + outfile);
     }
     print_dot(cfg, out);
 }
-
-void print_label(std::ostream& o, const value_t& value) { o << value.label() << ":\n"; }
-
-void print_assertions(std::ostream& o, const value_t& value) {
-    for (const auto& pre : value.instruction().preconditions) {
-        o << "  "
-          << "assert " << pre << ";\n";
-    }
-}
-
-void print_instruction(std::ostream& o, const value_t& value) { o << "  " << value.instruction().cmd << ";\n"; }
-
-void print_goto(std::ostream& o, const value_t& value) {
-    auto [it, et] = value.next_labels();
-    if (it != et) {
-        o << "  "
-          << "goto ";
-        while (it != et) {
-            o << *it;
-            ++it;
-            if (it == et) {
-                o << ";";
-            } else {
-                o << ",";
-            }
-        }
-    }
-    o << "\n";
-}
-
-void print_from(std::ostream& o, const value_t& value) {
-    auto [it, et] = value.prev_labels();
-    if (it != et) {
-        o << "  "
-          << "from ";
-        while (it != et) {
-            o << *it;
-            ++it;
-            if (it == et) {
-                o << ";";
-            } else {
-                o << ",";
-            }
-        }
-    }
-    o << "\n";
-}
-
-static void print_cfg(std::ostream& os, const cfg_t& cfg, const bool simplify, const invariant_table_t* invariants) {
-    LineInfoPrinter printer{os};
-    for (const auto& bb : basic_block_t::collect_basic_blocks(cfg, simplify)) {
-        if (invariants) {
-            os << "\nPre-invariant : " << invariants->at(bb.first_label()).pre << "\n";
-        }
-        const value_t& first_node = cfg.get_node(bb.first_label());
-        print_from(os, first_node);
-        print_label(os, first_node);
-        for (const label_t& label : bb) {
-            printer.print_line_info(label);
-            const value_t& node = cfg.get_node(label);
-            print_assertions(os, node);
-            print_instruction(os, node);
-        }
-        print_goto(os, cfg.get_node(bb.last_label()));
-        if (invariants) {
-            os << "\nPost-invariant: " << invariants->at(bb.last_label()).post << "\n";
-        }
-    }
-    os << "\n";
-}
-void print_cfg(std::ostream& os, const cfg_t& cfg, const bool simplify) { print_cfg(os, cfg, simplify, nullptr); }
-
-} // namespace crab
 
 void print_reachability(std::ostream& os, const Report& report) {
     for (const auto& [label, notes] : report.reachability) {
@@ -204,8 +174,15 @@ void print_all_messages(std::ostream& os, const Report& report) {
     print_warnings(os, report);
 }
 
-void print_invariants(std::ostream& os, const cfg_t& cfg, const bool simplify, const Invariants& invariants) {
-    print_cfg(os, cfg, simplify, &invariants.invariants);
+void print_invariants(std::ostream& os, const crab::cfg_t& cfg, const bool simplify, const Invariants& invariants) {
+    print_cfg(
+        cfg, os, simplify,
+        [&](std::ostream& os, const label_t& label) -> void {
+            os << "\nPre-invariant : " << invariants.invariants.at(label).pre << "\n";
+        },
+        [&](std::ostream& os, const label_t& label) -> void {
+            os << "\nPost-invariant : " << invariants.invariants.at(label).post << "\n";
+        });
 }
 
 namespace asm_syntax {
@@ -631,13 +608,9 @@ void print(const InstructionSeq& insts, std::ostream& out, const std::optional<c
 } // namespace asm_syntax
 
 std::ostream& operator<<(std::ostream& o, const EbpfMapDescriptor& desc) {
-    return o << "("
-             << "original_fd = " << desc.original_fd << ", "
-             << "inner_map_fd = " << desc.inner_map_fd << ", "
-             << "type = " << desc.type << ", "
-             << "max_entries = " << desc.max_entries << ", "
-             << "value_size = " << desc.value_size << ", "
-             << "key_size = " << desc.key_size << ")";
+    return o << "(" << "original_fd = " << desc.original_fd << ", " << "inner_map_fd = " << desc.inner_map_fd << ", "
+             << "type = " << desc.type << ", " << "max_entries = " << desc.max_entries << ", "
+             << "value_size = " << desc.value_size << ", " << "key_size = " << desc.key_size << ")";
 }
 
 void print_map_descriptors(const std::vector<EbpfMapDescriptor>& descriptors, std::ostream& o) {

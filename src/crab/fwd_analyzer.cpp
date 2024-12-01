@@ -35,15 +35,13 @@ class interleaved_fwd_fixpoint_iterator_t final {
     ebpf_domain_t get_post(const label_t& node) const { return _inv.at(node).post; }
 
     void transform_to_post(const label_t& label, ebpf_domain_t pre) {
-        const GuardedInstruction& ins = _cfg.at(label);
-
         if (thread_local_options.assume_assertions) {
-            for (const auto& assertion : ins.preconditions) {
+            for (const auto& assertion : _cfg.assertions_at(label)) {
                 // avoid redundant errors
                 ebpf_domain_assume(pre, assertion);
             }
         }
-        ebpf_domain_transform(pre, ins.cmd);
+        ebpf_domain_transform(pre, _cfg.instruction_at(label));
 
         _inv.at(label).post = std::move(pre);
     }
@@ -53,7 +51,7 @@ class interleaved_fwd_fixpoint_iterator_t final {
             return get_pre(node);
         }
         ebpf_domain_t res = ebpf_domain_t::bottom();
-        for (const label_t& prev : _cfg.prev_nodes(node)) {
+        for (const label_t& prev : _cfg.parents_of(node)) {
             res |= get_post(prev);
         }
         return res;
@@ -145,7 +143,7 @@ void interleaved_fwd_fixpoint_iterator_t::operator()(const std::shared_ptr<wto_c
         invariant = get_pre(_cfg.entry_label());
     } else {
         const wto_nesting_t cycle_nesting = _wto.nesting(head);
-        for (const label_t& prev : _cfg.prev_nodes(head)) {
+        for (const label_t& prev : _cfg.parents_of(head)) {
             if (!(_wto.nesting(prev) > cycle_nesting)) {
                 invariant |= get_post(prev);
             }

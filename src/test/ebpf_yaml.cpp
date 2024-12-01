@@ -17,6 +17,7 @@
 #include "ebpf_yaml.hpp"
 #include "string_constraints.hpp"
 
+using crab::cfg_t;
 using std::string;
 using std::vector;
 

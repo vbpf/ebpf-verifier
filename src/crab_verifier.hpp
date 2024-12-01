@@ -28,8 +28,8 @@ class Report final {
 
     std::set<std::string> reachability_set() const {
         std::set<std::string> result;
-        for (const auto& [label, warnings] : reachability) {
-            for (const auto& msg : warnings) {
+        for (const auto& [label, reach_warning] : reachability) {
+            for (const auto& msg : reach_warning) {
                 result.insert(to_string(label) + ": " + msg);
             }
         }
@@ -38,8 +38,8 @@ class Report final {
 
     std::set<std::string> warning_set() const {
         std::set<std::string> result;
-        for (const auto& [label, warnings] : warnings) {
-            for (const auto& msg : warnings) {
+        for (const auto& [label, warning_vec] : warnings) {
+            for (const auto& msg : warning_vec) {
                 result.insert(to_string(label) + ": " + msg);
             }
         }
@@ -64,15 +64,15 @@ class Invariants final {
     crab::interval_t exit_value() const;
 
     int max_loop_count() const;
-    bool verified(const cfg_t& cfg) const;
-    Report check_assertions(const cfg_t& cfg) const;
+    bool verified(const crab::cfg_t& cfg) const;
+    Report check_assertions(const crab::cfg_t& cfg) const;
 
-    friend void print_invariants(std::ostream& os, const cfg_t& cfg, bool simplify, const Invariants& invariants);
+    friend void print_invariants(std::ostream& os, const crab::cfg_t& cfg, bool simplify, const Invariants& invariants);
 };
 
-Invariants analyze(const cfg_t& cfg);
-Invariants analyze(const cfg_t& cfg, const string_invariant& entry_invariant);
-inline bool verify(const cfg_t& cfg) { return analyze(cfg).verified(cfg); }
+Invariants analyze(const crab::cfg_t& cfg);
+Invariants analyze(const crab::cfg_t& cfg, const string_invariant& entry_invariant);
+inline bool verify(const crab::cfg_t& cfg) { return analyze(cfg).verified(cfg); }
 
 int create_map_crab(const EbpfMapType& map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries,
                     ebpf_verifier_options_t options);

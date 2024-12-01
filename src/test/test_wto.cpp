@@ -1,35 +1,24 @@
 // Copyright (c) Prevail Verifier contributors.
 // SPDX-License-Identifier: MIT
-#include "crab/cfg.hpp"
-#include "crab/wto.hpp"
 #include <catch2/catch_all.hpp>
 
-TEST_CASE("wto figure 1", "[wto]") {
-    cfg_t cfg;
+#include "crab/cfg.hpp"
+#include "crab/wto.hpp"
 
+using crab::label_t;
+
+TEST_CASE("wto figure 1", "[wto]") {
     // Construct the example graph in figure 1 of Bourdoncle,
     // "Efficient chaotic iteration strategies with widenings", 1993.
-
-    // Add nodes.
-    for (int i = 1; i <= 8; i++) {
-        cfg.insert(label_t{i}, Undefined{});
-    }
-
-    // Add edges.
-    cfg.get_node(label_t::entry) >> cfg.get_node(label_t{1});
-    cfg.get_node(label_t{1}) >> cfg.get_node(label_t{2});
-    cfg.get_node(label_t{2}) >> cfg.get_node(label_t{3});
-    cfg.get_node(label_t{3}) >> cfg.get_node(label_t{4});
-    cfg.get_node(label_t{4}) >> cfg.get_node(label_t{5});
-    cfg.get_node(label_t{4}) >> cfg.get_node(label_t{7});
-    cfg.get_node(label_t{5}) >> cfg.get_node(label_t{6});
-    cfg.get_node(label_t{6}) >> cfg.get_node(label_t{5});
-    cfg.get_node(label_t{6}) >> cfg.get_node(label_t{7});
-    cfg.get_node(label_t{7}) >> cfg.get_node(label_t{3});
-    cfg.get_node(label_t{7}) >> cfg.get_node(label_t{8});
-    cfg.get_node(label_t{8}) >> cfg.get_node(label_t::exit);
-
-    const wto_t wto(cfg);
+    const wto_t wto(crab::cfg_from_adjacency_list({{crab::label_t::entry, {label_t{1}}},
+                                                   {label_t{1}, {label_t{2}}},
+                                                   {label_t{2}, {label_t{3}}},
+                                                   {label_t{3}, {label_t{4}}},
+                                                   {label_t{4}, {label_t{5}, label_t{7}}},
+                                                   {label_t{5}, {label_t{6}}},
+                                                   {label_t{6}, {label_t{5}, label_t{7}}},
+                                                   {label_t{7}, {label_t{3}, label_t{8}}},
+                                                   {label_t{8}, {label_t::exit}}}));
 
     std::ostringstream os;
     os << wto;
@@ -37,27 +26,14 @@ TEST_CASE("wto figure 1", "[wto]") {
 }
 
 TEST_CASE("wto figure 2a", "[wto]") {
-    cfg_t cfg;
-
     // Construct the example graph in figure 2a of Bourdoncle,
     // "Efficient chaotic iteration strategies with widenings", 1993.
-
-    // Add nodes.
-    for (int i = 1; i <= 5; i++) {
-        cfg.insert(label_t{i}, Undefined{});
-    }
-
-    // Add edges.
-    cfg.get_node(label_t::entry) >> cfg.get_node(label_t{1});
-    cfg.get_node(label_t{1}) >> cfg.get_node(label_t{2});
-    cfg.get_node(label_t{1}) >> cfg.get_node(label_t{4});
-    cfg.get_node(label_t{2}) >> cfg.get_node(label_t{3});
-    cfg.get_node(label_t{3}) >> cfg.get_node(label_t::exit);
-    cfg.get_node(label_t{4}) >> cfg.get_node(label_t{3});
-    cfg.get_node(label_t{4}) >> cfg.get_node(label_t{5});
-    cfg.get_node(label_t{5}) >> cfg.get_node(label_t{4});
-
-    const wto_t wto(cfg);
+    const wto_t wto(crab::cfg_from_adjacency_list({{crab::label_t::entry, {label_t{1}}},
+                                                   {label_t{1}, {label_t{2}, label_t{4}}},
+                                                   {label_t{2}, {label_t{3}}},
+                                                   {label_t{3}, {label_t::exit}},
+                                                   {label_t{4}, {label_t{3}, label_t{5}}},
+                                                   {label_t{5}, {label_t{4}}}}));
 
     std::ostringstream os;
     os << wto;
@@ -65,26 +41,13 @@ TEST_CASE("wto figure 2a", "[wto]") {
 }
 
 TEST_CASE("wto figure 2b", "[wto]") {
-    cfg_t cfg;
-
     // Construct the example graph in figure 2b of Bourdoncle,
     // "Efficient chaotic iteration strategies with widenings", 1993.
-
-    // Add nodes.
-    for (int i = 1; i <= 4; i++) {
-        cfg.insert(label_t{i}, Undefined{});
-    }
-
-    // Add edges.
-    cfg.get_node(label_t::entry) >> cfg.get_node(label_t{1});
-    cfg.get_node(label_t{1}) >> cfg.get_node(label_t{2});
-    cfg.get_node(label_t{1}) >> cfg.get_node(label_t{4});
-    cfg.get_node(label_t{2}) >> cfg.get_node(label_t{3});
-    cfg.get_node(label_t{3}) >> cfg.get_node(label_t{1});
-    cfg.get_node(label_t{3}) >> cfg.get_node(label_t::exit);
-    cfg.get_node(label_t{4}) >> cfg.get_node(label_t{3});
-
-    const wto_t wto(cfg);
+    const wto_t wto(crab::cfg_from_adjacency_list({{crab::label_t::entry, {label_t{1}}},
+                                                   {label_t{1}, {label_t{2}, label_t{4}}},
+                                                   {label_t{2}, {label_t{3}}},
+                                                   {label_t{3}, {label_t{1}, label_t::exit}},
+                                                   {label_t{4}, {label_t{3}}}}));
 
     std::ostringstream os;
     os << wto;

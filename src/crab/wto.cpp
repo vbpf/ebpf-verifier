@@ -4,6 +4,8 @@
 
 #include "wto.hpp"
 
+using crab::cfg_t;
+
 // This file contains an iterative implementation of the recursive algorithm in
 // Bourdoncle, "Efficient chaotic iteration strategies with widenings", 1993
 // http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.38.3574
@@ -57,7 +59,7 @@ struct visit_args_t {
     std::weak_ptr<wto_cycle_t> containing_cycle;
 
     visit_args_t(const visit_task_type_t t, label_t v, wto_partition_t& p, std::weak_ptr<wto_cycle_t> cc)
-        : type(t), vertex(std::move(v)), partition(p), containing_cycle(std::move(cc)) {};
+        : type(t), vertex(std::move(v)), partition(p), containing_cycle(std::move(cc)){};
 };
 
 struct wto_vertex_data_t {
@@ -94,7 +96,6 @@ class wto_builder_t final {
     // the algorithm of figure 4 in the paper, where this constructor matches
     // what is shown there as the Partition function.
     explicit wto_builder_t(const cfg_t& cfg);
-    friend std::ostream& operator<<(std::ostream& o, const wto_builder_t& wto);
 };
 
 void wto_builder_t::push_successors(const label_t& vertex, wto_partition_t& partition,
@@ -109,7 +110,7 @@ void wto_builder_t::push_successors(const label_t& vertex, wto_partition_t& part
     // Schedule the next task for this vertex once we're done with anything else.
     _visit_stack.emplace(visit_task_type_t::StartVisit, vertex, partition, containing_cycle);
 
-    for (const label_t& succ : _cfg.next_nodes_reversed(vertex)) {
+    for (const label_t& succ : std::ranges::reverse_view(_cfg.children_of(vertex))) {
         if (_vertex_data[succ].dfn == 0) {
             _visit_stack.emplace(visit_task_type_t::PushSuccessors, succ, partition, containing_cycle);
         }
@@ -121,7 +122,7 @@ void wto_builder_t::start_visit(const label_t& vertex, wto_partition_t& partitio
     wto_vertex_data_t& vertex_data = _vertex_data[vertex];
     int head_dfn = vertex_data.dfn;
     bool loop = false;
-    for (const label_t& succ : _cfg.next_nodes(vertex)) {
+    for (const label_t& succ : _cfg.children_of(vertex)) {
         const wto_vertex_data_t& data = _vertex_data[succ];
         int min_dfn = data.dfn;
         if (data.head_dfn != 0 && data.dfn != DFN_INF) {
@@ -157,7 +158,7 @@ void wto_builder_t::start_visit(const label_t& vertex, wto_partition_t& partitio
 
             // Walk the control flow graph, adding nodes to this cycle.
             // This is the Component() function described in figure 4 of the paper.
-            for (const label_t& succ : _cfg.next_nodes_reversed(vertex)) {
+            for (const label_t& succ : std::ranges::reverse_view(_cfg.children_of(vertex))) {
                 if (_vertex_data.at(succ).dfn == 0) {
                     _visit_stack.emplace(visit_task_type_t::PushSuccessors, succ, cycle->_components, cycle);
                 }
