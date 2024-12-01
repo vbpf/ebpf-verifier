@@ -2,7 +2,12 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 
-#include "crab/cfg.hpp"
+struct prepare_cfg_options {
+    /// When true, verifies that the program terminates.
+    bool check_for_termination = false;
+    /// When true, ensures the program has a valid exit block.
+    bool must_have_exit = true;
+};
 
 struct verbosity_options_t {
     /// When true, prints simplified control flow graph by merging chains into basic blocks.

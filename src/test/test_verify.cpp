@@ -1,8 +1,11 @@
 // Copyright (c) Prevail Verifier contributors.
 // SPDX-License-Identifier: MIT
-#include "ebpf_verifier.hpp"
 #include <catch2/catch_all.hpp>
 #include <thread>
+
+#include "ebpf_verifier.hpp"
+
+using crab::cfg_t;
 
 #define FAIL_LOAD_ELF(dirname, filename, sectionname)                                                \
     TEST_CASE("Try loading nonexisting program: " dirname "/" filename, "[elf]") {                   \

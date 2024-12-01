@@ -114,7 +114,7 @@ class wto_t final {
     friend class wto_builder_t;
 
   public:
-    explicit wto_t(const cfg_t& cfg);
+    explicit wto_t(const crab::cfg_t& cfg);
 
     [[nodiscard]]
     wto_partition_t::const_reverse_iterator begin() const {

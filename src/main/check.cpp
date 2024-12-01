@@ -239,9 +239,9 @@ int main(int argc, char** argv) {
         // Convert the instruction sequence to a control-flow graph.
         try {
             const auto verbosity = ebpf_verifier_options.verbosity_opts;
-            const cfg_t cfg = prepare_cfg(prog, raw_prog.info, ebpf_verifier_options.cfg_opts);
+            const crab::cfg_t cfg = prepare_cfg(prog, raw_prog.info, ebpf_verifier_options.cfg_opts);
             if (domain == "cfg") {
-                print_cfg(std::cout, cfg, verbosity.simplify);
+                print_cfg(cfg, std::cout, verbosity.simplify);
                 return 0;
             }
             const auto begin = std::chrono::steady_clock::now();
@@ -277,7 +277,7 @@ int main(int argc, char** argv) {
         return !res;
     } else if (domain == "stats") {
         // Convert the instruction sequence to a control-flow graph.
-        const cfg_t cfg = prepare_cfg(prog, raw_prog.info, ebpf_verifier_options.cfg_opts);
+        const crab::cfg_t cfg = prepare_cfg(prog, raw_prog.info, ebpf_verifier_options.cfg_opts);
 
         // Just print eBPF program stats.
         auto stats = collect_stats(cfg);

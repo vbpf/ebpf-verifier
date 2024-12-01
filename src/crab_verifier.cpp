@@ -5,11 +5,9 @@
  *  the verification process and returning the results.
  **/
 
-#include <iostream>
 #include <map>
 #include <ranges>
 #include <string>
-#include <vector>
 
 #include "asm_files.hpp"
 #include "asm_syntax.hpp"
@@ -19,6 +17,7 @@
 #include "crab_verifier.hpp"
 #include "string_constraints.hpp"
 
+using crab::cfg_t;
 using crab::ebpf_domain_t;
 using std::string;
 
@@ -69,7 +68,7 @@ bool Invariants::verified(const cfg_t& cfg) const {
         if (inv_pair.pre.is_bottom()) {
             continue;
         }
-        for (const Assertion& assertion : cfg.at(label).preconditions) {
+        for (const Assertion& assertion : cfg.assertions_at(label)) {
             if (!ebpf_domain_check(inv_pair.pre, assertion).empty()) {
                 return false;
             }
@@ -84,16 +83,15 @@ Report Invariants::check_assertions(const cfg_t& cfg) const {
         if (inv_pair.pre.is_bottom()) {
             continue;
         }
-        const auto ins = cfg.at(label);
-        for (const Assertion& assertion : ins.preconditions) {
+        for (const Assertion& assertion : cfg.assertions_at(label)) {
             const auto warnings = ebpf_domain_check(inv_pair.pre, assertion);
             for (const auto& msg : warnings) {
                 report.warnings[label].emplace_back(msg);
             }
         }
-        if (std::holds_alternative<Assume>(ins.cmd)) {
+        if (const auto passume = std::get_if<Assume>(&cfg.instruction_at(label))) {
             if (inv_pair.post.is_bottom()) {
-                const auto s = to_string(std::get<Assume>(ins.cmd));
+                const auto s = to_string(*passume);
                 report.reachability[label].emplace_back("Code becomes unreachable (" + s + ")");
             }
         }

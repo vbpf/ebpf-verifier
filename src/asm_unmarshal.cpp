@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "asm_unmarshal.hpp"
+#include "crab_utils/debug.hpp"
 #include "crab_utils/num_safety.hpp"
 #include "ebpf_vm_isa.hpp"
 
@@ -416,8 +417,8 @@ struct Unmarshaller {
     }
 
     [[nodiscard]]
-    auto makeLddw(const ebpf_inst inst, const int32_t next_imm, const vector<ebpf_inst>& insts, const pc_t pc) const
-        -> Instruction {
+    auto makeLddw(const ebpf_inst inst, const int32_t next_imm, const vector<ebpf_inst>& insts,
+                  const pc_t pc) const -> Instruction {
         if (!info.platform->supports_group(bpf_conformance_groups_t::base64)) {
             throw InvalidInstruction{pc, inst.opcode};
         }

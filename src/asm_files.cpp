@@ -205,8 +205,7 @@ struct function_relocation {
     string target_function_name;
 };
 
-static raw_program* find_subprogram(vector<raw_program>& programs,
-                                    const ELFIO::section& subprogram_section,
+static raw_program* find_subprogram(vector<raw_program>& programs, const ELFIO::section& subprogram_section,
                                     const std::string& symbol_name) {
     // Find subprogram by name.
     for (auto& subprog : programs) {
@@ -219,8 +218,8 @@ static raw_program* find_subprogram(vector<raw_program>& programs,
 
 // Returns an error message, or empty string on success.
 static std::string append_subprograms(raw_program& prog, vector<raw_program>& programs,
-                                      const vector<function_relocation>& function_relocations, const ELFIO::elfio& reader,
-                                      const ELFIO::const_symbol_section_accessor& symbols) {
+                                      const vector<function_relocation>& function_relocations,
+                                      const ELFIO::elfio& reader, const ELFIO::const_symbol_section_accessor& symbols) {
     if (prog.resolved_subprograms) {
         // We've already appended any relevant subprograms.
         return {};
