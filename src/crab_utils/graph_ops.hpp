@@ -484,13 +484,6 @@ class GraphRev {
     G& g;
 };
 
-// temporary concept: indexable
-// TODO: replace everywhere with simple callable
-template <typename T>
-concept WeightIndexable = requires(T t, AdaptGraph::vert_id v) {
-    { t[v] } -> std::convertible_to<typename AdaptGraph::Weight>;
-};
-
 // GKG - What's the best way to split this out?
 class GraphOps {
   public:
@@ -499,6 +492,8 @@ class GraphOps {
     using Weight = typename graph_t::Weight;
     using vert_id = typename graph_t::vert_id;
     using WeightVector = std::vector<Weight>;
+
+    using PotentialFunction = std::function<Weight(vert_id)>;
     using mut_val_ref_t = typename graph_t::mut_val_ref_t;
 
     using edge_vector = std::vector<std::tuple<vert_id, vert_id, Weight>>;
@@ -786,7 +781,7 @@ class GraphOps {
     }
 
     template <class G, class G1, class G2>
-    static edge_vector close_after_meet(const G& g, const WeightIndexable auto& pots, const G1& l, const G2& r) {
+    static edge_vector close_after_meet(const G& g, const PotentialFunction& pots, const G1& l, const G2& r) {
         // We assume the syntactic meet has already been computed, and potentials have been initialized.
         // We just want to restore closure.
         assert(l.size() == r.size());
@@ -850,7 +845,7 @@ class GraphOps {
     // P is some vector-alike holding a valid system of potentials.
     // Don't need to clear/initialize
     template <class G>
-    static void chrome_dijkstra(const G& g, const WeightIndexable auto& p,
+    static void chrome_dijkstra(const G& g, const PotentialFunction& p,
                                 std::vector<std::vector<vert_id>>& colour_succs, vert_id src,
                                 std::vector<std::tuple<vert_id, Weight>>& out) {
         const size_t sz = g.size();
@@ -870,7 +865,7 @@ class GraphOps {
 
         for (const auto e : g.e_succs(src)) {
             const vert_id dest = e.vert;
-            dists->at(dest) = p[src] + e.val - p[dest];
+            dists->at(dest) = p(src) + e.val - p(dest);
             dist_ts->at(dest) = ts;
 
             vert_marks->at(dest) = edge_marks->at(sz * src + dest);
@@ -879,9 +874,9 @@ class GraphOps {
 
         while (!heap.empty()) {
             const int es = heap.removeMin();
-            const Weight es_cost = dists->at(es) + p[es]; // If it's on the queue, distance is not infinite.
+            const Weight es_cost = dists->at(es) + p(es); // If it's on the queue, distance is not infinite.
             {
-                const Weight es_val = es_cost - p[src];
+                const Weight es_val = es_cost - p(src);
                 const auto w = g.lookup(src, es);
                 if (!w || *w > es_val) {
                     out.emplace_back(es, es_val);
@@ -896,7 +891,7 @@ class GraphOps {
             const std::vector<vert_id>& es_succs =
                 (vert_marks->at(es) == E_LEFT) ? colour_succs[2 * es + 1] : colour_succs[2 * es];
             for (vert_id ed : es_succs) {
-                const Weight v = es_cost + g.edge_val(es, ed) - p[ed];
+                const Weight v = es_cost + g.edge_val(es, ed) - p(ed);
                 if (dist_ts->at(ed) != ts || v < dists->at(ed)) {
                     dists->at(ed) = v;
                     dist_ts->at(ed) = ts;
@@ -917,7 +912,7 @@ class GraphOps {
     // Run Dijkstra's algorithm, but similar to the chromatic algorithm, avoid expanding anything that _was_ stable.
     // GKG: Factor out common elements of this & the previous algorithm.
     template <class G, class S>
-    static void dijkstra_recover(const G& g, const WeightIndexable auto& p, const S& is_stable, vert_id src,
+    static void dijkstra_recover(const G& g, const PotentialFunction& p, const S& is_stable, vert_id src,
                                  std::vector<std::tuple<vert_id, Weight>>& out) {
         const size_t sz = g.size();
         if (sz == 0) {
@@ -940,7 +935,7 @@ class GraphOps {
 
         for (const auto e : g.e_succs(src)) {
             const vert_id dest = e.vert;
-            dists->at(dest) = p[src] + e.val - p[dest];
+            dists->at(dest) = p(src) + e.val - p(dest);
             dist_ts->at(dest) = ts;
 
             vert_marks->at(dest) = V_UNSTABLE;
@@ -949,9 +944,9 @@ class GraphOps {
 
         while (!heap.empty()) {
             const int es = heap.removeMin();
-            const Weight es_cost = dists->at(es) + p[es]; // If it's on the queue, distance is not infinite.
+            const Weight es_cost = dists->at(es) + p(es); // If it's on the queue, distance is not infinite.
             {
-                Weight es_val = es_cost - p[src];
+                Weight es_val = es_cost - p(src);
                 auto w = g.lookup(src, es);
                 if (!w || *w > es_val) {
                     out.emplace_back(es, es_val);
@@ -966,7 +961,7 @@ class GraphOps {
             // Pick the appropriate set of successors
             for (const auto e : g.e_succs(es)) {
                 const vert_id ed = e.vert;
-                const Weight v = es_cost + e.val - p[ed];
+                const Weight v = es_cost + e.val - p(ed);
                 if (dist_ts->at(ed) != ts || v < dists->at(ed)) {
                     dists->at(ed) = v;
                     dist_ts->at(ed) = ts;
@@ -1037,7 +1032,7 @@ class GraphOps {
     }
 
     template <class G, class V>
-    static edge_vector close_after_widen(const G& g, const WeightIndexable auto& p, const V& is_stable) {
+    static edge_vector close_after_widen(const G& g, const PotentialFunction& p, const V& is_stable) {
         const size_t sz = g.size();
         grow_scratch(sz);
         //      assert(orig.size() == sz);
@@ -1064,7 +1059,7 @@ class GraphOps {
     // Compute the transitive closure of edges reachable from v, assuming
     // (1) the subgraph G \ {v} is closed, and
     // (2) P is a valid model of G.
-    static void close_after_assign_fwd(const auto& g, const WeightIndexable auto& p, vert_id v,
+    static void close_after_assign_fwd(const auto& g, const PotentialFunction& p, vert_id v,
                                        std::vector<std::tuple<vert_id, Weight>>& aux) {
         // Initialize the queue and distances.
         for (vert_id u : g.verts()) {
@@ -1079,14 +1074,14 @@ class GraphOps {
             vert_id d = e.vert;
             vert_marks->at(d) = BF_QUEUED;
             dists->at(d) = e.val;
-            //        assert(p[v] + dists->at(d) - p[d] >= Weight(0));
+            //        assert(p(v) + dists->at(d) - p(d) >= Weight(0));
             *adj_tail = d;
             ++adj_tail;
         }
 
         // Sort the immediate edges by increasing slack.
         std::sort(adj_head, adj_tail,
-                  [&p](vert_id d1, vert_id d2) { return dists->at(d1) - p[d1] < dists->at(d2) - p[d2]; });
+                  [&p](vert_id d1, vert_id d2) { return dists->at(d1) - p(d1) < dists->at(d2) - p(d2); });
 
         auto reach_tail = adj_tail;
         for (; adj_head < adj_tail; ++adj_head) {
@@ -1178,8 +1173,7 @@ class GraphOps {
         // Closure is now updated.
     }
 
-    template <WeightIndexable P>
-    static edge_vector close_after_assign(const auto& g, const P& p, vert_id v) {
+    static edge_vector close_after_assign(const auto& g, const PotentialFunction& p, vert_id v) {
         const size_t sz = g.size();
         grow_scratch(sz);
         edge_vector delta;
@@ -1194,11 +1188,7 @@ class GraphOps {
             std::vector<std::tuple<vert_id, Weight>> aux;
             GraphRev g_rev{g};
 
-            struct NegP {
-                Weight operator[](vert_id v) const { return -(p[v]); }
-                const P& p;
-            };
-            close_after_assign_fwd(g_rev, NegP{p}, v, aux);
+            close_after_assign_fwd(g_rev, [&](vert_id v) { return -(p(v)); }, v, aux);
             for (const auto& [vid, wt] : aux) {
                 delta.emplace_back(vid, v, wt);
             }
