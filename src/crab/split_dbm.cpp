@@ -508,7 +508,7 @@ SplitDBM SplitDBM::operator|(const SplitDBM& o) const& {
     bool is_closed;
     graph_t g_rx(GraphOps::meet(gx, g_ix_ry, is_closed));
     if (!is_closed) {
-        GraphOps::apply_delta(g_rx, GraphOps::close_after_meet(SubGraph(g_rx, 0),index_to_call(pot_rx), gx, g_ix_ry));
+        GraphOps::apply_delta(g_rx, GraphOps::close_after_meet(SubGraph(g_rx, 0), index_to_call(pot_rx), gx, g_ix_ry));
     }
 
     graph_t g_rx_iy;
