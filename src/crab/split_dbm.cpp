@@ -237,6 +237,10 @@ void SplitDBM::diffcsts_of_lin_leq(const linear_expression_t& exp,
     }
 }
 
+static GraphOps::PotentialFunction index_to_call(const GraphOps::WeightVector& p) {
+    return [&p](GraphOps::vert_id v) -> GraphOps::Weight { return p[v]; };
+}
+
 bool SplitDBM::add_linear_leq(const linear_expression_t& exp) {
     std::vector<std::pair<variable_t, Weight>> lbs, ubs;
     std::vector<diffcst_t> csts;
@@ -281,7 +285,7 @@ bool SplitDBM::add_linear_leq(const linear_expression_t& exp) {
         }
         GraphOps::close_over_edge(g, src, dest);
     }
-    GraphOps::apply_delta(g, GraphOps::close_after_assign(g, [&](vert_id v){ return potential[v]; }, 0));
+    GraphOps::apply_delta(g, GraphOps::close_after_assign(g, index_to_call(potential), 0));
     normalize();
     return true;
 }
@@ -504,7 +508,7 @@ SplitDBM SplitDBM::operator|(const SplitDBM& o) const& {
     bool is_closed;
     graph_t g_rx(GraphOps::meet(gx, g_ix_ry, is_closed));
     if (!is_closed) {
-        GraphOps::apply_delta(g_rx, GraphOps::close_after_meet(SubGraph(g_rx, 0), [&](vert_id v) { return pot_rx[v]; }, gx, g_ix_ry));
+        GraphOps::apply_delta(g_rx, GraphOps::close_after_meet(SubGraph(g_rx, 0),index_to_call(pot_rx), gx, g_ix_ry));
     }
 
     graph_t g_rx_iy;
@@ -525,7 +529,7 @@ SplitDBM SplitDBM::operator|(const SplitDBM& o) const& {
     // Similarly, should use a SubGraph view.
     graph_t g_ry(GraphOps::meet(gy, g_rx_iy, is_closed));
     if (!is_closed) {
-        GraphOps::apply_delta(g_ry, GraphOps::close_after_meet(SubGraph(g_ry, 0), [&](vert_id v) { return pot_ry[v]; }, gy, g_rx_iy));
+        GraphOps::apply_delta(g_ry, GraphOps::close_after_meet(SubGraph(g_ry, 0), index_to_call(pot_ry), gy, g_rx_iy));
     }
 
     // We now have the relevant set of relations. Because g_rx and g_ry are closed,
@@ -730,7 +734,7 @@ std::optional<SplitDBM> SplitDBM::meet(const SplitDBM& o) const {
     }
 
     if (!is_closed) {
-        auto potential_func = [&](vert_id v) -> Weight { return meet_pi[v]; };
+        const auto potential_func = index_to_call(meet_pi);
         GraphOps::apply_delta(meet_g, GraphOps::close_after_meet(SubGraph(meet_g, 0), potential_func, gx, gy));
 
         // Recover updated LBs and UBs.<
@@ -892,7 +896,7 @@ void SplitDBM::assign(variable_t lhs, const linear_expression_t& e) {
         // apply_delta should be safe here, as x has no edges in G.
         GraphOps::apply_delta(g, delta);
     }
-    GraphOps::apply_delta(g, GraphOps::close_after_assign(SubGraph(g, 0), [&](vert_id v){ return potential[v]; }, vert));
+    GraphOps::apply_delta(g, GraphOps::close_after_assign(SubGraph(g, 0), index_to_call(potential), vert));
 
     if (lb_w) {
         g.update_edge(vert, *lb_w, 0);
@@ -947,9 +951,10 @@ void SplitDBM::normalize() {
     GraphOps::edge_vector delta;
     // GraphOps::close_after_widen(g, potential, vert_set_wrap_t(unstable), delta);
     // GKG: Check
-    GraphOps::apply_delta(g, GraphOps::close_after_widen(SubGraph(g, 0), [&](vert_id v){ return potential[v]; }, vert_set_wrap_t(unstable)));
+    const auto p = index_to_call(potential);
+    GraphOps::apply_delta(g, GraphOps::close_after_widen(SubGraph(g, 0), p, vert_set_wrap_t(unstable)));
     // Retrieve variable bounds
-    GraphOps::apply_delta(g, GraphOps::close_after_assign(g, [&](vert_id v){ return potential[v]; }, 0));
+    GraphOps::apply_delta(g, GraphOps::close_after_assign(g, p, 0));
 
     unstable.clear();
 }

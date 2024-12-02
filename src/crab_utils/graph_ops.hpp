@@ -414,7 +414,7 @@ class SubGraph {
         iterator begin() const { return iterator(rG.begin(), v_ex); }
         iterator end() const { return iterator(rG.end(), v_ex); }
 
-      protected:
+      private:
         R rG;
         vert_id v_ex;
     };
@@ -446,7 +446,6 @@ class GraphRev {
   public:
     using vert_id = typename G::vert_id;
     using Weight = typename G::Weight;
-    // using g_adj_list = G::adj_list;
     using mut_val_ref_t = typename G::mut_val_ref_t;
 
     explicit GraphRev(G& _g) : g(_g) {}
@@ -468,8 +467,6 @@ class GraphRev {
     int size() const {
         return g.size();
     }
-
-    //    using adj_list = G::adj_list;
 
     using neighbour_const_range = typename G::neighbour_const_range;
     using e_neighbour_const_range = typename G::e_neighbour_const_range;
@@ -498,8 +495,6 @@ class GraphOps {
 
     using edge_vector = std::vector<std::tuple<vert_id, vert_id, Weight>>;
 
-    using edge_ref = std::tuple<vert_id, vert_id, Weight>;
-
     //===========================================
     // Enums used to mark vertices/edges during algorithms
     //===========================================
@@ -509,7 +504,7 @@ class GraphOps {
     enum SMarkT { V_UNSTABLE = 0, V_STABLE = 1 };
     // Whether a vertex is in the current SCC/queue for Bellman-Ford.
     enum QMarkT { BF_NONE = 0, BF_SCC = 1, BF_QUEUED = 2 };
-
+  private:
     // Scratch space needed by the graph algorithms.
     // Should really switch to some kind of arena allocator, rather
     // than having all these static structures.
@@ -530,6 +525,7 @@ class GraphOps {
     static inline thread_local unsigned int ts;
     static inline thread_local unsigned int ts_idx;
 
+  public:
     static void clear_thread_local_state() {
         dists.clear();
         dists_alt.clear();
@@ -541,7 +537,7 @@ class GraphOps {
         ts = 0;
         ts_idx = 0;
     }
-
+  private:
     static void grow_scratch(const size_t sz) {
         if (sz <= scratch_sz) {
             return;
@@ -569,6 +565,7 @@ class GraphOps {
         }
     }
 
+  public:
     // Syntactic join.
     static graph_t join(auto& l, auto& r) {
         // For the join, potentials are preserved
@@ -638,6 +635,7 @@ class GraphOps {
         return g;
     }
 
+  private:
     // Compute the strongly connected components.
     // Duped pretty much verbatim from Wikipedia.
     // Abuses 'dual_queue' to store indices.
@@ -695,6 +693,7 @@ class GraphOps {
         }
     }
 
+  public:
     // Run Bellman-Ford to compute a valid model of a set of difference constraints.
     // Returns false if there is some negative cycle.
     static bool select_potentials(const auto& g, WeightVector& potentials) {
@@ -840,6 +839,7 @@ class GraphOps {
         }
     }
 
+  private:
     static bool dists_compare(int x, int y) { return (*dists)[x] < (*dists)[y]; }
 
     // P is some vector-alike holding a valid system of potentials.
@@ -978,7 +978,7 @@ class GraphOps {
             }
         }
     }
-
+  public:
     template <class G>
     static bool repair_potential(const G& g, WeightVector& p, vert_id ii, vert_id jj) {
         // Ensure there's enough scratch space.
@@ -1055,7 +1055,7 @@ class GraphOps {
         }
         return delta;
     }
-
+  private:
     // Compute the transitive closure of edges reachable from v, assuming
     // (1) the subgraph G \ {v} is closed, and
     // (2) P is a valid model of G.
@@ -1109,7 +1109,7 @@ class GraphOps {
             vert_marks->at(*adj_head) = 0;
         }
     }
-
+  public:
     static void close_over_edge(graph_t& g, vert_id ii, vert_id jj) {
         assert(ii != 0 && jj != 0);
         SubGraph<graph_t> g_excl(g, 0);
