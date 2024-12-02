@@ -48,7 +48,7 @@ namespace domains {
 class SplitDBM final {
   public:
     using graph_t = AdaptGraph;
-    using Weight = AdaptGraph::Weight;
+    using Weight = graph_t::Weight;
     using vert_id = graph_t::vert_id;
     using vert_map_t = boost::container::flat_map<variable_t, vert_id>;
 
