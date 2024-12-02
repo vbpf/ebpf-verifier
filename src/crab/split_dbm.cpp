@@ -6,6 +6,7 @@
 
 #include "crab/split_dbm.hpp"
 #include "crab_utils/debug.hpp"
+#include "crab_utils/graph_ops.hpp"
 #include "crab_utils/stats.hpp"
 #include "string_constraints.hpp"
 #include "type_encoding.hpp"
@@ -278,9 +279,9 @@ bool SplitDBM::add_linear_leq(const linear_expression_t& exp) {
         if (!repair_potential(src, dest)) {
             return false;
         }
-        GrOps::close_over_edge(g, src, dest);
+        GraphOps::close_over_edge(g, src, dest);
     }
-    GrOps::apply_delta(g, GrOps::close_after_assign(g, potential, 0));
+    GraphOps::apply_delta(g, GraphOps::close_after_assign(g, potential, 0));
     normalize();
     return true;
 }
@@ -501,9 +502,9 @@ SplitDBM SplitDBM::operator|(const SplitDBM& o) const& {
     }
     // Apply the deferred relations, and re-close.
     bool is_closed;
-    graph_t g_rx(GrOps::meet(gx, g_ix_ry, is_closed));
+    graph_t g_rx(GraphOps::meet(gx, g_ix_ry, is_closed));
     if (!is_closed) {
-        GrOps::apply_delta(g_rx, GrOps::close_after_meet(SubGraph(g_rx, 0), pot_rx, gx, g_ix_ry));
+        GraphOps::apply_delta(g_rx, GraphOps::close_after_meet(SubGraph(g_rx, 0), pot_rx, gx, g_ix_ry));
     }
 
     graph_t g_rx_iy;
@@ -522,14 +523,14 @@ SplitDBM SplitDBM::operator|(const SplitDBM& o) const& {
         }
     }
     // Similarly, should use a SubGraph view.
-    graph_t g_ry(GrOps::meet(gy, g_rx_iy, is_closed));
+    graph_t g_ry(GraphOps::meet(gy, g_rx_iy, is_closed));
     if (!is_closed) {
-        GrOps::apply_delta(g_ry, GrOps::close_after_meet(SubGraph(g_ry, 0), pot_ry, gy, g_rx_iy));
+        GraphOps::apply_delta(g_ry, GraphOps::close_after_meet(SubGraph(g_ry, 0), pot_ry, gy, g_rx_iy));
     }
 
     // We now have the relevant set of relations. Because g_rx and g_ry are closed,
     // the result is also closed.
-    graph_t join_g(GrOps::join(g_rx, g_ry));
+    graph_t join_g(GraphOps::join(g_rx, g_ry));
 
     // Now reapply the missing independent relations.
     // Need to derive vert_ids from lb_up/lb_down, and make sure the vertices exist
@@ -646,7 +647,7 @@ SplitDBM SplitDBM::widen(const SplitDBM& o) const {
 
     // Now perform the widening
     vert_set_t widen_unstable(unstable);
-    graph_t widen_g(GrOps::widen(gx, gy, widen_unstable));
+    graph_t widen_g(GraphOps::widen(gx, gy, widen_unstable));
 
     SplitDBM res(std::move(out_vmap), std::move(out_revmap), std::move(widen_g), std::move(widen_pot),
                  std::move(widen_unstable));
@@ -717,23 +718,23 @@ std::optional<SplitDBM> SplitDBM::meet(const SplitDBM& o) const {
     GraphPerm gy(perm_y, o.g);
 
     // Compute the syntactic meet of the permuted graphs.
-    bool is_closed;
-    graph_t meet_g(GrOps::meet(gx, gy, is_closed));
+    bool is_closed{};
+    graph_t meet_g(GraphOps::meet(gx, gy, is_closed));
 
     // Compute updated potentials on the zero-enriched graph
     // vector<Weight> meet_pi(meet_g.size());
     // We've warm-started pi with the operand potentials
-    if (!GrOps::select_potentials(meet_g, meet_pi)) {
+    if (!GraphOps::select_potentials(meet_g, meet_pi)) {
         // Potentials cannot be selected -- state is infeasible.
         return {};
     }
 
     if (!is_closed) {
-        GrOps::apply_delta(meet_g, GrOps::close_after_meet(SubGraph(meet_g, 0), meet_pi, gx, gy));
+        GraphOps::apply_delta(meet_g, GraphOps::close_after_meet(SubGraph(meet_g, 0), meet_pi, gx, gy));
 
         // Recover updated LBs and UBs.<
 
-        GrOps::apply_delta(meet_g, GrOps::close_after_assign(meet_g, meet_pi, 0));
+        GraphOps::apply_delta(meet_g, GraphOps::close_after_assign(meet_g, meet_pi, 0));
     }
     SplitDBM res(std::move(meet_verts), std::move(meet_rev), std::move(meet_g), std::move(meet_pi), vert_set_t());
     CRAB_LOG("zones-split", std::cout << "Result meet:\n" << res << "\n");
@@ -878,7 +879,7 @@ void SplitDBM::assign(variable_t lhs, const linear_expression_t& e) {
     }
 
     {
-        edge_vector delta;
+        GraphOps::edge_vector delta;
         for (const auto& [var, n] : diffs_lb) {
             delta.emplace_back(vert, get_vert(var), -n);
         }
@@ -888,9 +889,9 @@ void SplitDBM::assign(variable_t lhs, const linear_expression_t& e) {
         }
 
         // apply_delta should be safe here, as x has no edges in G.
-        GrOps::apply_delta(g, delta);
+        GraphOps::apply_delta(g, delta);
     }
-    GrOps::apply_delta(g, GrOps::close_after_assign(SubGraph(g, 0), potential, vert));
+    GraphOps::apply_delta(g, GraphOps::close_after_assign(SubGraph(g, 0), potential, vert));
 
     if (lb_w) {
         g.update_edge(vert, *lb_w, 0);
@@ -926,6 +927,12 @@ class vert_set_wrap_t {
     const SplitDBM::vert_set_t& vs;
 };
 
+bool SplitDBM::repair_potential(vert_id src, vert_id dest) {
+    return GraphOps::repair_potential(g, potential, src, dest);
+}
+
+void SplitDBM::clear_thread_local_state() { GraphOps::clear_thread_local_state(); }
+
 void SplitDBM::normalize() {
     CrabStats::count("SplitDBM.count.normalize");
     ScopedCrabStats __st__("SplitDBM.normalize");
@@ -936,12 +943,12 @@ void SplitDBM::normalize() {
         return;
     }
 
-    edge_vector delta;
-    // GrOps::close_after_widen(g, potential, vert_set_wrap_t(unstable), delta);
+    GraphOps::edge_vector delta;
+    // GraphOps::close_after_widen(g, potential, vert_set_wrap_t(unstable), delta);
     // GKG: Check
-    GrOps::apply_delta(g, GrOps::close_after_widen(SubGraph(g, 0), potential, vert_set_wrap_t(unstable)));
+    GraphOps::apply_delta(g, GraphOps::close_after_widen(SubGraph(g, 0), potential, vert_set_wrap_t(unstable)));
     // Retrieve variable bounds
-    GrOps::apply_delta(g, GrOps::close_after_assign(g, potential, 0));
+    GraphOps::apply_delta(g, GraphOps::close_after_assign(g, potential, 0));
 
     unstable.clear();
 }
