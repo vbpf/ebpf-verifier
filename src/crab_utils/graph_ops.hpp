@@ -845,9 +845,8 @@ class GraphOps {
     // P is some vector-alike holding a valid system of potentials.
     // Don't need to clear/initialize
     template <class G>
-    static void chrome_dijkstra(const G& g, const PotentialFunction& p,
-                                std::vector<std::vector<vert_id>>& colour_succs, vert_id src,
-                                std::vector<std::tuple<vert_id, Weight>>& out) {
+    static void chrome_dijkstra(const G& g, const PotentialFunction& p, std::vector<std::vector<vert_id>>& colour_succs,
+                                vert_id src, std::vector<std::tuple<vert_id, Weight>>& out) {
         const size_t sz = g.size();
         if (sz == 0) {
             return;
@@ -913,7 +912,7 @@ class GraphOps {
     // GKG: Factor out common elements of this & the previous algorithm.
     template <class G, class S>
     static void dijkstra_recover(const G& g, const PotentialFunction& p, const S& is_stable, vert_id src,
-                                 std::vector<std::tuple<vert_id, Weight>>& out) {
+                                 edge_vector& delta) {
         const size_t sz = g.size();
         if (sz == 0) {
             return;
@@ -949,7 +948,7 @@ class GraphOps {
                 Weight es_val = es_cost - p(src);
                 auto w = g.lookup(src, es);
                 if (!w || *w > es_val) {
-                    out.emplace_back(es, es_val);
+                    delta.emplace_back(src, es, es_val);
                 }
             }
             if (vert_marks->at(es) == V_STABLE) {
@@ -1043,14 +1042,9 @@ class GraphOps {
             edge_marks->at(v) = is_stable[v] ? V_STABLE : V_UNSTABLE;
         }
         edge_vector delta;
-        std::vector<std::tuple<vert_id, Weight>> aux;
         for (vert_id v : g.verts()) {
             if (!edge_marks->at(v)) {
-                aux.clear();
-                dijkstra_recover(g, p, edge_marks->begin(), v, aux);
-                for (const auto& [vid, wt] : aux) {
-                    delta.emplace_back(v, vid, wt);
-                }
+                dijkstra_recover(g, p, *edge_marks, v, delta);
             }
         }
         return delta;
