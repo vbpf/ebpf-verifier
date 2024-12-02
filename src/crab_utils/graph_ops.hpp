@@ -26,7 +26,6 @@ class GraphPerm {
     using vert_id = typename G::vert_id;
     constexpr static vert_id invalid_vert = std::numeric_limits<vert_id>::max();
     using Weight = typename G::Weight;
-    using g_neighbour_const_range = typename G::neighbour_const_range;
     using mut_val_ref_t = typename G::mut_val_ref_t;
 
     GraphPerm(const std::vector<vert_id>& _perm, G& _g) : g{_g}, perm{_perm}, inv(_g.size(), invalid_vert) {
@@ -125,7 +124,7 @@ class GraphPerm {
         }
 
         bool operator!=(const adj_const_iterator& other) {
-            while (v != other.v && inv[*v] == (invalid_vert)) {
+            while (v != other.v && inv[*v] == invalid_vert) {
                 ++v;
             }
             return v != other.v;
@@ -151,7 +150,7 @@ class GraphPerm {
         }
 
         bool operator!=(const e_adj_const_iterator& other) {
-            while (v != other.v && inv[(*v).vert] == (invalid_vert)) {
+            while (v != other.v && inv[(*v).vert] == invalid_vert) {
                 ++v;
             }
             return v != other.v;
@@ -189,7 +188,7 @@ class GraphPerm {
 
         [[nodiscard]]
         bool mem(unsigned int v) const {
-            if (!adj || perm[v] == (invalid_vert)) {
+            if (!adj || perm[v] == invalid_vert) {
                 return false;
             }
             return (*adj).mem(perm[v]);
@@ -229,7 +228,7 @@ class GraphPerm {
 
         [[nodiscard]]
         bool mem(unsigned int v) const {
-            if (!adj || perm[v] == (invalid_vert)) {
+            if (!adj || perm[v] == invalid_vert) {
                 return false;
             }
             return (*adj).mem(perm[v]);
@@ -247,26 +246,26 @@ class GraphPerm {
                                                    e_adj_const_iterator<typename G::e_neighbour_const_range::iterator>>;
 
     neighbour_const_range succs(vert_id v) const {
-        if (perm[v] == (invalid_vert)) {
+        if (perm[v] == invalid_vert) {
             return neighbour_const_range(perm, inv);
         }
         return neighbour_const_range(perm, inv, g.succs(perm[v]));
     }
     neighbour_const_range preds(vert_id v) const {
-        if (perm[v] == (invalid_vert)) {
+        if (perm[v] == invalid_vert) {
             return neighbour_const_range(perm, inv);
         }
         return neighbour_const_range(perm, inv, g.preds(perm[v]));
     }
 
     e_neighbour_const_range e_succs(vert_id v) const {
-        if (perm[v] == (invalid_vert)) {
+        if (perm[v] == invalid_vert) {
             return e_neighbour_const_range(perm, inv);
         }
         return e_neighbour_const_range(perm, inv, g.e_succs(perm[v]));
     }
     e_neighbour_const_range e_preds(vert_id v) const {
-        if (perm[v] == (invalid_vert)) {
+        if (perm[v] == invalid_vert) {
             return e_neighbour_const_range(perm, inv);
         }
         return e_neighbour_const_range(perm, inv, g.e_preds(perm[v]));
@@ -407,7 +406,6 @@ class SubGraph {
     template <class R, class It>
     class adj_list {
       public:
-        using g_iter = typename R::iterator;
         using iterator = It;
 
         adj_list(const R& _rG, vert_id _v_ex) : rG(_rG), v_ex(_v_ex) {}
