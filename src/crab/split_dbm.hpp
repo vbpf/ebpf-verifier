@@ -31,7 +31,6 @@
 #include "crab/variable.hpp"
 #include "crab_utils/adapt_sgraph.hpp"
 #include "crab_utils/debug.hpp"
-#include "crab_utils/graph_ops.hpp"
 #include "crab_utils/num_big.hpp"
 #include "crab_utils/num_safeint.hpp"
 #include "crab_utils/stats.hpp"
@@ -57,8 +56,6 @@ class SplitDBM final {
     using variable_vector_t = std::vector<variable_t>;
 
     using rev_map_t = std::vector<std::optional<variable_t>>;
-    using GrOps = GraphOps<graph_t>;
-    using edge_vector = GrOps::edge_vector;
     // < <x, y>, k> == x - y <= k.
     using diffcst_t = std::pair<std::pair<variable_t, variable_t>, Weight>;
     using vert_set_t = std::unordered_set<vert_id>;
@@ -129,7 +126,7 @@ class SplitDBM final {
     interval_t get_interval(variable_t x, int finite_width) const;
 
     // Restore potential after an edge addition
-    bool repair_potential(vert_id src, vert_id dest) { return GrOps::repair_potential(g, potential, src, dest); }
+    bool repair_potential(vert_id src, vert_id dest);
 
     void normalize();
 
@@ -304,7 +301,7 @@ class SplitDBM final {
     string_invariant to_set() const;
 
   public:
-    static void clear_thread_local_state() { GraphOps<AdaptGraph>::clear_thread_local_state(); }
+    static void clear_thread_local_state();
 }; // class SplitDBM
 
 } // namespace domains

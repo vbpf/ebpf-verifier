@@ -27,11 +27,10 @@ namespace crab {
 
 // A heap implementation with support for decrease/increase key.
 // @tparam Comp a predicate that compares two integers.
-template <std::predicate<int, int> Comparator>
 class Heap {
-    Comparator lt;
-    std::vector<int> heap;    // heap of ints
-    std::vector<int> indices; // int -> index in heap
+    std::function<bool(int, int)> lt; //
+    std::vector<int> heap;            // heap of ints
+    std::vector<int> indices;         // int -> index in heap
 
     // Index "traversal" functions
     static int left(const int i) { return i * 2 + 1; }
@@ -49,7 +48,8 @@ class Heap {
         indices[x] = i;
     }
 
-    void percolateDown(int i) {
+    void percolateDown() {
+        int i = 0;
         const int x = heap[i];
         const int size = heap.size();
         while (left(i) < size) {
@@ -74,7 +74,7 @@ class Heap {
     }
 
   public:
-    explicit Heap(const Comparator& c) : lt(c) {}
+    explicit Heap(const std::function<bool(int, int)>& lt) : lt{lt} {}
 
     [[nodiscard]]
     int size() const {
@@ -117,7 +117,7 @@ class Heap {
         indices[x] = -1;
         heap.pop_back();
         if (heap.size() > 1) {
-            percolateDown(0);
+            percolateDown();
         }
         return x;
     }

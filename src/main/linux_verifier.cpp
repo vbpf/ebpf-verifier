@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: MIT
 #if __linux__
 
+#include <cstring>
 #include <linux/bpf.h>
 #include <tuple>
 #include <unistd.h>
-#include <cstring>
 
 #include "config.hpp"
 #include "linux_verifier.hpp"
