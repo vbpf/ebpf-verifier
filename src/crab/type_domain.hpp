@@ -12,6 +12,8 @@
 #include "crab/type_encoding.hpp"
 #include "crab/variable.hpp"
 
+#include "asm_syntax.hpp" // for Reg
+
 namespace crab {
 
 using domains::NumAbsDomain;

@@ -17,7 +17,6 @@
 #include "crab_verifier.hpp"
 #include "string_constraints.hpp"
 
-using crab::cfg_t;
 using crab::ebpf_domain_t;
 using std::string;
 
@@ -48,27 +47,27 @@ int Invariants::max_loop_count() const {
     return std::numeric_limits<int>::max();
 }
 
-Invariants analyze(const cfg_t& cfg, ebpf_domain_t&& entry_invariant) {
-    return Invariants{run_forward_analyzer(cfg, std::move(entry_invariant))};
+Invariants analyze(const Program& prog, ebpf_domain_t&& entry_invariant) {
+    return Invariants{run_forward_analyzer(prog, std::move(entry_invariant))};
 }
 
-Invariants analyze(const cfg_t& cfg) {
+Invariants analyze(const Program& prog) {
     ebpf_verifier_clear_before_analysis();
-    return analyze(cfg, ebpf_domain_t::setup_entry(thread_local_options.setup_constraints));
+    return analyze(prog, ebpf_domain_t::setup_entry(thread_local_options.setup_constraints));
 }
 
-Invariants analyze(const cfg_t& cfg, const string_invariant& entry_invariant) {
+Invariants analyze(const Program& prog, const string_invariant& entry_invariant) {
     ebpf_verifier_clear_before_analysis();
-    return analyze(cfg,
+    return analyze(prog,
                    ebpf_domain_t::from_constraints(entry_invariant.value(), thread_local_options.setup_constraints));
 }
 
-bool Invariants::verified(const cfg_t& cfg) const {
+bool Invariants::verified(const Program& prog) const {
     for (const auto& [label, inv_pair] : invariants) {
         if (inv_pair.pre.is_bottom()) {
             continue;
         }
-        for (const Assertion& assertion : cfg.assertions_at(label)) {
+        for (const Assertion& assertion : prog.assertions_at(label)) {
             if (!ebpf_domain_check(inv_pair.pre, assertion).empty()) {
                 return false;
             }
@@ -77,19 +76,19 @@ bool Invariants::verified(const cfg_t& cfg) const {
     return true;
 }
 
-Report Invariants::check_assertions(const cfg_t& cfg) const {
+Report Invariants::check_assertions(const Program& prog) const {
     Report report;
     for (const auto& [label, inv_pair] : invariants) {
         if (inv_pair.pre.is_bottom()) {
             continue;
         }
-        for (const Assertion& assertion : cfg.assertions_at(label)) {
+        for (const Assertion& assertion : prog.assertions_at(label)) {
             const auto warnings = ebpf_domain_check(inv_pair.pre, assertion);
             for (const auto& msg : warnings) {
                 report.warnings[label].emplace_back(msg);
             }
         }
-        if (const auto passume = std::get_if<Assume>(&cfg.instruction_at(label))) {
+        if (const auto passume = std::get_if<Assume>(&prog.instruction_at(label))) {
             if (inv_pair.post.is_bottom()) {
                 const auto s = to_string(*passume);
                 report.reachability[label].emplace_back("Code becomes unreachable (" + s + ")");

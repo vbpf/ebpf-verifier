@@ -6,11 +6,12 @@
 #include "crab/wto.hpp"
 
 using crab::label_t;
+using crab::wto_t;
 
 TEST_CASE("wto figure 1", "[wto]") {
     // Construct the example graph in figure 1 of Bourdoncle,
     // "Efficient chaotic iteration strategies with widenings", 1993.
-    const wto_t wto(crab::cfg_from_adjacency_list({{crab::label_t::entry, {label_t{1}}},
+    const wto_t wto(crab::cfg_from_adjacency_list({{label_t::entry, {label_t{1}}},
                                                    {label_t{1}, {label_t{2}}},
                                                    {label_t{2}, {label_t{3}}},
                                                    {label_t{3}, {label_t{4}}},
@@ -28,7 +29,7 @@ TEST_CASE("wto figure 1", "[wto]") {
 TEST_CASE("wto figure 2a", "[wto]") {
     // Construct the example graph in figure 2a of Bourdoncle,
     // "Efficient chaotic iteration strategies with widenings", 1993.
-    const wto_t wto(crab::cfg_from_adjacency_list({{crab::label_t::entry, {label_t{1}}},
+    const wto_t wto(crab::cfg_from_adjacency_list({{label_t::entry, {label_t{1}}},
                                                    {label_t{1}, {label_t{2}, label_t{4}}},
                                                    {label_t{2}, {label_t{3}}},
                                                    {label_t{3}, {label_t::exit}},
@@ -43,7 +44,7 @@ TEST_CASE("wto figure 2a", "[wto]") {
 TEST_CASE("wto figure 2b", "[wto]") {
     // Construct the example graph in figure 2b of Bourdoncle,
     // "Efficient chaotic iteration strategies with widenings", 1993.
-    const wto_t wto(crab::cfg_from_adjacency_list({{crab::label_t::entry, {label_t{1}}},
+    const wto_t wto(crab::cfg_from_adjacency_list({{label_t::entry, {label_t{1}}},
                                                    {label_t{1}, {label_t{2}, label_t{4}}},
                                                    {label_t{2}, {label_t{3}}},
                                                    {label_t{3}, {label_t{1}, label_t::exit}},

@@ -793,11 +793,6 @@ std::optional<variable_t> array_domain_t::store_type(NumAbsDomain& inv, const li
     return {};
 }
 
-std::optional<variable_t> array_domain_t::store_type(NumAbsDomain& inv, const linear_expression_t& idx,
-                                                     const linear_expression_t& elem_size, const Reg& reg) {
-    return store_type(inv, idx, elem_size, variable_t::reg(data_kind_t::types, reg.v));
-}
-
 void array_domain_t::havoc(NumAbsDomain& inv, const data_kind_t kind, const linear_expression_t& idx,
                            const linear_expression_t& elem_size) {
     auto maybe_cell = split_and_find_var(*this, inv, kind, idx, elem_size);

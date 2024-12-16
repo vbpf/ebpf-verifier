@@ -4,8 +4,8 @@
 
 #include <map>
 
-#include "crab/cfg.hpp"
 #include "crab/ebpf_domain.hpp"
+#include "program.hpp"
 
 namespace crab {
 
@@ -15,6 +15,6 @@ struct invariant_map_pair {
 };
 using invariant_table_t = std::map<label_t, invariant_map_pair>;
 
-invariant_table_t run_forward_analyzer(const cfg_t& cfg, ebpf_domain_t entry_inv);
+invariant_table_t run_forward_analyzer(const Program& prog, ebpf_domain_t entry_inv);
 
 } // namespace crab

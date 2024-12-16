@@ -95,21 +95,21 @@ void print_jump(std::ostream& o, const std::string& direction, const std::set<la
     o << "\n";
 }
 
-void print_cfg(const crab::cfg_t& cfg, std::ostream& os, const bool simplify, const printfunc& prefunc,
-               const printfunc& postfunc) {
+void print_program(const Program& prog, std::ostream& os, const bool simplify, const printfunc& prefunc,
+                   const printfunc& postfunc) {
     LineInfoPrinter printer{os};
-    for (const crab::basic_block_t& bb : crab::basic_block_t::collect_basic_blocks(cfg, simplify)) {
+    for (const crab::basic_block_t& bb : crab::basic_block_t::collect_basic_blocks(prog.cfg(), simplify)) {
         prefunc(os, bb.first_label());
-        print_jump(os, "from", cfg.parents_of(bb.first_label()));
+        print_jump(os, "from", prog.cfg().parents_of(bb.first_label()));
         os << bb.first_label() << ":\n";
         for (const label_t& label : bb) {
             printer.print_line_info(label);
-            for (const auto& pre : cfg.assertions_at(label)) {
+            for (const auto& pre : prog.assertions_at(label)) {
                 os << "  " << "assert " << pre << ";\n";
             }
-            os << "  " << cfg.instruction_at(label) << ";\n";
+            os << "  " << prog.instruction_at(label) << ";\n";
         }
-        print_jump(os, "goto", cfg.children_of(bb.last_label()));
+        print_jump(os, "goto", prog.cfg().children_of(bb.last_label()));
         postfunc(os, bb.last_label());
     }
     os << "\n";
@@ -117,23 +117,23 @@ void print_cfg(const crab::cfg_t& cfg, std::ostream& os, const bool simplify, co
 
 static void nop(std::ostream&, const label_t&) {}
 
-void print_cfg(const crab::cfg_t& cfg, std::ostream& os, const bool simplify) {
-    print_cfg(cfg, os, simplify, nop, nop);
+void print_program(const Program& prog, std::ostream& os, const bool simplify) {
+    print_program(prog, os, simplify, nop, nop);
 }
 
-void print_dot(const crab::cfg_t& cfg, std::ostream& out) {
+void print_dot(const Program& prog, std::ostream& out) {
     out << "digraph program {\n";
     out << "    node [shape = rectangle];\n";
-    for (const auto& label : cfg.labels()) {
+    for (const auto& label : prog.labels()) {
         out << "    \"" << label << "\"[xlabel=\"" << label << "\",label=\"";
 
-        for (const auto& pre : cfg.assertions_at(label)) {
+        for (const auto& pre : prog.assertions_at(label)) {
             out << "assert " << pre << "\\l";
         }
-        out << cfg.instruction_at(label) << "\\l";
+        out << prog.instruction_at(label) << "\\l";
 
         out << "\"];\n";
-        for (const label_t& next : cfg.children_of(label)) {
+        for (const label_t& next : prog.cfg().children_of(label)) {
             out << "    \"" << label << "\" -> \"" << next << "\";\n";
         }
         out << "\n";
@@ -141,12 +141,12 @@ void print_dot(const crab::cfg_t& cfg, std::ostream& out) {
     out << "}\n";
 }
 
-void print_dot(const crab::cfg_t& cfg, const std::string& outfile) {
+void print_dot(const Program& prog, const std::string& outfile) {
     std::ofstream out{outfile};
     if (out.fail()) {
         throw std::runtime_error(std::string("Could not open file ") + outfile);
     }
-    print_dot(cfg, out);
+    print_dot(prog, out);
 }
 
 void print_reachability(std::ostream& os, const Report& report) {
@@ -174,9 +174,9 @@ void print_all_messages(std::ostream& os, const Report& report) {
     print_warnings(os, report);
 }
 
-void print_invariants(std::ostream& os, const crab::cfg_t& cfg, const bool simplify, const Invariants& invariants) {
-    print_cfg(
-        cfg, os, simplify,
+void print_invariants(std::ostream& os, const Program& prog, const bool simplify, const Invariants& invariants) {
+    print_program(
+        prog, os, simplify,
         [&](std::ostream& os, const label_t& label) -> void {
             os << "\nPre-invariant : " << invariants.invariants.at(label).pre << "\n";
         },

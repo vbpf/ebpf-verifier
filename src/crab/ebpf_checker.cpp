@@ -15,6 +15,7 @@
 #include "crab_utils/num_safety.hpp"
 #include "dsl_syntax.hpp"
 #include "platform.hpp"
+#include "program.hpp"
 #include "string_constraints.hpp"
 
 using crab::domains::NumAbsDomain;
