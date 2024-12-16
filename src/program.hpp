@@ -46,7 +46,7 @@ class Program {
     }
 
     std::vector<Assertion> assertions_at(const label_t& label) const {
-        if (!m_instructions.contains(label)) {
+        if (!m_assertions.contains(label)) {
             CRAB_ERROR("Label ", to_string(label), " not found in the CFG: ");
         }
         return m_assertions.at(label);

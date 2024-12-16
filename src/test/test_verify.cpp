@@ -604,9 +604,9 @@ TEST_SECTION_LEGACY_FAIL("cilium", "bpf_lxc.o", "2/10")
 TEST_SECTION_FAIL("cilium", "bpf_lxc.o", "2/11")
 TEST_SECTION_FAIL("cilium", "bpf_lxc.o", "2/12")
 
-void test_analyze_thread(const Program* cfg, program_info* info, bool* res) {
+void test_analyze_thread(const Program* prog, program_info* info, bool* res) {
     thread_local_program_info.set(*info);
-    *res = verify(*cfg);
+    *res = verify(*prog);
 }
 
 // Test multithreading
