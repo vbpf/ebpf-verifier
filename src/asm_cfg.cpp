@@ -24,7 +24,7 @@ struct cfg_builder_t final {
     Program prog;
 
     // TODO: ins should be inserted elsewhere
-    void insert_after(const label_t& prev_label, const label_t& new_label, const GuardedInstruction& ins) {
+    void insert_after(const label_t& prev_label, const label_t& new_label, const Instruction& ins) {
         if (prev_label == new_label) {
             CRAB_ERROR("Cannot insert after the same label ", to_string(new_label));
         }
@@ -43,7 +43,7 @@ struct cfg_builder_t final {
     }
 
     // TODO: ins should be inserted elsewhere
-    void insert(const label_t& _label, const GuardedInstruction& ins) {
+    void insert(const label_t& _label, const Instruction& ins) {
         if (const auto it = prog.m_cfg.neighbours.find(_label); it != prog.m_cfg.neighbours.end()) {
             CRAB_ERROR("Label ", to_string(_label), " already exists");
         }
@@ -52,7 +52,7 @@ struct cfg_builder_t final {
     }
 
     // TODO: ins should be inserted elsewhere
-    label_t insert_jump(const label_t& from, const label_t& to, const GuardedInstruction& ins) {
+    label_t insert_jump(const label_t& from, const label_t& to, const Instruction& ins) {
         const label_t jump_label = label_t::make_jump(from, to);
         if (prog.m_cfg.contains(jump_label)) {
             CRAB_ERROR("Jump label ", to_string(jump_label), " already exists");
@@ -76,10 +76,10 @@ struct cfg_builder_t final {
     }
 
     void set_assertions(const label_t& label, const std::vector<Assertion>& assertions) {
-        if (!prog.m_instructions.contains(label)) {
+        if (!prog.m_cfg.contains(label)) {
             CRAB_ERROR("Label ", to_string(label), " not found in the CFG: ");
         }
-        prog.m_instructions.at(label).preconditions = assertions;
+        prog.m_assertions.insert_or_assign(label, assertions);
     }
 };
 
@@ -164,7 +164,7 @@ static void add_cfg_nodes(cfg_builder_t& builder, const label_t& caller_label, c
         } else if (const auto pcall = std::get_if<Call>(&inst)) {
             pcall->stack_frame_prefix = label.stack_frame_prefix;
         }
-        builder.insert(label, {.cmd = inst});
+        builder.insert(label, inst);
 
         if (first) {
             // Add an edge from the caller to the new block.
@@ -226,7 +226,7 @@ static cfg_builder_t instruction_seq_to_cfg(const InstructionSeq& insts, const b
         if (std::holds_alternative<Undefined>(inst)) {
             continue;
         }
-        builder.insert(label, GuardedInstruction{.cmd = inst});
+        builder.insert(label, inst);
     }
 
     if (insts.size() == 0) {
@@ -262,10 +262,8 @@ static cfg_builder_t instruction_seq_to_cfg(const InstructionSeq& insts, const b
                 if (!builder.prog.cfg().contains(target_label)) {
                     throw InvalidControlFlow{"jump to undefined label " + to_string(target_label)};
                 }
-                builder.insert_jump(label, target_label,
-                                    GuardedInstruction{.cmd = Assume{.cond = *cond, .is_implicit = true}});
-                builder.insert_jump(label, fallthrough,
-                                    GuardedInstruction{.cmd = Assume{.cond = reverse(*cond), .is_implicit = true}});
+                builder.insert_jump(label, target_label, Assume{.cond = *cond, .is_implicit = true});
+                builder.insert_jump(label, fallthrough, Assume{.cond = reverse(*cond), .is_implicit = true});
             } else {
                 builder.add_child(label, jmp->target);
             }
@@ -304,8 +302,7 @@ Program Program::from_sequence(const InstructionSeq& inst_seq, const program_inf
     if (options.check_for_termination) {
         const crab::wto_t wto{builder.prog.cfg()};
         wto.for_each_loop_head([&](const label_t& label) -> void {
-            builder.insert_after(label, label_t::make_increment_counter(label),
-                                 GuardedInstruction{.cmd = IncrementLoopCounter{label}});
+            builder.insert_after(label, label_t::make_increment_counter(label), IncrementLoopCounter{label});
         });
     }
 
@@ -455,7 +452,7 @@ crab::cfg_t crab::cfg_from_adjacency_list(const std::map<label_t, std::vector<la
         if (label == label_t::entry || label == label_t::exit) {
             continue;
         }
-        builder.insert(label, {.cmd = Undefined{}});
+        builder.insert(label, Undefined{});
     }
     for (const auto& [label, children] : adj_list) {
         for (const auto& child : children) {

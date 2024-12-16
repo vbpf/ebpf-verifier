@@ -14,8 +14,10 @@
 class Program {
     friend struct cfg_builder_t;
 
-    std::map<label_t, GuardedInstruction> m_instructions{{label_t::entry, {.cmd = Undefined{}}},
-                                                         {label_t::exit, {.cmd = Undefined{}}}};
+    std::map<label_t, Instruction> m_instructions{{label_t::entry, Undefined{}}, {label_t::exit, Undefined{}}};
+
+    // This is a cache. The assertions can also be computed on the fly.
+    std::map<label_t, std::vector<Assertion>> m_assertions{{label_t::entry, {}}, {label_t::exit, {}}};
     crab::cfg_t m_cfg;
 
     // TODO: add program_info field
@@ -33,21 +35,21 @@ class Program {
         if (!m_instructions.contains(label)) {
             CRAB_ERROR("Label ", to_string(label), " not found in the CFG: ");
         }
-        return m_instructions.at(label).cmd;
+        return m_instructions.at(label);
     }
 
     Instruction& instruction_at(const label_t& label) {
         if (!m_instructions.contains(label)) {
             CRAB_ERROR("Label ", to_string(label), " not found in the CFG: ");
         }
-        return m_instructions.at(label).cmd;
+        return m_instructions.at(label);
     }
 
     std::vector<Assertion> assertions_at(const label_t& label) const {
         if (!m_instructions.contains(label)) {
             CRAB_ERROR("Label ", to_string(label), " not found in the CFG: ");
         }
-        return m_instructions.at(label).preconditions;
+        return m_assertions.at(label);
     }
 
     static Program from_sequence(const InstructionSeq& inst_seq, const program_info& info,

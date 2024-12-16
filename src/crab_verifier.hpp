@@ -72,7 +72,7 @@ class Invariants final {
 
 Invariants analyze(const Program& prog);
 Invariants analyze(const Program& prog, const string_invariant& entry_invariant);
-inline bool verify(const Program& prog) { return analyze(cfg).verified(cfg); }
+inline bool verify(const Program& prog) { return analyze(prog).verified(prog); }
 
 int create_map_crab(const EbpfMapType& map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries,
                     ebpf_verifier_options_t options);
