@@ -26,6 +26,7 @@
 #include <stack>
 #include <utility>
 #include <vector>
+#include <optional>
 
 #include "crab/cfg.hpp"
 #include "crab/label.hpp"
