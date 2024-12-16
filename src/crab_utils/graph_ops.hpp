@@ -502,6 +502,7 @@ class GraphOps {
     enum SMarkT { V_UNSTABLE = 0, V_STABLE = 1 };
     // Whether a vertex is in the current SCC/queue for Bellman-Ford.
     enum QMarkT { BF_NONE = 0, BF_SCC = 1, BF_QUEUED = 2 };
+
   private:
     // Scratch space needed by the graph algorithms.
     // Should really switch to some kind of arena allocator, rather
@@ -535,6 +536,7 @@ class GraphOps {
         ts = 0;
         ts_idx = 0;
     }
+
   private:
     static void grow_scratch(const size_t sz) {
         if (sz <= scratch_sz) {
@@ -975,6 +977,7 @@ class GraphOps {
             }
         }
     }
+
   public:
     template <class G>
     static bool repair_potential(const G& g, WeightVector& p, vert_id ii, vert_id jj) {
@@ -1047,6 +1050,7 @@ class GraphOps {
         }
         return delta;
     }
+
   private:
     // Compute the transitive closure of edges reachable from v, assuming
     // (1) the subgraph G \ {v} is closed, and
@@ -1101,6 +1105,7 @@ class GraphOps {
             vert_marks->at(*adj_head) = 0;
         }
     }
+
   public:
     static void close_over_edge(graph_t& g, vert_id ii, vert_id jj) {
         assert(ii != 0 && jj != 0);

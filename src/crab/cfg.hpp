@@ -14,16 +14,14 @@
 #include <vector>
 
 #include "config.hpp"
-// TODO: avoid including asm_syntax.hpp here
-#include "asm_syntax.hpp"
 #include "crab/label.hpp"
 #include "crab_utils/debug.hpp"
-
+struct cfg_builder_t;
 namespace crab {
 
 /// Control-Flow Graph
 class cfg_t final {
-    friend struct cfg_builder_t;
+    friend struct ::cfg_builder_t;
 
     // the choice to use set means that unmarshaling a conditional jump to the same target may be different
     using label_vec_t = std::set<label_t>;
@@ -75,35 +73,6 @@ class cfg_t final {
     }
 
   public:
-    // TODO: temporarily here. Move to a separate class containing both cfg and instructions
-    std::map<label_t, GuardedInstruction> instructions{{label_t::entry, {.cmd = Undefined{}}},
-                                                       {label_t::exit, {.cmd = Undefined{}}}};
-    const Instruction& instruction_at(const label_t& label) const {
-        if (!instructions.contains(label)) {
-            CRAB_ERROR("Label ", to_string(label), " not found in the CFG: ");
-        }
-        return instructions.at(label).cmd;
-    }
-    Instruction& instruction_at(const label_t& label) {
-        if (!instructions.contains(label)) {
-            CRAB_ERROR("Label ", to_string(label), " not found in the CFG: ");
-        }
-        return instructions.at(label).cmd;
-    }
-
-    void set_assertions(const label_t& label, const std::vector<Assertion>& assertions) {
-        if (!instructions.contains(label)) {
-            CRAB_ERROR("Label ", to_string(label), " not found in the CFG: ");
-        }
-        instructions.at(label).preconditions = assertions;
-    }
-    const auto assertions_at(const label_t& label) const {
-        if (!instructions.contains(label)) {
-            CRAB_ERROR("Label ", to_string(label), " not found in the CFG: ");
-        }
-        return instructions.at(label).preconditions;
-    }
-
     [[nodiscard]]
     label_t exit_label() const {
         return label_t::exit;
@@ -214,21 +183,4 @@ class basic_block_t final {
 
 cfg_t cfg_from_adjacency_list(const std::map<label_t, std::vector<label_t>>& adj_list);
 
-class InvalidControlFlow final : public std::runtime_error {
-  public:
-    explicit InvalidControlFlow(const std::string& what) : std::runtime_error(what) {}
-};
-
 } // end namespace crab
-
-std::vector<Assertion> get_assertions(Instruction ins, const program_info& info, const std::optional<label_t>& label);
-crab::cfg_t prepare_cfg(const InstructionSeq& prog, const program_info& info, const prepare_cfg_options& options);
-
-std::vector<std::string> stats_headers();
-std::map<std::string, int> collect_stats(const crab::cfg_t& cfg);
-
-using printfunc = std::function<void(std::ostream&, const label_t& label)>;
-void print_cfg(const crab::cfg_t& cfg, std::ostream& os, const bool simplify, const printfunc& prefunc,
-               const printfunc& postfunc);
-void print_cfg(const crab::cfg_t& cfg, std::ostream& os, const bool simplify);
-void print_dot(const crab::cfg_t& cfg, const std::string& outfile);

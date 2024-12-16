@@ -76,8 +76,6 @@ class array_domain_t final {
                                     const linear_expression_t& elem_size, const linear_expression_t& val);
     std::optional<variable_t> store_type(NumAbsDomain& inv, const linear_expression_t& idx,
                                          const linear_expression_t& elem_size, const linear_expression_t& val);
-    std::optional<variable_t> store_type(NumAbsDomain& inv, const linear_expression_t& idx,
-                                         const linear_expression_t& elem_size, const Reg& reg);
     void havoc(NumAbsDomain& inv, data_kind_t kind, const linear_expression_t& idx,
                const linear_expression_t& elem_size);
 

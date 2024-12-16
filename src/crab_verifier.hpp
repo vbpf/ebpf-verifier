@@ -3,8 +3,8 @@
 #pragma once
 
 #include "config.hpp"
-#include "crab/cfg.hpp"
 #include "crab/fwd_analyzer.hpp"
+#include "program.hpp"
 #include "spec_type_descriptors.hpp"
 #include "string_constraints.hpp"
 
@@ -64,15 +64,15 @@ class Invariants final {
     crab::interval_t exit_value() const;
 
     int max_loop_count() const;
-    bool verified(const crab::cfg_t& cfg) const;
-    Report check_assertions(const crab::cfg_t& cfg) const;
+    bool verified(const Program& prog) const;
+    Report check_assertions(const Program& prog) const;
 
-    friend void print_invariants(std::ostream& os, const crab::cfg_t& cfg, bool simplify, const Invariants& invariants);
+    friend void print_invariants(std::ostream& os, const Program& prog, bool simplify, const Invariants& invariants);
 };
 
-Invariants analyze(const crab::cfg_t& cfg);
-Invariants analyze(const crab::cfg_t& cfg, const string_invariant& entry_invariant);
-inline bool verify(const crab::cfg_t& cfg) { return analyze(cfg).verified(cfg); }
+Invariants analyze(const Program& prog);
+Invariants analyze(const Program& prog, const string_invariant& entry_invariant);
+inline bool verify(const Program& prog) { return analyze(cfg).verified(cfg); }
 
 int create_map_crab(const EbpfMapType& map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries,
                     ebpf_verifier_options_t options);

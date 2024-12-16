@@ -228,10 +228,10 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    auto& prog = std::get<InstructionSeq>(prog_or_error);
+    auto& inst_seq = std::get<InstructionSeq>(prog_or_error);
     if (!asmfile.empty()) {
         std::ofstream out{asmfile};
-        print(prog, out, {});
+        print(inst_seq, out, {});
         print_map_descriptors(thread_local_program_info->map_descriptors, out);
     }
 
@@ -239,26 +239,26 @@ int main(int argc, char** argv) {
         // Convert the instruction sequence to a control-flow graph.
         try {
             const auto verbosity = ebpf_verifier_options.verbosity_opts;
-            const crab::cfg_t cfg = prepare_cfg(prog, raw_prog.info, ebpf_verifier_options.cfg_opts);
+            const Program prog = Program::from_sequence(inst_seq, raw_prog.info, ebpf_verifier_options.cfg_opts);
             if (domain == "cfg") {
-                print_cfg(cfg, std::cout, verbosity.simplify);
+                print_program(prog, std::cout, verbosity.simplify);
                 return 0;
             }
             const auto begin = std::chrono::steady_clock::now();
-            auto invariants = analyze(cfg);
+            auto invariants = analyze(prog);
             const auto end = std::chrono::steady_clock::now();
             const auto seconds = std::chrono::duration<double>(end - begin).count();
             if (verbosity.print_invariants) {
-                print_invariants(std::cout, cfg, verbosity.simplify, invariants);
+                print_invariants(std::cout, prog, verbosity.simplify, invariants);
             }
 
             bool pass;
             if (verbosity.print_failures) {
-                auto report = invariants.check_assertions(cfg);
+                auto report = invariants.check_assertions(prog);
                 print_warnings(std::cout, report);
                 pass = report.verified();
             } else {
-                pass = invariants.verified(cfg);
+                pass = invariants.verified(prog);
             }
             if (pass && ebpf_verifier_options.cfg_opts.check_for_termination &&
                 (verbosity.print_failures || verbosity.print_invariants)) {
@@ -277,14 +277,14 @@ int main(int argc, char** argv) {
         return !res;
     } else if (domain == "stats") {
         // Convert the instruction sequence to a control-flow graph.
-        const crab::cfg_t cfg = prepare_cfg(prog, raw_prog.info, ebpf_verifier_options.cfg_opts);
+        const Program prog = Program::from_sequence(inst_seq, raw_prog.info, ebpf_verifier_options.cfg_opts);
 
         // Just print eBPF program stats.
-        auto stats = collect_stats(cfg);
+        auto stats = collect_stats(prog);
         if (!dotfile.empty()) {
-            print_dot(cfg, dotfile);
+            print_dot(prog, dotfile);
         }
-        std::cout << std::hex << hash(raw_prog) << std::dec << "," << prog.size();
+        std::cout << std::hex << hash(raw_prog) << std::dec << "," << inst_seq.size();
         for (const string& h : stats_headers()) {
             std::cout << "," << stats.at(h);
         }

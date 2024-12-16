@@ -17,7 +17,6 @@
 #include "ebpf_yaml.hpp"
 #include "string_constraints.hpp"
 
-using crab::cfg_t;
 using std::string;
 using std::vector;
 
@@ -246,10 +245,10 @@ std::optional<Failure> run_yaml_test_case(TestCase test_case, bool debug) {
     program_info info{&g_platform_test, {}, program_type};
     thread_local_options = test_case.options;
     try {
-        const cfg_t cfg = prepare_cfg(test_case.instruction_seq, info, test_case.options.cfg_opts);
-        const Invariants invariants = analyze(cfg, test_case.assumed_pre_invariant);
+        const Program prog = Program::from_sequence(test_case.instruction_seq, info, test_case.options.cfg_opts);
+        const Invariants invariants = analyze(prog, test_case.assumed_pre_invariant);
         const string_invariant actual_last_invariant = invariants.invariant_at(label_t::exit);
-        const std::set<string> actual_messages = invariants.check_assertions(cfg).all_messages();
+        const std::set<string> actual_messages = invariants.check_assertions(prog).all_messages();
 
         if (actual_last_invariant == test_case.expected_post_invariant &&
             actual_messages == test_case.expected_messages) {
@@ -259,7 +258,7 @@ std::optional<Failure> run_yaml_test_case(TestCase test_case, bool debug) {
             .invariant = make_diff(actual_last_invariant, test_case.expected_post_invariant),
             .messages = make_diff(actual_messages, test_case.expected_messages),
         };
-    } catch (crab::InvalidControlFlow& ex) {
+    } catch (InvalidControlFlow& ex) {
         const std::set<string> actual_messages{ex.what()};
         if (test_case.expected_post_invariant == string_invariant::top() &&
             actual_messages == test_case.expected_messages) {
@@ -354,11 +353,11 @@ ConformanceTestResult run_conformance_test_case(const std::vector<std::byte>& me
         return {};
     }
 
-    auto& prog = std::get<InstructionSeq>(prog_or_error);
+    const InstructionSeq& inst_seq = std::get<InstructionSeq>(prog_or_error);
 
     ebpf_verifier_options_t options{};
     if (debug) {
-        print(prog, std::cout, {});
+        print(inst_seq, std::cout, {});
         options.verbosity_opts.print_failures = true;
         options.verbosity_opts.print_invariants = true;
         options.verbosity_opts.simplify = false;
@@ -366,9 +365,9 @@ ConformanceTestResult run_conformance_test_case(const std::vector<std::byte>& me
     thread_local_options = options;
 
     try {
-        const cfg_t cfg = prepare_cfg(prog, info, options.cfg_opts);
-        const Invariants invariants = analyze(cfg, pre_invariant);
-        return ConformanceTestResult{.success = invariants.verified(cfg), .r0_value = invariants.exit_value()};
+        const Program prog = Program::from_sequence(inst_seq, info, options.cfg_opts);
+        const Invariants invariants = analyze(prog, pre_invariant);
+        return ConformanceTestResult{.success = invariants.verified(prog), .r0_value = invariants.exit_value()};
     } catch (const std::exception&) {
         // Catch exceptions thrown in ebpf_domain.cpp.
         return {};

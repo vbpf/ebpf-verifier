@@ -226,9 +226,10 @@ static void compare_unmarshal_marshal(const ebpf_inst& ins, const ebpf_inst& exp
                                       const ebpf_platform_t& platform = g_ebpf_platform_linux) {
     program_info info{.platform = &platform, .type = platform.get_program_type("unspec", "unspec")};
     constexpr ebpf_inst exit{.opcode = INST_OP_EXIT};
-    InstructionSeq parsed = std::get<InstructionSeq>(unmarshal(raw_program{"", "", 0, "", {ins, exit, exit}, info}));
-    REQUIRE(parsed.size() == 3);
-    auto [_, single, _2] = parsed.front();
+    const InstructionSeq inst_seq =
+        std::get<InstructionSeq>(unmarshal(raw_program{"", "", 0, "", {ins, exit, exit}, info}));
+    REQUIRE(inst_seq.size() == 3);
+    auto [_, single, _2] = inst_seq.front();
     (void)_;  // unused
     (void)_2; // unused
     std::vector<ebpf_inst> marshaled = marshal(single, 0);
@@ -262,9 +263,10 @@ static void compare_unmarshal_marshal(const ebpf_inst& ins1, const ebpf_inst& in
     program_info info{.platform = &g_ebpf_platform_linux,
                       .type = g_ebpf_platform_linux.get_program_type("unspec", "unspec")};
     constexpr ebpf_inst exit{.opcode = INST_OP_EXIT};
-    auto parsed = std::get<InstructionSeq>(unmarshal(raw_program{"", "", 0, "", {ins1, ins2, exit, exit}, info}));
-    REQUIRE(parsed.size() == 3);
-    auto [_, single, _2] = parsed.front();
+    const InstructionSeq inst_seq =
+        std::get<InstructionSeq>(unmarshal(raw_program{"", "", 0, "", {ins1, ins2, exit, exit}, info}));
+    REQUIRE(inst_seq.size() == 3);
+    auto [_, single, _2] = inst_seq.front();
     (void)_;  // unused
     (void)_2; // unused
     std::vector<ebpf_inst> marshaled = marshal(single, 0);
@@ -280,9 +282,10 @@ static void compare_unmarshal_marshal(const ebpf_inst& ins1, const ebpf_inst& in
 static void compare_marshal_unmarshal(const Instruction& ins, bool double_cmd = false,
                                       const ebpf_platform_t& platform = g_ebpf_platform_linux) {
     program_info info{.platform = &platform, .type = platform.get_program_type("unspec", "unspec")};
-    InstructionSeq parsed = std::get<InstructionSeq>(unmarshal(raw_program{"", "", 0, "", marshal(ins, 0), info}));
-    REQUIRE(parsed.size() == 1);
-    auto [_, single, _2] = parsed.back();
+    const InstructionSeq inst_seq =
+        std::get<InstructionSeq>(unmarshal(raw_program{"", "", 0, "", marshal(ins, 0), info}));
+    REQUIRE(inst_seq.size() == 1);
+    auto [_, single, _2] = inst_seq.back();
     (void)_;  // unused
     (void)_2; // unused
     REQUIRE(single == ins);

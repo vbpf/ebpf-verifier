@@ -4,13 +4,13 @@
 
 #include "wto.hpp"
 
-using crab::cfg_t;
-
 // This file contains an iterative implementation of the recursive algorithm in
 // Bourdoncle, "Efficient chaotic iteration strategies with widenings", 1993
 // http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.38.3574
 // where _visit_stack is roughly equivalent to a stack trace in the recursive algorithm.
 // However, this scales much higher since it does not run out of stack memory.
+
+namespace crab {
 
 bool is_component_member(const label_t& label, const cycle_or_label& component) {
     if (const auto plabel = std::get_if<label_t>(&component)) {
@@ -308,3 +308,4 @@ const wto_nesting_t& wto_t::nesting(const label_t& label) const {
     }
     return _nesting.at(label);
 }
+} // namespace crab

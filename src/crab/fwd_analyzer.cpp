@@ -3,17 +3,17 @@
 #include <utility>
 #include <variant>
 
+#include "config.hpp"
 #include "crab/cfg.hpp"
-#include "crab/wto.hpp"
-
 #include "crab/ebpf_domain.hpp"
 #include "crab/fwd_analyzer.hpp"
-
-#include "config.hpp"
+#include "crab/wto.hpp"
+#include "program.hpp"
 
 namespace crab {
 
 class interleaved_fwd_fixpoint_iterator_t final {
+    const Program& _prog;
     const cfg_t& _cfg;
     const wto_t _wto;
     invariant_table_t _inv;
@@ -36,12 +36,12 @@ class interleaved_fwd_fixpoint_iterator_t final {
 
     void transform_to_post(const label_t& label, ebpf_domain_t pre) {
         if (thread_local_options.assume_assertions) {
-            for (const auto& assertion : _cfg.assertions_at(label)) {
+            for (const auto& assertion : _prog.assertions_at(label)) {
                 // avoid redundant errors
                 ebpf_domain_assume(pre, assertion);
             }
         }
-        ebpf_domain_transform(pre, _cfg.instruction_at(label));
+        ebpf_domain_transform(pre, _prog.instruction_at(label));
 
         _inv.at(label).post = std::move(pre);
     }
@@ -57,7 +57,8 @@ class interleaved_fwd_fixpoint_iterator_t final {
         return res;
     }
 
-    explicit interleaved_fwd_fixpoint_iterator_t(const cfg_t& cfg) : _cfg(cfg), _wto(cfg) {
+    explicit interleaved_fwd_fixpoint_iterator_t(const Program& prog)
+        : _prog(prog), _cfg(prog.cfg()), _wto(prog.cfg()) {
         for (const auto& label : _cfg.labels()) {
             _inv.emplace(label, invariant_map_pair{ebpf_domain_t::bottom(), ebpf_domain_t::bottom()});
         }
@@ -68,12 +69,12 @@ class interleaved_fwd_fixpoint_iterator_t final {
 
     void operator()(const std::shared_ptr<wto_cycle_t>& cycle);
 
-    friend invariant_table_t run_forward_analyzer(const cfg_t& cfg, ebpf_domain_t entry_inv);
+    friend invariant_table_t run_forward_analyzer(const Program& prog, ebpf_domain_t entry_inv);
 };
 
-invariant_table_t run_forward_analyzer(const cfg_t& cfg, ebpf_domain_t entry_inv) {
+invariant_table_t run_forward_analyzer(const Program& prog, ebpf_domain_t entry_inv) {
     // Go over the CFG in weak topological order (accounting for loops).
-    interleaved_fwd_fixpoint_iterator_t analyzer(cfg);
+    interleaved_fwd_fixpoint_iterator_t analyzer(prog);
     if (thread_local_options.cfg_opts.check_for_termination) {
         // Initialize loop counters for potential loop headers.
         // This enables enforcement of upper bounds on loop iterations
@@ -82,7 +83,7 @@ invariant_table_t run_forward_analyzer(const cfg_t& cfg, ebpf_domain_t entry_inv
         analyzer._wto.for_each_loop_head(
             [&](const label_t& label) { ebpf_domain_initialize_loop_counter(entry_inv, label); });
     }
-    analyzer.set_pre(cfg.entry_label(), entry_inv);
+    analyzer.set_pre(prog.cfg().entry_label(), entry_inv);
     for (const auto& component : analyzer._wto) {
         std::visit(analyzer, component);
     }

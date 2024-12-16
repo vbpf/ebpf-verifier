@@ -28,6 +28,9 @@
 #include <vector>
 
 #include "crab/cfg.hpp"
+#include "crab/label.hpp"
+
+namespace crab {
 
 // Bourdoncle, "Efficient chaotic iteration strategies with widenings", 1993
 // uses the notation w(c) to refer to the set of heads of the nested components
@@ -114,7 +117,7 @@ class wto_t final {
     friend class wto_builder_t;
 
   public:
-    explicit wto_t(const crab::cfg_t& cfg);
+    explicit wto_t(const cfg_t& cfg);
 
     [[nodiscard]]
     wto_partition_t::const_reverse_iterator begin() const {
@@ -144,3 +147,4 @@ class wto_t final {
         }
     }
 };
+} // namespace crab
