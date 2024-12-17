@@ -424,6 +424,9 @@ TEST_SECTION("falco", "probe.o", "raw_tracepoint/signal_deliver")
 TEST_SECTION_REJECT_IF_STRICT("build", "mapoverflow.o", ".text")
 TEST_SECTION_REJECT_IF_STRICT("build", "mapunderflow.o", ".text")
 
+// Test uses global variables, which are not supported yet by the verifier.
+TEST_SECTION_FAIL("build", "global_variable.o", ".text")
+
 /*
  * These programs contain "call -1" instruction and cannot be verified:
 TEST_SECTION("raw_tracepoint/filler/sys_access_e")
