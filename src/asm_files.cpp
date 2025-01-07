@@ -162,16 +162,20 @@ get_program_name_and_size(const ELFIO::section& sec, const ELFIO::Elf_Xword star
     return {program_name, size};
 }
 
-void relocate_map(ebpf_inst& inst, const std::string& symbol_name,
+void verify_load_instruction(const ebpf_inst& instruction, const std::string& symbol_name, ELFIO::Elf64_Addr offset) {
+    if ((instruction.opcode & INST_CLS_MASK) != INST_CLS_LD) {
+        throw UnmarshalError("Illegal operation on symbol " + symbol_name + " at location " +
+                             std::to_string(offset / sizeof(ebpf_inst)));
+    }
+}
+
+void relocate_map(ebpf_inst& reloc_inst, const std::string& symbol_name,
                   const std::variant<size_t, std::map<std::string, size_t>>& map_record_size_or_map_offsets,
                   const program_info& info, const ELFIO::Elf64_Addr offset, const ELFIO::Elf_Word index,
                   const ELFIO::const_symbol_section_accessor& symbols) {
     // Only permit loading the address of the map.
-    if ((inst.opcode & INST_CLS_MASK) != INST_CLS_LD) {
-        throw UnmarshalError("Illegal operation on symbol " + symbol_name + " at location " +
-                             std::to_string(offset / sizeof(ebpf_inst)));
-    }
-    inst.src = 1; // magic number for LoadFd
+    verify_load_instruction(reloc_inst, symbol_name, offset);
+    reloc_inst.src = INST_LD_MODE_MAP_FD;
 
     // Relocation value is an offset into the "maps" or ".maps" section.
     size_t reloc_value = std::numeric_limits<size_t>::max();
@@ -187,13 +191,42 @@ void relocate_map(ebpf_inst& inst, const std::string& symbol_name,
         const auto it = map_descriptors_offsets.find(symbol_name);
         if (it != map_descriptors_offsets.end()) {
             reloc_value = it->second;
+        } else {
+            throw UnmarshalError("Map descriptor not found for symbol " + symbol_name);
         }
     }
     if (reloc_value >= info.map_descriptors.size()) {
         throw UnmarshalError("Bad reloc value (" + std::to_string(reloc_value) + "). " +
                              "Make sure to compile with -O2.");
     }
-    inst.imm = info.map_descriptors.at(reloc_value).original_fd;
+    reloc_inst.imm = info.map_descriptors.at(reloc_value).original_fd;
+}
+
+void relocate_global_variable(ebpf_inst& reloc_inst, ebpf_inst& next_reloc_inst, const std::string& symbol_name,
+                              const program_info& info,
+                              const std::variant<size_t, std::map<std::string, size_t>>& map_record_size_or_map_offsets,
+                              const ELFIO::Elf64_Addr offset) {
+    // Only permit loading the address of the global variable.
+    verify_load_instruction(reloc_inst, symbol_name, offset);
+
+    // Copy the immediate value to the next instruction.
+    next_reloc_inst.imm = reloc_inst.imm;
+    reloc_inst.src = INST_LD_MODE_MAP_VALUE;
+
+    size_t reloc_value = std::numeric_limits<size_t>::max();
+    auto& map_descriptors_offsets = std::get<1>(map_record_size_or_map_offsets);
+    const auto it = map_descriptors_offsets.find(symbol_name);
+    if (it != map_descriptors_offsets.end()) {
+        reloc_value = it->second;
+    } else {
+        throw UnmarshalError("Map descriptor not found for symbol " + symbol_name);
+    }
+
+    if (reloc_value >= info.map_descriptors.size()) {
+        throw UnmarshalError("Bad reloc value (" + std::to_string(reloc_value) + "). " +
+                             "Make sure to compile with -O2.");
+    }
+    reloc_inst.imm = info.map_descriptors.at(reloc_value).original_fd;
 }
 
 // Structure used to keep track of subprogram relocation data until any subprograms
@@ -319,6 +352,7 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
 
     program_info info{platform};
     std::set<ELFIO::Elf_Half> map_section_indices;
+    std::set<ELFIO::Elf_Half> global_variable_section_indices;
 
     auto btf = reader.sections[".BTF"];
     std::optional<libbtf::btf_type_data> btf_data;
@@ -338,13 +372,17 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
 
     std::variant<size_t, std::map<std::string, size_t>> map_record_size_or_map_offsets = size_t{0};
     ELFIO::const_symbol_section_accessor symbols{reader, symbol_section};
-    if (!reader.sections[".maps"]) {
+    bool contains_old_style_map_sections = false;
+    for (const auto& section : reader.sections) {
+        if (is_map_section(section->get_name())) {
+            contains_old_style_map_sections = true;
+            break;
+        }
+    }
+    if (contains_old_style_map_sections) {
         map_record_size_or_map_offsets =
             parse_map_sections(options, platform, reader, info.map_descriptors, map_section_indices, symbols);
-    } else {
-        if (!btf_data.has_value()) {
-            throw UnmarshalError("No BTF section found in ELF file " + path);
-        }
+    } else if (btf_data.has_value()) {
         map_record_size_or_map_offsets = parse_map_section(*btf_data, info.map_descriptors);
         // Prevail requires:
         // Map fds are sequential starting from 1.
@@ -366,7 +404,21 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
                 map_descriptor.inner_map_fd = type_id_to_fd_map[map_descriptor.inner_map_fd];
             }
         }
-        map_section_indices.insert(reader.sections[".maps"]->get_index());
+        if (reader.sections[".maps"]) {
+            map_section_indices.insert(reader.sections[".maps"]->get_index());
+        }
+
+        if (reader.sections[".data"]) {
+            global_variable_section_indices.insert(reader.sections[".data"]->get_index());
+        }
+
+        if (reader.sections[".bss"]) {
+            global_variable_section_indices.insert(reader.sections[".bss"]->get_index());
+        }
+
+        if (reader.sections[".rodata"]) {
+            global_variable_section_indices.insert(reader.sections[".rodata"]->get_index());
+        }
     }
 
     vector<raw_program> res;
@@ -426,12 +478,13 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
                     if (offset / sizeof(ebpf_inst) >= prog.prog.size()) {
                         throw UnmarshalError("Invalid relocation data");
                     }
-                    ebpf_inst& inst = prog.prog[offset / sizeof(ebpf_inst)];
+
+                    ebpf_inst& reloc_inst = prog.prog[offset / sizeof(ebpf_inst)];
 
                     auto [symbol_name, symbol_section_index] = get_symbol_name_and_section_index(symbols, index);
 
                     // Queue up relocation for function symbols.
-                    if (inst.opcode == INST_OP_CALL && inst.src == INST_CALL_LOCAL) {
+                    if (reloc_inst.opcode == INST_OP_CALL && reloc_inst.src == INST_CALL_LOCAL) {
                         function_relocation fr{.prog_index = res.size(),
                                                .source_offset = offset / sizeof(ebpf_inst),
                                                .relocation_entry_index = index,
@@ -440,9 +493,26 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
                         continue;
                     }
 
+                    // Verify that this is a map or global variable relocation.
+                    verify_load_instruction(reloc_inst, symbol_name, offset);
+
+                    // Load instructions are two instructions long, so we need to check the next instruction.
+                    if (prog.prog.size() <= offset / sizeof(ebpf_inst) + 1) {
+                        throw UnmarshalError("Invalid relocation data");
+                    }
+                    ebpf_inst& next_reloc_inst = prog.prog[offset / sizeof(ebpf_inst) + 1];
+
                     // Perform relocation for symbols located in the maps section.
                     if (map_section_indices.contains(symbol_section_index)) {
-                        relocate_map(inst, symbol_name, map_record_size_or_map_offsets, info, offset, index, symbols);
+                        relocate_map(reloc_inst, symbol_name, map_record_size_or_map_offsets, info, offset, index,
+                                     symbols);
+                        continue;
+                    }
+
+                    if (global_variable_section_indices.contains(symbol_section_index)) {
+                        relocate_global_variable(reloc_inst, next_reloc_inst,
+                                                 reader.sections[symbol_section_index]->get_name(), info,
+                                                 map_record_size_or_map_offsets, offset);
                         continue;
                     }
 

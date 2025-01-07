@@ -399,6 +399,8 @@ static std::string instype(Instruction ins) {
         return "arith";
     } else if (std::holds_alternative<LoadMapFd>(ins)) {
         return "assign";
+    } else if (std::holds_alternative<LoadMapAddress>(ins)) {
+        return "assign";
     } else if (std::holds_alternative<Assume>(ins)) {
         return "assume";
     } else {

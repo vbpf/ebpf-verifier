@@ -87,6 +87,10 @@ enum {
     INST_ALU_OP_ARSH = 0xc0,
     INST_ALU_OP_END = 0xd0,
     INST_ALU_OP_MASK = 0xf0,
+
+    INST_LD_MODE_IMM = 0x0,       // 64-bit immediate value
+    INST_LD_MODE_MAP_FD = 0x1,    // Load map fd
+    INST_LD_MODE_MAP_VALUE = 0x2, // Load map value
 };
 
 enum {

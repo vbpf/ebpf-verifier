@@ -93,6 +93,15 @@ struct LoadMapFd {
     constexpr bool operator==(const LoadMapFd&) const = default;
 };
 
+// Load the address of a map value into a register.
+struct LoadMapAddress {
+    Reg dst;
+    int32_t mapfd{};
+    int32_t offset{};
+
+    constexpr bool operator==(const LoadMapAddress&) const = default;
+};
+
 struct Condition {
     enum class Op {
         EQ,
@@ -249,7 +258,7 @@ struct IncrementLoopCounter {
 };
 
 using Instruction = std::variant<Undefined, Bin, Un, LoadMapFd, Call, CallLocal, Callx, Exit, Jmp, Mem, Packet, Atomic,
-                                 Assume, IncrementLoopCounter>;
+                                 Assume, IncrementLoopCounter, LoadMapAddress>;
 
 using LabeledInstruction = std::tuple<label_t, Instruction, std::optional<btf_line_info_t>>;
 using InstructionSeq = std::vector<LabeledInstruction>;
