@@ -24,10 +24,31 @@ thread_local crab::lazy_allocator<program_info> thread_local_program_info;
 thread_local ebpf_verifier_options_t thread_local_options;
 void ebpf_verifier_clear_before_analysis();
 
+// Note:
+// The check is intended to find abstract state values that violate the constraints of the
+// pre or post invariant. The check is done by the crab library.
+// There are 4 possible outcomes:
+// 1. The abstract state contains an invariant that is not present in the pre or post invariant.
+// 2. The pre or post invariant contains an invariant that is not present in the abstract state.
+// 3. The abstract state contains an invariant that is present in the pre or post invariant and
+// the value of the invariant is within the constraints of the pre or post invariant.
+// 4. The abstract state contains an invariant that is present in the pre or post invariant, but the
+// value of the invariant is not within the constraints of the pre or post invariant.
+// The check should return false only for the 4th case where there is a violation of the constraints.
+// Usage of <= doesn't work as there are cases where the externally provided state contains constraints
+// that the pre and post invariant doesn't have. Examples are the registers where the pre and post invariant
+// have 'havoc'ed the constraints, but the externally provided state has constraints on the registers.
+
 bool Invariants::is_valid_after(const label_t& label, const string_invariant& state) const {
     const ebpf_domain_t abstract_state =
         ebpf_domain_t::from_constraints(state.value(), thread_local_options.setup_constraints);
-    return abstract_state <= invariants.at(label).post;
+    return !(abstract_state & invariants.at(label).post).is_bottom();
+}
+
+bool Invariants::is_valid_before(const label_t& label, const string_invariant& state) const {
+    const ebpf_domain_t abstract_state =
+        ebpf_domain_t::from_constraints(state.value(), thread_local_options.setup_constraints);
+    return !(abstract_state & invariants.at(label).pre).is_bottom();
 }
 
 string_invariant Invariants::invariant_at(const label_t& label) const { return invariants.at(label).post.to_set(); }
