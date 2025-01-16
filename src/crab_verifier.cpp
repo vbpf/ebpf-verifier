@@ -30,6 +30,12 @@ bool Invariants::is_valid_after(const label_t& label, const string_invariant& st
     return abstract_state <= invariants.at(label).post;
 }
 
+bool Invariants::is_valid_before(const label_t& label, const string_invariant& state) const {
+    const ebpf_domain_t abstract_state =
+        ebpf_domain_t::from_constraints(state.value(), thread_local_options.setup_constraints);
+    return abstract_state <= invariants.at(label).pre;
+}
+
 string_invariant Invariants::invariant_at(const label_t& label) const { return invariants.at(label).post.to_set(); }
 
 crab::interval_t Invariants::exit_value() const { return invariants.at(label_t::exit).post.get_r0(); }
