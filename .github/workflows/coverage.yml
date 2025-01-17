@@ -33,7 +33,7 @@ jobs:
       - name: Build
         run: |
           mkdir build
-          cmake -B build -DCMAKE_BUILD_TYPE=${{env.BUILD_CONFIGURATION}} -DCMAKE_CXX_FLAGS="--coverage -fprofile-arcs -ftest-coverage -g"
+          cmake -B build -DCMAKE_BUILD_TYPE=${{env.BUILD_CONFIGURATION}} -DCMAKE_CXX_FLAGS="--coverage -fprofile-arcs -fprofile-update=atomic -ftest-coverage -g"
           cmake --build build -j $(nproc)
 
       - name: Run unit tests
@@ -43,7 +43,7 @@ jobs:
       - name: Generate code coverage report
         run: |
           mkdir coverage
-          lcov --capture --directory build --include '*/ebpf-verifier/src/*' --output-file coverage/lcov.info
+          lcov --ignore-errors --capture --directory build --include '*/ebpf-verifier/src/*' --output-file coverage/lcov.info
 
       - name: Coveralls Parallel
         uses: coverallsapp/github-action@master
