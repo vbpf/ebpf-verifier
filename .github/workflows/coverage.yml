@@ -39,6 +39,7 @@ jobs:
       - name: Run unit tests
         run: ./tests --abort --reporter compact
 
+      # Comment only change to test coverage report to coveralls
       - name: Generate code coverage report
         run: |
           mkdir coverage
