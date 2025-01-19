@@ -95,9 +95,9 @@ struct LoadMapFd {
 
 // Load the address of a map value into a register.
 struct LoadMapAddress {
-    Reg dst;
-    int32_t mapfd{};
-    int32_t offset{};
+    Reg dst;          // Destination register to store the address of the map value.
+    int32_t mapfd{};  // File descriptor of the map to load the address from.
+    int32_t offset{}; // Offset within the map, must be within bounds.
 
     constexpr bool operator==(const LoadMapAddress&) const = default;
 };
