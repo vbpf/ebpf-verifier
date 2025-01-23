@@ -299,7 +299,7 @@ vector<ebpf_inst> marshal(const Instruction& ins, const pc_t pc) {
     return std::visit(MarshalVisitor{crab::label_to_offset16(pc), crab::label_to_offset32(pc)}, ins);
 }
 
-static int size(const Instruction& inst) {
+int asm_syntax::size(const Instruction& inst) {
     if (const auto pins = std::get_if<Bin>(&inst)) {
         if (pins->lddw) {
             return 2;

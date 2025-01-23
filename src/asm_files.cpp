@@ -372,14 +372,8 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
 
     std::variant<size_t, std::map<std::string, size_t>> map_record_size_or_map_offsets = size_t{0};
     ELFIO::const_symbol_section_accessor symbols{reader, symbol_section};
-    bool contains_old_style_map_sections = false;
-    for (const auto& section : reader.sections) {
-        if (is_map_section(section->get_name())) {
-            contains_old_style_map_sections = true;
-            break;
-        }
-    }
-    if (contains_old_style_map_sections) {
+
+    if (std::ranges::any_of(reader.sections, [](const auto& section) { return is_map_section(section->get_name()); })) {
         map_record_size_or_map_offsets =
             parse_map_sections(options, platform, reader, info.map_descriptors, map_section_indices, symbols);
     } else if (btf_data.has_value()) {
@@ -408,16 +402,12 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
             map_section_indices.insert(reader.sections[".maps"]->get_index());
         }
 
-        if (reader.sections[".data"]) {
-            global_variable_section_indices.insert(reader.sections[".data"]->get_index());
-        }
-
-        if (reader.sections[".bss"]) {
-            global_variable_section_indices.insert(reader.sections[".bss"]->get_index());
-        }
-
-        if (reader.sections[".rodata"]) {
-            global_variable_section_indices.insert(reader.sections[".rodata"]->get_index());
+        for (auto section_name : {".rodata", ".data", ".bss"}) {
+            if (const auto section = reader.sections[section_name]) {
+                if (section->get_size() != 0) {
+                    global_variable_section_indices.insert(section->get_index());
+                }
+            }
         }
     }
 

@@ -544,21 +544,6 @@ string to_string(Assertion const& constraint) {
     return str.str();
 }
 
-int size(const Instruction& inst) {
-    if (const auto bin = std::get_if<Bin>(&inst)) {
-        if (bin->lddw) {
-            return 2;
-        }
-    }
-    if (std::holds_alternative<LoadMapFd>(inst)) {
-        return 2;
-    }
-    if (std::holds_alternative<LoadMapAddress>(inst)) {
-        return 2;
-    }
-    return 1;
-}
-
 auto get_labels(const InstructionSeq& insts) {
     pc_t pc = 0;
     std::map<label_t, pc_t> pc_of_label;

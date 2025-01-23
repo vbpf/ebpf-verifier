@@ -1841,9 +1841,13 @@ void ebpf_transformer::do_load_mapfd(const Reg& dst_reg, const int mapfd, const 
 
 void ebpf_transformer::operator()(const LoadMapFd& ins) { do_load_mapfd(ins.dst, ins.mapfd, false); }
 
-void ebpf_transformer::do_load_map_address(const Reg& dst_reg, const int mapfd, int32_t offset) {
+void ebpf_transformer::do_load_map_address(const Reg& dst_reg, const int mapfd, const int32_t offset) {
     const EbpfMapDescriptor& desc = thread_local_program_info->platform->get_map_descriptor(mapfd);
     const EbpfMapType& type = thread_local_program_info->platform->get_map_type(desc.type);
+
+    if (type.value_type == EbpfMapValueType::PROGRAM) {
+        throw std::runtime_error("Program map types are not supported");
+    }
 
     // Set the shared region size and offset for the map.
     type_inv.assign_type(m_inv, dst_reg, T_SHARED);

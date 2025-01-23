@@ -383,6 +383,8 @@ std::string to_string(const Assertion& constraint);
 void print(const InstructionSeq& insts, std::ostream& out, const std::optional<const label_t>& label_to_print,
            bool print_line_info = false);
 
+int size(const Instruction& inst);
+
 } // namespace asm_syntax
 
 using namespace asm_syntax;
