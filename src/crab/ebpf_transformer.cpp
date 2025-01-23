@@ -1846,7 +1846,7 @@ void ebpf_transformer::do_load_map_address(const Reg& dst_reg, const int mapfd, 
     const EbpfMapType& type = thread_local_program_info->platform->get_map_type(desc.type);
 
     if (type.value_type == EbpfMapValueType::PROGRAM) {
-        throw std::runtime_error("Program map types are not supported");
+        throw std::invalid_argument("Cannot load address of program map type - only data maps are supported");
     }
 
     // Set the shared region size and offset for the map.
