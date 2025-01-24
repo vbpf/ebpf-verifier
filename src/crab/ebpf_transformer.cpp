@@ -44,6 +44,7 @@ class ebpf_transformer final {
     void operator()(const IncrementLoopCounter&);
     void operator()(const Jmp&) const;
     void operator()(const LoadMapFd&);
+    void operator()(const LoadMapAddress&);
     void operator()(const Mem&);
     void operator()(const Packet&);
     void operator()(const Un&);
@@ -113,6 +114,7 @@ class ebpf_transformer final {
     void havoc_subprogram_stack(const std::string& prefix);
     void forget_packet_pointers();
     void do_load_mapfd(const Reg& dst_reg, int mapfd, bool maybe_null);
+    void do_load_map_address(const Reg& dst_reg, const int mapfd, int32_t offset);
 
     void assign_valid_ptr(const Reg& dst_reg, bool maybe_null);
 
@@ -1838,6 +1840,24 @@ void ebpf_transformer::do_load_mapfd(const Reg& dst_reg, const int mapfd, const 
 }
 
 void ebpf_transformer::operator()(const LoadMapFd& ins) { do_load_mapfd(ins.dst, ins.mapfd, false); }
+
+void ebpf_transformer::do_load_map_address(const Reg& dst_reg, const int mapfd, const int32_t offset) {
+    const EbpfMapDescriptor& desc = thread_local_program_info->platform->get_map_descriptor(mapfd);
+    const EbpfMapType& type = thread_local_program_info->platform->get_map_type(desc.type);
+
+    if (type.value_type == EbpfMapValueType::PROGRAM) {
+        throw std::invalid_argument("Cannot load address of program map type - only data maps are supported");
+    }
+
+    // Set the shared region size and offset for the map.
+    type_inv.assign_type(m_inv, dst_reg, T_SHARED);
+    const reg_pack_t& dst = reg_pack(dst_reg);
+    m_inv.assign(dst.shared_offset, offset);
+    m_inv.assign(dst.shared_region_size, desc.value_size);
+    assign_valid_ptr(dst_reg, false);
+}
+
+void ebpf_transformer::operator()(const LoadMapAddress& ins) { do_load_map_address(ins.dst, ins.mapfd, ins.offset); }
 
 void ebpf_transformer::assign_valid_ptr(const Reg& dst_reg, const bool maybe_null) {
     using namespace crab::dsl_syntax;

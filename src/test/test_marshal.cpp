@@ -41,8 +41,8 @@ static const ebpf_instruction_template_t instruction_template[] = {
     {{0x17, DST, 0, 0, IMM}, bpf_conformance_groups_t::base64},
     {{0x18, DST, 0, 0, IMM}, bpf_conformance_groups_t::base64},
     {{0x18, DST, 1, 0, IMM}, bpf_conformance_groups_t::base64},
-    // TODO(issue #533): add support for LDDW with src_reg > 1.
-    // {{0x18, DST, 2, 0, IMM}, bpf_conformance_groups_t::base64},
+    {{0x18, DST, 2, 0, IMM}, bpf_conformance_groups_t::base64},
+    // TODO(issue #533): add support for LDDW with src_reg > 2.
     // {{0x18, DST, 3, 0, IMM}, bpf_conformance_groups_t::base64},
     // {{0x18, DST, 4, 0, IMM}, bpf_conformance_groups_t::base64},
     // {{0x18, DST, 5, 0, IMM}, bpf_conformance_groups_t::base64},
@@ -392,6 +392,9 @@ TEST_CASE("disasm_marshal", "[disasm][marshal]") {
     }
 
     SECTION("LoadMapFd") { compare_marshal_unmarshal(LoadMapFd{.dst = Reg{1}, .mapfd = 1}, true); }
+    SECTION("LoadMapAddress") {
+        compare_marshal_unmarshal(LoadMapAddress{.dst = Reg{1}, .mapfd = 1, .offset = 4}, true);
+    }
 
     SECTION("Jmp") {
         auto ops = {Condition::Op::EQ, Condition::Op::GT, Condition::Op::GE, Condition::Op::SET,

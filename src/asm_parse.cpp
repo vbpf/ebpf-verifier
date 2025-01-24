@@ -54,6 +54,12 @@ using crab::number_t;
 #define DOT "[.]"
 #define TYPE R"_(\s*(shared|number|packet|stack|ctx|map_fd|map_fd_programs)\s*)_"
 
+// Match map_val(fd) + offset
+#define MAP_VAL R"_(\s*map_val\((\d+)\)\s*\+\s*(\d+)\s*)_"
+
+// Match map_fd fd
+#define MAP_FD R"_(\s*map_fd\s+(\d+)\s*)_"
+
 static const std::map<std::string, Bin::Op> str_to_binop = {
     {"", Bin::Op::MOV},        {"+", Bin::Op::ADD},   {"-", Bin::Op::SUB},     {"*", Bin::Op::MUL},
     {"/", Bin::Op::UDIV},      {"%", Bin::Op::UMOD},  {"|", Bin::Op::OR},      {"&", Bin::Op::AND},
@@ -163,6 +169,13 @@ Instruction parse_instruction(const std::string& line, const std::map<std::strin
             throw std::invalid_argument(std::string("Invalid unary operation: ") + text);
         }
         return Un{.op = str_to_unop.at(m[2]), .dst = reg(m[1]), .is64 = is64_reg(m[1])};
+    }
+    if (regex_match(text, m, regex(WREG ASSIGN MAP_VAL))) {
+        return LoadMapAddress{
+            .dst = reg(m[1]), .mapfd = boost::lexical_cast<int>(m[2]), .offset = boost::lexical_cast<int>(m[3])};
+    }
+    if (regex_match(text, m, regex(WREG ASSIGN MAP_FD))) {
+        return LoadMapFd{.dst = reg(m[1]), .mapfd = boost::lexical_cast<int>(m[2])};
     }
     if (regex_match(text, m, regex(WREG OPASSIGN IMM LONGLONG))) {
         const std::string r = m[1];

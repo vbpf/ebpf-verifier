@@ -429,7 +429,7 @@ struct Unmarshaller {
         if (next.opcode != 0 || next.dst != 0 || next.src != 0 || next.offset != 0) {
             throw InvalidInstruction(pc, "invalid lddw");
         }
-        if (inst.src > 1) {
+        if (inst.src > INST_LD_MODE_MAP_VALUE) {
             throw InvalidInstruction(pc, make_opcode_message("bad instruction", inst.opcode));
         }
         if (inst.offset != 0) {
@@ -439,7 +439,16 @@ struct Unmarshaller {
             throw InvalidInstruction(pc, "bad register");
         }
 
-        if (inst.src == 1) {
+        switch (inst.src) {
+        case INST_LD_MODE_IMM:
+            return Bin{
+                .op = Bin::Op::MOV,
+                .dst = Reg{inst.dst},
+                .v = Imm{merge(inst.imm, next_imm)},
+                .is64 = true,
+                .lddw = true,
+            };
+        case INST_LD_MODE_MAP_FD: {
             // magic number, meaning we're a per-process file descriptor defining the map.
             // (for details, look for BPF_PSEUDO_MAP_FD in the kernel)
             if (next.imm != 0) {
@@ -447,14 +456,9 @@ struct Unmarshaller {
             }
             return LoadMapFd{.dst = Reg{inst.dst}, .mapfd = inst.imm};
         }
-
-        return Bin{
-            .op = Bin::Op::MOV,
-            .dst = Reg{inst.dst},
-            .v = Imm{merge(inst.imm, next_imm)},
-            .is64 = true,
-            .lddw = true,
-        };
+        case INST_LD_MODE_MAP_VALUE: return LoadMapAddress{.dst = Reg{inst.dst}, .mapfd = inst.imm, .offset = next_imm};
+        default: throw InvalidInstruction(pc, make_opcode_message("bad instruction", inst.opcode));
+        }
     }
 
     static ArgSingle::Kind toArgSingleKind(const ebpf_argument_type_t t) {
