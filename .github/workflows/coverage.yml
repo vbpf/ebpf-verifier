@@ -54,7 +54,7 @@ jobs:
 
   finish:
     needs: build_ubuntu
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
       - name: Coveralls Finished
         uses: coverallsapp/github-action@master
