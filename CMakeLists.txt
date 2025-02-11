@@ -1,6 +1,8 @@
 # Copyright (c) Prevail Verifier contributors.
 # SPDX-License-Identifier: MIT
-cmake_minimum_required(VERSION 3.14)
+# Set cmake version to 3.16 to use CMP0091 aka MSVC_RUNTIME_LIBRARY property.
+cmake_minimum_required(VERSION 3.16)
+
 project(ebpf_verifier)
 
 include(FetchContent)
