@@ -58,6 +58,7 @@ class Invariants final {
     Invariants(const Invariants& invariants) = default;
 
     bool is_valid_after(const label_t& label, const string_invariant& state) const;
+    bool is_valid_before(const label_t& label, const string_invariant& state) const;
 
     string_invariant invariant_at(const label_t& label) const;
 
