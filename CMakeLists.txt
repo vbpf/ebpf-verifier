@@ -46,6 +46,11 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR
     set(CMAKE_CXX_STANDARD_REQUIRED ON)
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
     list(APPEND CMAKE_CONFIGURATION_TYPES FuzzerDebug)
+    # Check if CMAKE_MSVC_RUNTIME_LIBRARY is set and set it to MultiThreadedDLL if not.
+    # This is required to make FuzzerDebug build with MSVC using MultiThreadedDLL runtime.
+    if (NOT CMAKE_MSVC_RUNTIME_LIBRARY)
+        set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>$<$<CONFIG:FuzzerDebug>:Debug>DLL")
+    endif ()
     list(REMOVE_DUPLICATES CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_CONFIGURATION_TYPES "${CMAKE_CONFIGURATION_TYPES}" CACHE STRING
             "Add the configurations that we need"
