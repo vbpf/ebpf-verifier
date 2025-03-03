@@ -392,8 +392,6 @@ code:
 
 post:
   - r1.type=number
-  - s[508...511].svalue=r1.svalue
-  - s[508...511].uvalue=r1.uvalue
   - r2.type=stack
   - r2.stack_offset=504
   - r2.stack_numeric_size=8
@@ -593,3 +591,65 @@ post:
 
 messages:
   - "0: Lower bound must be at least r10.stack_offset - EBPF_SUBPROGRAM_STACK_SIZE (valid_access(r10.offset-513, width=1) for write)"
+
+---
+test-case: Round trip min int on stack
+
+pre: ["r10.type=stack", "r10.stack_offset=512"]
+
+code:
+  <start>: |
+    r0 = -2147483648
+    *(u64 *)(r10 - 8) = r0
+    r0 = *(u64 *)(r10 - 8)
+
+post:
+  - r10.stack_offset=512
+  - r10.type=stack
+  - r0.type=number
+  - r0.svalue=-2147483648
+  - r0.uvalue=18446744071562067968
+  - s[504...511].type=number
+  - s[504...511].svalue=-2147483648
+  - s[504...511].uvalue=18446744071562067968
+
+---
+test-case: Round trip min int on stack with truncation to 8 bits
+
+pre: ["r10.type=stack", "r10.stack_offset=512"]
+
+code:
+  <start>: |
+    r0 = -127
+    *(u8 *)(r10 - 1) = r0
+    r0 = *(u8 *)(r10 - 1)
+
+post:
+  - r10.stack_offset=512
+  - r10.type=stack
+  - r0.type=number
+  - r0.svalue=129
+  - r0.uvalue=129
+  - s[511].type=number
+  - s[511].svalue=129
+  - s[511].uvalue=129
+---
+test-case: Round trip min int on stack with truncation to 32 bits
+
+pre: ["r10.type=stack", "r10.stack_offset=512"]
+
+code:
+  <start>: |
+    r0 = -2147483648
+    *(u32 *)(r10 - 4) = r0
+    r0 = *(u32 *)(r10 - 4)
+
+post:
+  - r10.stack_offset=512
+  - r10.type=stack
+  - r0.type=number
+  - r0.svalue=2147483648
+  - r0.uvalue=2147483648
+  - s[508...511].type=number
+  - s[508...511].svalue=2147483648
+  - s[508...511].uvalue=2147483648

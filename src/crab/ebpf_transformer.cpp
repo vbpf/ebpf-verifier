@@ -982,6 +982,8 @@ static void overflow_bounds(NumAbsDomain& inv, variable_t lhs, number_t span, in
 static void overflow_signed(NumAbsDomain& inv, const variable_t lhs, const int finite_width) {
     const auto span{finite_width == 64   ? number_t{std::numeric_limits<uint64_t>::max()}
                     : finite_width == 32 ? number_t{std::numeric_limits<uint32_t>::max()}
+                    : finite_width == 16 ? number_t{std::numeric_limits<uint16_t>::max()}
+                    : finite_width == 8  ? number_t{std::numeric_limits<uint8_t>::max()}
                                          : throw std::exception()};
     overflow_bounds(inv, lhs, span, finite_width, true);
 }
@@ -989,6 +991,8 @@ static void overflow_signed(NumAbsDomain& inv, const variable_t lhs, const int f
 static void overflow_unsigned(NumAbsDomain& inv, const variable_t lhs, const int finite_width) {
     const auto span{finite_width == 64   ? number_t{std::numeric_limits<uint64_t>::max()}
                     : finite_width == 32 ? number_t{std::numeric_limits<uint32_t>::max()}
+                    : finite_width == 16 ? number_t{std::numeric_limits<uint16_t>::max()}
+                    : finite_width == 8  ? number_t{std::numeric_limits<uint8_t>::max()}
                                          : throw std::exception()};
     overflow_bounds(inv, lhs, span, finite_width, false);
 }
@@ -1546,8 +1550,16 @@ void ebpf_transformer::do_store_stack(NumAbsDomain& inv, const linear_expression
     } else {
         if ((width == 1 || width == 2 || width == 4) && type_inv.get_type(m_inv, val_type) == T_NUM) {
             // Keep track of numbers on the stack that might be used as array indices.
-            inv.assign(stack.store(inv, data_kind_t::svalues, addr, width, val_svalue), val_svalue);
-            inv.assign(stack.store(inv, data_kind_t::uvalues, addr, width, val_uvalue), val_uvalue);
+            auto stack_svalue = stack.store(inv, data_kind_t::svalues, addr, width, val_svalue);
+            auto stack_uvalue = stack.store(inv, data_kind_t::uvalues, addr, width, val_uvalue);
+            if (stack_svalue.has_value()) {
+                inv.assign(stack_svalue, val_svalue);
+                overflow_signed(inv, *stack_svalue, width * 8);
+            }
+            if (stack_uvalue.has_value()) {
+                inv.assign(stack_uvalue, val_uvalue);
+                overflow_unsigned(inv, *stack_uvalue, width * 8);
+            }
         } else {
             stack.havoc(inv, data_kind_t::svalues, addr, width);
             stack.havoc(inv, data_kind_t::uvalues, addr, width);
