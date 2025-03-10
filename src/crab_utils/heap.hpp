@@ -1,5 +1,5 @@
 #pragma once
-/*********************************************************************************[Heap.h]
+/*********************************************************************************
 MiniSat -- Copyright (c) 2003-2006, Niklas Een, Niklas Sorensson
 
 Permission is hereby granted, free of charge, to any person obtaining
@@ -26,9 +26,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace crab {
 
 // A heap implementation with support for decrease/increase key.
-// @tparam Comp a predicate that compares two integers.
 class Heap {
-    std::function<bool(int, int)> lt; //
+    std::function<bool(int, int)> lt; // comparison function
     std::vector<int> heap;            // heap of ints
     std::vector<int> indices;         // int -> index in heap
 
@@ -38,7 +37,7 @@ class Heap {
     static int parent(const int i) { return (i - 1) >> 1; }
 
     void percolateUp(int i) {
-        int x = heap[i];
+        const int x = heap[i];
         while (i != 0 && lt(x, heap[parent(i)])) {
             const int v = heap[i] = heap[parent(i)];
             indices[v] = i;
@@ -74,14 +73,17 @@ class Heap {
     int size() const {
         return heap.size();
     }
+
     [[nodiscard]]
     bool empty() const {
         return heap.empty();
     }
+
     [[nodiscard]]
     bool inHeap(const int n) const {
         return static_cast<size_t>(n) < indices.size() && indices[n] >= 0;
     }
+
     int operator[](const int index) const {
         assert(static_cast<size_t>(index) < heap.size());
         return heap[index];
