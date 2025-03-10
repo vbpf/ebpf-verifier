@@ -67,12 +67,6 @@ class Heap {
         indices[x] = i;
     }
 
-    [[nodiscard]]
-    bool heapProperty(const int i) const {
-        return i >= heap.size() ||
-               ((i == 0 || !lt(heap[i], heap[parent(i)])) && heapProperty(left(i)) && heapProperty(right(i)));
-    }
-
   public:
     explicit Heap(const std::function<bool(int, int)>& lt) : lt{lt} {}
 
