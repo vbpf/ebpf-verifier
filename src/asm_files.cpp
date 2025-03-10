@@ -8,7 +8,6 @@
 #include <vector>
 
 #include "elfio/elfio.hpp"
-#include "libbtf/btf.h"
 #include "libbtf/btf_json.h"
 #include "libbtf/btf_map.h"
 #include "libbtf/btf_parse.h"
@@ -162,23 +161,24 @@ get_program_name_and_size(const ELFIO::section& sec, const ELFIO::Elf_Xword star
     return {program_name, size};
 }
 
-void verify_load_instruction(const ebpf_inst& instruction, const std::string& symbol_name, ELFIO::Elf64_Addr offset) {
+static void verify_load_instruction(const ebpf_inst& instruction, const std::string& symbol_name,
+                                    ELFIO::Elf64_Addr offset) {
     if ((instruction.opcode & INST_CLS_MASK) != INST_CLS_LD) {
         throw UnmarshalError("Illegal operation on symbol " + symbol_name + " at location " +
                              std::to_string(offset / sizeof(ebpf_inst)));
     }
 }
 
-void relocate_map(ebpf_inst& reloc_inst, const std::string& symbol_name,
-                  const std::variant<size_t, std::map<std::string, size_t>>& map_record_size_or_map_offsets,
-                  const program_info& info, const ELFIO::Elf64_Addr offset, const ELFIO::Elf_Word index,
-                  const ELFIO::const_symbol_section_accessor& symbols) {
+static void relocate_map(ebpf_inst& reloc_inst, const std::string& symbol_name,
+                         const std::variant<size_t, std::map<std::string, size_t>>& map_record_size_or_map_offsets,
+                         const std::vector<EbpfMapDescriptor>& map_descriptors, const ELFIO::Elf64_Addr offset,
+                         const ELFIO::Elf_Word index, const ELFIO::const_symbol_section_accessor& symbols) {
     // Only permit loading the address of the map.
     verify_load_instruction(reloc_inst, symbol_name, offset);
     reloc_inst.src = INST_LD_MODE_MAP_FD;
 
     // Relocation value is an offset into the "maps" or ".maps" section.
-    size_t reloc_value = std::numeric_limits<size_t>::max();
+    size_t reloc_value{};
     if (map_record_size_or_map_offsets.index() == 0) {
         // The older maps section format uses a single map_record_size value, so we can
         // calculate the map descriptor index directly.
@@ -187,25 +187,25 @@ void relocate_map(ebpf_inst& reloc_inst, const std::string& symbol_name,
     } else {
         // The newer .maps section format uses a variable-length map descriptor array,
         // so we need to look up the map descriptor index in a map.
-        auto& map_descriptors_offsets = std::get<1>(map_record_size_or_map_offsets);
+        const auto& map_descriptors_offsets = std::get<1>(map_record_size_or_map_offsets);
         const auto it = map_descriptors_offsets.find(symbol_name);
-        if (it != map_descriptors_offsets.end()) {
-            reloc_value = it->second;
-        } else {
+        if (it == map_descriptors_offsets.end()) {
             throw UnmarshalError("Map descriptor not found for symbol " + symbol_name);
         }
+        reloc_value = it->second;
     }
-    if (reloc_value >= info.map_descriptors.size()) {
+    if (reloc_value >= map_descriptors.size()) {
         throw UnmarshalError("Bad reloc value (" + std::to_string(reloc_value) + "). " +
                              "Make sure to compile with -O2.");
     }
-    reloc_inst.imm = info.map_descriptors.at(reloc_value).original_fd;
+    reloc_inst.imm = map_descriptors.at(reloc_value).original_fd;
 }
 
-void relocate_global_variable(ebpf_inst& reloc_inst, ebpf_inst& next_reloc_inst, const std::string& symbol_name,
-                              const program_info& info,
-                              const std::variant<size_t, std::map<std::string, size_t>>& map_record_size_or_map_offsets,
-                              const ELFIO::Elf64_Addr offset) {
+static void
+relocate_global_variable(ebpf_inst& reloc_inst, ebpf_inst& next_reloc_inst, const std::string& symbol_name,
+                         const std::vector<EbpfMapDescriptor>& map_descriptors,
+                         const std::variant<size_t, std::map<std::string, size_t>>& map_record_size_or_map_offsets,
+                         const ELFIO::Elf64_Addr offset) {
     // Only permit loading the address of the global variable.
     verify_load_instruction(reloc_inst, symbol_name, offset);
 
@@ -213,20 +213,16 @@ void relocate_global_variable(ebpf_inst& reloc_inst, ebpf_inst& next_reloc_inst,
     next_reloc_inst.imm = reloc_inst.imm;
     reloc_inst.src = INST_LD_MODE_MAP_VALUE;
 
-    size_t reloc_value = std::numeric_limits<size_t>::max();
-    auto& map_descriptors_offsets = std::get<1>(map_record_size_or_map_offsets);
+    const auto& map_descriptors_offsets = std::get<1>(map_record_size_or_map_offsets);
     const auto it = map_descriptors_offsets.find(symbol_name);
-    if (it != map_descriptors_offsets.end()) {
-        reloc_value = it->second;
-    } else {
+    if (it == map_descriptors_offsets.end()) {
         throw UnmarshalError("Map descriptor not found for symbol " + symbol_name);
     }
-
-    if (reloc_value >= info.map_descriptors.size()) {
-        throw UnmarshalError("Bad reloc value (" + std::to_string(reloc_value) + "). " +
+    if (it->second >= map_descriptors.size()) {
+        throw UnmarshalError("Bad reloc value (" + std::to_string(it->second) + "). " +
                              "Make sure to compile with -O2.");
     }
-    reloc_inst.imm = info.map_descriptors.at(reloc_value).original_fd;
+    reloc_inst.imm = map_descriptors.at(it->second).original_fd;
 }
 
 // Structure used to keep track of subprogram relocation data until any subprograms
@@ -242,7 +238,7 @@ static raw_program* find_subprogram(vector<raw_program>& programs, const ELFIO::
                                     const std::string& symbol_name) {
     // Find subprogram by name.
     for (auto& subprog : programs) {
-        if ((subprog.section_name == subprogram_section.get_name()) && (subprog.function_name == symbol_name)) {
+        if (subprog.section_name == subprogram_section.get_name() && subprog.function_name == symbol_name) {
             return &subprog;
         }
     }
@@ -273,15 +269,15 @@ static std::string append_subprograms(raw_program& prog, vector<raw_program>& pr
         if (!subprogram_offsets.contains(reloc.target_function_name)) {
             subprogram_offsets[reloc.target_function_name] = prog.prog.size();
 
-            auto [symbol_name, section_index] =
+            const auto [symbol_name, section_index] =
                 get_symbol_name_and_section_index(symbols, reloc.relocation_entry_index);
             if (section_index >= reader.sections.size()) {
                 throw UnmarshalError("Invalid section index " + std::to_string(section_index) + " at source offset " +
                                      std::to_string(reloc.source_offset));
             }
-            ELFIO::section& subprogram_section = *reader.sections[section_index];
+            const ELFIO::section& subprogram_section = *reader.sections[section_index];
 
-            if (auto subprogram = find_subprogram(programs, subprogram_section, symbol_name)) {
+            if (const auto subprogram = find_subprogram(programs, subprogram_section, symbol_name)) {
                 // Make sure subprogram has already had any subprograms of its own appended.
                 std::string error = append_subprograms(*subprogram, programs, function_relocations, reader, symbols);
                 if (!error.empty()) {
@@ -313,8 +309,8 @@ static std::string append_subprograms(raw_program& prog, vector<raw_program>& pr
     return {};
 }
 
-std::map<std::string, size_t> parse_map_section(const libbtf::btf_type_data& btf_data,
-                                                std::vector<EbpfMapDescriptor>& map_descriptors) {
+static std::map<std::string, size_t> parse_map_section(const libbtf::btf_type_data& btf_data,
+                                                       std::vector<EbpfMapDescriptor>& map_descriptors) {
     std::map<std::string, size_t> map_offsets;
     for (const auto& map : parse_btf_map_section(btf_data)) {
         map_offsets.emplace(map.name, map_descriptors.size());
@@ -330,90 +326,143 @@ std::map<std::string, size_t> parse_map_section(const libbtf::btf_type_data& btf
     return map_offsets;
 }
 
-vector<raw_program> read_elf(std::istream& input_stream, const std::string& path, const std::string& desired_section,
-                             const ebpf_verifier_options_t& options, const ebpf_platform_t* platform) {
-    ELFIO::elfio reader;
-    if (!reader.load(input_stream)) {
-        throw UnmarshalError("Can't process ELF file " + path);
+static std::map<int, int> map_typeid_to_fd(const std::vector<EbpfMapDescriptor>& map_descriptors) {
+    std::map<int, int> type_id_to_fd_map;
+    int pseudo_fd = 1;
+    // Gather the typeids for each map and assign a pseudo-fd to each map.
+    for (const auto& map_descriptor : map_descriptors) {
+        if (!type_id_to_fd_map.contains(map_descriptor.original_fd)) {
+            type_id_to_fd_map[map_descriptor.original_fd] = pseudo_fd++;
+        }
     }
+    return type_id_to_fd_map;
+}
 
-    auto symbol_section = reader.sections[".symtab"];
+static void replace_typeids_with_pseudo_fds(std::vector<EbpfMapDescriptor>& map_descriptors) {
+    // Prevail requires:
+    // Map fds are sequential starting from 1.
+    // Map fds are assigned in the order of the maps in the ELF file.
+    const std::map<int, int> type_id_to_fd_map = map_typeid_to_fd(map_descriptors);
+    for (auto& map_descriptor : map_descriptors) {
+        map_descriptor.original_fd = type_id_to_fd_map.at(map_descriptor.original_fd);
+        if (map_descriptor.inner_map_fd != DEFAULT_MAP_FD) {
+            map_descriptor.inner_map_fd = type_id_to_fd_map.at(map_descriptor.inner_map_fd);
+        }
+    }
+}
+
+static ELFIO::const_symbol_section_accessor read_and_validate_symbol_section(const ELFIO::elfio& reader,
+                                                                             const std::string& path) {
+    const ELFIO::section* symbol_section = reader.sections[".symtab"];
     if (!symbol_section) {
         throw UnmarshalError("No symbol section found in ELF file " + path);
     }
 
     // Make sure the ELFIO library will be able to parse the symbol section correctly.
-    auto expected_entry_size =
+    const auto expected_entry_size =
         reader.get_class() == ELFIO::ELFCLASS32 ? sizeof(ELFIO::Elf32_Sym) : sizeof(ELFIO::Elf64_Sym);
 
     if (symbol_section->get_entry_size() != expected_entry_size) {
         throw UnmarshalError("Invalid symbol section found in ELF file " + path);
     }
+    return ELFIO::const_symbol_section_accessor{reader, symbol_section};
+}
 
-    program_info info{platform};
-    std::set<ELFIO::Elf_Half> map_section_indices;
-    std::set<ELFIO::Elf_Half> global_variable_section_indices;
+static ELFIO::elfio load_elf(std::istream& input_stream, const std::string& path) {
+    ELFIO::elfio reader;
+    if (!reader.load(input_stream)) {
+        throw UnmarshalError("Can't process ELF file " + path);
+    }
+    return reader;
+}
 
-    auto btf = reader.sections[".BTF"];
-    std::optional<libbtf::btf_type_data> btf_data;
+static void dump_btf_types(const libbtf::btf_type_data& btf_data, const std::string& path) {
+    std::stringstream output;
+    std::cout << "Dumping BTF data for" << path << std::endl;
+    // Dump the BTF data to stdout for debugging purposes.
+    btf_data.to_json(output);
+    std::cout << libbtf::pretty_print_json(output.str()) << std::endl;
+    std::cout << std::endl;
+}
 
-    if (btf) {
-        // Parse the BTF type data.
-        btf_data = vector_of<std::byte>(*btf);
-        if (options.verbosity_opts.dump_btf_types_json) {
-            std::stringstream output;
-            std::cout << "Dumping BTF data for" << path << std::endl;
-            // Dump the BTF data to cout for debugging purposes.
-            btf_data->to_json(output);
-            std::cout << libbtf::pretty_print_json(output.str()) << std::endl;
-            std::cout << std::endl;
+static void update_line_info(vector<raw_program>& raw_programs, const ELFIO::section* btf_section,
+                             const ELFIO::section* btf_ext) {
+    auto visitor = [&raw_programs](const string& section, const uint32_t instruction_offset, const string& file_name,
+                                   const string& source, const uint32_t line_number, const uint32_t column_number) {
+        for (auto& program : raw_programs) {
+            if (program.section_name == section && instruction_offset >= program.insn_off &&
+                instruction_offset < program.insn_off + program.prog.size() * sizeof(ebpf_inst)) {
+                const size_t inst_index = (instruction_offset - program.insn_off) / sizeof(ebpf_inst);
+                if (inst_index >= program.prog.size()) {
+                    throw UnmarshalError("Invalid BTF data");
+                }
+                program.info.line_info.insert_or_assign(inst_index,
+                                                        btf_line_info_t{file_name, source, line_number, column_number});
+            }
+        }
+    };
+
+    libbtf::btf_parse_line_information(vector_of<std::byte>(*btf_section), vector_of<std::byte>(*btf_ext), visitor);
+
+    // BTF doesn't include line info for every instruction, only on the first instruction per source line.
+    for (auto& program : raw_programs) {
+        for (size_t i = 1; i < program.prog.size(); i++) {
+            // If the previous PC has line info, copy it.
+            if (program.info.line_info[i].line_number == 0 && program.info.line_info[i - 1].line_number != 0) {
+                program.info.line_info[i] = program.info.line_info[i - 1];
+            }
         }
     }
+}
 
-    std::variant<size_t, std::map<std::string, size_t>> map_record_size_or_map_offsets = size_t{0};
-    ELFIO::const_symbol_section_accessor symbols{reader, symbol_section};
+struct section_indices_t {
+    std::variant<size_t, std::map<std::string, size_t>> map_record_size_or_map_offsets;
+    std::set<ELFIO::Elf_Half> map_section_indices;
+    std::set<ELFIO::Elf_Half> global_variable_section_indices;
+};
 
+static section_indices_t
+extract_section_indices(const ELFIO::elfio& reader, const std::string& path, const ebpf_platform_t* platform,
+                        const ELFIO::const_symbol_section_accessor& symbols, const ebpf_verifier_options_t& options,
+                        const ELFIO::section* btf_section, vector<EbpfMapDescriptor>& map_descriptors) {
+    section_indices_t section_indices;
     if (std::ranges::any_of(reader.sections, [](const auto& section) { return is_map_section(section->get_name()); })) {
-        map_record_size_or_map_offsets =
-            parse_map_sections(options, platform, reader, info.map_descriptors, map_section_indices, symbols);
-    } else if (btf_data.has_value()) {
-        map_record_size_or_map_offsets = parse_map_section(*btf_data, info.map_descriptors);
-        // Prevail requires:
-        // Map fds are sequential starting from 1.
-        // Map fds are assigned in the order of the maps in the ELF file.
+        section_indices.map_record_size_or_map_offsets = parse_map_sections(
+            options, platform, reader, map_descriptors, section_indices.map_section_indices, symbols);
+    } else if (btf_section) {
+        const libbtf::btf_type_data btf_data = vector_of<std::byte>(*btf_section);
+        if (options.verbosity_opts.dump_btf_types_json) {
+            dump_btf_types(btf_data, path);
+        }
+        section_indices.map_record_size_or_map_offsets = parse_map_section(btf_data, map_descriptors);
+        replace_typeids_with_pseudo_fds(map_descriptors);
 
-        // Build a map from the original type id to the pseudo-fd.
-        std::map<int, int> type_id_to_fd_map;
-        int pseudo_fd = 1;
-        // Gather the typeids for each map and assign a pseudo-fd to each map.
-        for (const auto& map_descriptor : info.map_descriptors) {
-            if (!type_id_to_fd_map.contains(map_descriptor.original_fd)) {
-                type_id_to_fd_map[map_descriptor.original_fd] = pseudo_fd++;
-            }
-        }
-        // Replace the typeids with the pseudo-fds.
-        for (auto& map_descriptor : info.map_descriptors) {
-            map_descriptor.original_fd = type_id_to_fd_map[map_descriptor.original_fd];
-            if (map_descriptor.inner_map_fd != DEFAULT_MAP_FD) {
-                map_descriptor.inner_map_fd = type_id_to_fd_map[map_descriptor.inner_map_fd];
-            }
-        }
-        if (reader.sections[".maps"]) {
-            map_section_indices.insert(reader.sections[".maps"]->get_index());
+        if (const auto maps_section = reader.sections[".maps"]) {
+            section_indices.map_section_indices.insert(maps_section->get_index());
         }
 
-        for (auto section_name : {".rodata", ".data", ".bss"}) {
+        for (const auto section_name : {".rodata", ".data", ".bss"}) {
             if (const auto section = reader.sections[section_name]) {
                 if (section->get_size() != 0) {
-                    global_variable_section_indices.insert(section->get_index());
+                    section_indices.global_variable_section_indices.insert(section->get_index());
                 }
             }
         }
     }
+    return section_indices;
+}
 
-    vector<raw_program> res;
-    vector<string> unresolved_symbols_errors;
+static std::tuple<vector<raw_program>, vector<function_relocation>>
+read_programs(const ELFIO::elfio& reader, const std::string& path, const ebpf_platform_t* platform,
+              const ELFIO::const_symbol_section_accessor& symbols, const ebpf_verifier_options_t& options,
+              program_info& info) {
+    const ELFIO::section* btf_section = reader.sections[".BTF"];
+    const section_indices_t section_indices =
+        extract_section_indices(reader, path, platform, symbols, options, btf_section, info.map_descriptors);
+
+    vector<raw_program> raw_programs;
     vector<function_relocation> function_relocations;
+    vector<string> unresolved_symbols_errors;
     for (const auto& section : reader.sections) {
         if (!(section->get_flags() & ELFIO::SHF_EXECINSTR)) {
             // Section does not contain executable instructions.
@@ -471,11 +520,11 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
 
                     ebpf_inst& reloc_inst = prog.prog[offset / sizeof(ebpf_inst)];
 
-                    auto [symbol_name, symbol_section_index] = get_symbol_name_and_section_index(symbols, index);
+                    const auto [symbol_name, symbol_section_index] = get_symbol_name_and_section_index(symbols, index);
 
                     // Queue up relocation for function symbols.
                     if (reloc_inst.opcode == INST_OP_CALL && reloc_inst.src == INST_CALL_LOCAL) {
-                        function_relocation fr{.prog_index = res.size(),
+                        function_relocation fr{.prog_index = raw_programs.size(),
                                                .source_offset = offset / sizeof(ebpf_inst),
                                                .relocation_entry_index = index,
                                                .target_function_name = symbol_name};
@@ -493,16 +542,16 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
                     ebpf_inst& next_reloc_inst = prog.prog[offset / sizeof(ebpf_inst) + 1];
 
                     // Perform relocation for symbols located in the maps section.
-                    if (map_section_indices.contains(symbol_section_index)) {
-                        relocate_map(reloc_inst, symbol_name, map_record_size_or_map_offsets, info, offset, index,
-                                     symbols);
+                    if (section_indices.map_section_indices.contains(symbol_section_index)) {
+                        relocate_map(reloc_inst, symbol_name, section_indices.map_record_size_or_map_offsets,
+                                     info.map_descriptors, offset, index, symbols);
                         continue;
                     }
 
-                    if (global_variable_section_indices.contains(symbol_section_index)) {
-                        relocate_global_variable(reloc_inst, next_reloc_inst,
-                                                 reader.sections[symbol_section_index]->get_name(), info,
-                                                 map_record_size_or_map_offsets, offset);
+                    if (section_indices.global_variable_section_indices.contains(symbol_section_index)) {
+                        relocate_global_variable(
+                            reloc_inst, next_reloc_inst, reader.sections[symbol_section_index]->get_name(),
+                            info.map_descriptors, section_indices.map_record_size_or_map_offsets, offset);
                         continue;
                     }
 
@@ -511,7 +560,7 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
                     unresolved_symbols_errors.push_back(unresolved_symbol);
                 }
             }
-            res.push_back(prog);
+            raw_programs.push_back(prog);
             program_offset += program_size;
         }
     }
@@ -525,43 +574,29 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
         throw UnmarshalError("There are relocations in section but no maps sections in file " + path +
                              "\nMake sure to inline all function calls.");
     }
-
-    auto btf_ext = reader.sections[".BTF.ext"];
-    if (btf && btf_ext) {
-        auto visitor = [&](const string& section, const uint32_t instruction_offset, const string& file_name,
-                           const string& source, const uint32_t line_number, const uint32_t column_number) {
-            for (auto& program : res) {
-                if (program.section_name == section && instruction_offset >= program.insn_off &&
-                    instruction_offset < program.insn_off + program.prog.size() * sizeof(ebpf_inst)) {
-                    const size_t inst_index = (instruction_offset - program.insn_off) / sizeof(ebpf_inst);
-                    if (inst_index >= program.prog.size()) {
-                        throw UnmarshalError("Invalid BTF data");
-                    }
-                    program.info.line_info.insert_or_assign(
-                        inst_index, btf_line_info_t{file_name, source, line_number, column_number});
-                }
-            }
-        };
-
-        libbtf::btf_parse_line_information(vector_of<std::byte>(*btf), vector_of<std::byte>(*btf_ext), visitor);
-
-        // BTF doesn't include line info for every instruction, only on the first instruction per source line.
-        for (auto& program : res) {
-            for (size_t i = 1; i < program.prog.size(); i++) {
-                // If the previous PC has line info, copy it.
-                if (program.info.line_info[i].line_number == 0 && program.info.line_info[i - 1].line_number != 0) {
-                    program.info.line_info[i] = program.info.line_info[i - 1];
-                }
-            }
+    if (btf_section) {
+        if (const auto btf_ext = reader.sections[".BTF.ext"]) {
+            update_line_info(raw_programs, btf_section, btf_ext);
         }
     }
+    return {raw_programs, function_relocations};
+}
+
+vector<raw_program> read_elf(std::istream& input_stream, const std::string& path, const std::string& desired_section,
+                             const ebpf_verifier_options_t& options, const ebpf_platform_t* platform) {
+    const ELFIO::elfio reader = load_elf(input_stream, path);
+
+    program_info info{.platform = platform};
+
+    const ELFIO::const_symbol_section_accessor symbols = read_and_validate_symbol_section(reader, path);
+    auto [raw_programs, function_relocations] = read_programs(reader, path, platform, symbols, options, info);
 
     // Now that we have all programs in the list, we can recursively append any subprograms
     // to the calling programs.  We have to keep them as programs themselves in case the caller
     // wants to verify them separately, but we also have to append them if used as subprograms to
     // allow the caller to be fully verified since inst.imm can only point into the same program.
-    for (auto& prog : res) {
-        std::string error = append_subprograms(prog, res, function_relocations, reader, symbols);
+    for (auto& prog : raw_programs) {
+        std::string error = append_subprograms(prog, raw_programs, function_relocations, reader, symbols);
         if (!error.empty()) {
             if (prog.section_name == desired_section) {
                 throw UnmarshalError(error);
@@ -571,19 +606,19 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
 
     // Now that we've incorporated any subprograms from other sections, we can narrow the list
     // to return to just those programs in the desired section, if any.
-    if (!desired_section.empty() && !res.empty()) {
-        for (int index = res.size() - 1; index >= 0; index--) {
-            if (res[index].section_name != desired_section) {
-                res.erase(res.begin() + index);
+    if (!desired_section.empty() && !raw_programs.empty()) {
+        for (int index = raw_programs.size() - 1; index >= 0; index--) {
+            if (raw_programs[index].section_name != desired_section) {
+                raw_programs.erase(raw_programs.begin() + index);
             }
         }
     }
 
-    if (res.empty()) {
+    if (raw_programs.empty()) {
         if (desired_section.empty()) {
             throw UnmarshalError("Can't find any non-empty TEXT sections in file " + path);
         }
         throw UnmarshalError("Can't find section " + desired_section + " in file " + path);
     }
-    return res;
+    return raw_programs;
 }
