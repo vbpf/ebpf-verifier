@@ -290,7 +290,7 @@ static std::string append_subprograms(raw_program& prog, vector<raw_program>& pr
 
                 // Append subprogram to program.
                 prog.prog.insert(prog.prog.end(), subprogram->prog.begin(), subprogram->prog.end());
-                for (int i = 0; i < subprogram->info.line_info.size(); i++) {
+                for (size_t i = 0; i < subprogram->info.line_info.size(); i++) {
                     prog.info.line_info[prog.info.line_info.size()] = subprogram->info.line_info[i];
                 }
             } else {
