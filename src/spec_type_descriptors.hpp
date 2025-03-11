@@ -70,10 +70,6 @@ struct raw_program {
     std::string function_name{};
     std::vector<ebpf_inst> prog{};
     program_info info{};
-
-    // Track whether subprograms for this raw_program have been resolved,
-    // preventing duplicate resolution when multiple programs exist in a section.
-    bool resolved_subprograms{};
 };
 
 void print_map_descriptors(const std::vector<EbpfMapDescriptor>& descriptors, std::ostream& o);
