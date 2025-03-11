@@ -16,8 +16,6 @@
 #include "crab_utils/num_safety.hpp"
 #include "platform.hpp"
 
-using std::string;
-
 template <typename T>
     requires std::is_trivially_copyable_v<T>
 static std::vector<T> vector_of(const char* data, const ELFIO::Elf_Xword size) {
@@ -53,104 +51,65 @@ EbpfMapDescriptor* find_map_descriptor(const int map_fd) {
 }
 
 // Maps sections are identified as any section called "maps", or matching "maps/<map-name>".
-static bool is_map_section(const string& name) {
-    const string maps_prefix = "maps/";
+static bool is_map_section(const std::string& name) {
+    const std::string maps_prefix = "maps/";
     return name == "maps" || (name.length() > 5 && name.compare(0, maps_prefix.length(), maps_prefix) == 0);
 }
 
-static std::tuple<string, ELFIO::Elf_Half>
-get_symbol_name_and_section_index(const ELFIO::const_symbol_section_accessor& symbols, const ELFIO::Elf_Xword index) {
-    string symbol_name;
-    ELFIO::Elf64_Addr value{};
+struct symbol_details_t {
+    std::string name;
+    ELFIO::Elf64_Addr value{}; // also relocation offset
     ELFIO::Elf_Xword size{};
     unsigned char bind{};
     unsigned char type{};
     ELFIO::Elf_Half section_index{};
     unsigned char other{};
-    symbols.get_symbol(index, symbol_name, value, size, bind, type, section_index, other);
-    return {symbol_name, section_index};
+};
+
+static symbol_details_t get_symbol_details(const ELFIO::const_symbol_section_accessor& symbols,
+                                           const ELFIO::Elf_Xword index) {
+    symbol_details_t details;
+    symbols.get_symbol(index, details.name, details.value, details.size, details.bind, details.type,
+                       details.section_index, details.other);
+    return details;
 }
 
-static std::tuple<ELFIO::Elf64_Addr, unsigned char> get_value(const ELFIO::const_symbol_section_accessor& symbols,
-                                                              const ELFIO::Elf_Xword index) {
-    string symbol_name;
-    ELFIO::Elf64_Addr value{};
-    ELFIO::Elf_Xword size{};
-    unsigned char bind{};
-    unsigned char type{};
-    ELFIO::Elf_Half section_index{};
-    unsigned char other{};
-    symbols.get_symbol(index, symbol_name, value, size, bind, type, section_index, other);
-    return {value, type};
-}
+struct parse_params_t {
+    const std::string& path;
+    const ebpf_verifier_options_t& options;
+    const ebpf_platform_t* platform;
+    const std::string desired_section;
+};
 
-// parse_maps_sections processes all maps sections in the provided ELF file by calling the platform-specific maps'
-// parser. The section index of each maps section is inserted into map_section_indices.
-static size_t parse_map_sections(const ebpf_verifier_options_t& options, const ebpf_platform_t* platform,
-                                 const ELFIO::elfio& reader, std::vector<EbpfMapDescriptor>& map_descriptors,
-                                 std::set<ELFIO::Elf_Half>& map_section_indices,
-                                 const ELFIO::const_symbol_section_accessor& symbols) {
-    size_t map_record_size = platform->map_record_size;
-    for (ELFIO::Elf_Half i = 0; i < reader.sections.size(); ++i) {
-        const auto s = reader.sections[i];
-        if (!is_map_section(s->get_name())) {
-            continue;
-        }
-
-        // Count the number of symbols that point into this maps section.
-        int map_count = 0;
-        for (ELFIO::Elf_Xword index = 0; index < symbols.get_symbols_num(); index++) {
-            auto [symbol_name, section_index] = get_symbol_name_and_section_index(symbols, index);
-            if (section_index == i && !symbol_name.empty()) {
-                map_count++;
-            }
-        }
-
-        if (map_count > 0) {
-            map_record_size = s->get_size() / map_count;
-            if (s->get_data() == nullptr || map_record_size == 0) {
-                throw UnmarshalError("bad maps section");
-            }
-            if (s->get_size() % map_record_size != 0) {
-                throw UnmarshalError("bad maps section size");
-            }
-            platform->parse_maps_section(map_descriptors, s->get_data(), map_record_size, map_count, platform, options);
-        }
-        map_section_indices.insert(s->get_index());
-    }
-    platform->resolve_inner_map_references(map_descriptors);
-    return map_record_size;
-}
-
-std::vector<raw_program> read_elf(const string& path, const string& desired_section,
+std::vector<raw_program> read_elf(const std::string& path, const std::string& desired_section,
                                   const ebpf_verifier_options_t& options, const ebpf_platform_t* platform) {
     if (std::ifstream stream{path, std::ios::in | std::ios::binary}) {
         return read_elf(stream, path, desired_section, options, platform);
     }
     struct stat st;
     if (stat(path.c_str(), &st)) {
-        throw UnmarshalError(string(strerror(errno)) + " opening " + path);
+        throw UnmarshalError(std::string(strerror(errno)) + " opening " + path);
     }
     throw UnmarshalError("Can't process ELF file " + path);
 }
 
-static std::tuple<string, ELFIO::Elf_Xword>
+static std::tuple<std::string, ELFIO::Elf_Xword>
 get_program_name_and_size(const ELFIO::section& sec, const ELFIO::Elf_Xword start,
                           const ELFIO::const_symbol_section_accessor& symbols) {
     const ELFIO::Elf_Xword symbol_count = symbols.get_symbols_num();
     const ELFIO::Elf_Half section_index = sec.get_index();
-    string program_name = sec.get_name();
+    std::string program_name = sec.get_name();
     ELFIO::Elf_Xword size = sec.get_size() - start;
     for (ELFIO::Elf_Xword index = 0; index < symbol_count; index++) {
-        auto [symbol_name, symbol_section_index] = get_symbol_name_and_section_index(symbols, index);
-        if (symbol_section_index == section_index && !symbol_name.empty()) {
-            auto [relocation_offset, relocation_type] = get_value(symbols, index);
-            if (relocation_type != ELFIO::STT_FUNC) {
+        auto symbol_details = get_symbol_details(symbols, index);
+        if (symbol_details.section_index == section_index && !symbol_details.name.empty()) {
+            if (symbol_details.type != ELFIO::STT_FUNC) {
                 continue;
             }
+            const auto relocation_offset = symbol_details.value;
             if (relocation_offset == start) {
                 // We found the program name for this program.
-                program_name = symbol_name;
+                program_name = symbol_details.name;
             } else if (relocation_offset > start && relocation_offset < start + size) {
                 // We found another program that follows, so truncate the size of this program.
                 size = relocation_offset - start;
@@ -160,55 +119,8 @@ get_program_name_and_size(const ELFIO::section& sec, const ELFIO::Elf_Xword star
     return {program_name, size};
 }
 
-static void relocate_map(ebpf_inst& reloc_inst, const std::string& symbol_name,
-                         const std::variant<size_t, std::map<std::string, size_t>>& map_record_size_or_map_offsets,
-                         const std::vector<EbpfMapDescriptor>& map_descriptors, const ELFIO::Elf_Word index,
-                         const ELFIO::const_symbol_section_accessor& symbols) {
-    reloc_inst.src = INST_LD_MODE_MAP_FD;
-
-    // Relocation value is an offset into the "maps" or ".maps" section.
-    size_t reloc_value{};
-    if (map_record_size_or_map_offsets.index() == 0) {
-        // The older maps section format uses a single map_record_size value, so we can
-        // calculate the map descriptor index directly.
-        auto [relocation_offset, relocation_type] = get_value(symbols, index);
-        reloc_value = relocation_offset / std::get<0>(map_record_size_or_map_offsets);
-    } else {
-        // The newer .maps section format uses a variable-length map descriptor array,
-        // so we need to look up the map descriptor index in a map.
-        const auto& map_descriptors_offsets = std::get<1>(map_record_size_or_map_offsets);
-        const auto it = map_descriptors_offsets.find(symbol_name);
-        if (it == map_descriptors_offsets.end()) {
-            throw UnmarshalError("Map descriptor not found for symbol " + symbol_name);
-        }
-        reloc_value = it->second;
-    }
-    if (reloc_value >= map_descriptors.size()) {
-        throw UnmarshalError("Bad reloc value (" + std::to_string(reloc_value) + "). " +
-                             "Make sure to compile with -O2.");
-    }
-    reloc_inst.imm = map_descriptors.at(reloc_value).original_fd;
-}
-
-static void
-relocate_global_variable(ebpf_inst& reloc_inst, ebpf_inst& next_reloc_inst, const std::string& symbol_name,
-                         const std::vector<EbpfMapDescriptor>& map_descriptors,
-                         const std::variant<size_t, std::map<std::string, size_t>>& map_record_size_or_map_offsets) {
-
-    // Copy the immediate value to the next instruction.
-    next_reloc_inst.imm = reloc_inst.imm;
-    reloc_inst.src = INST_LD_MODE_MAP_VALUE;
-
-    const auto& map_descriptors_offsets = std::get<1>(map_record_size_or_map_offsets);
-    const auto it = map_descriptors_offsets.find(symbol_name);
-    if (it == map_descriptors_offsets.end()) {
-        throw UnmarshalError("Map descriptor not found for symbol " + symbol_name);
-    }
-    if (it->second >= map_descriptors.size()) {
-        throw UnmarshalError("Bad reloc value (" + std::to_string(it->second) + "). " +
-                             "Make sure to compile with -O2.");
-    }
-    reloc_inst.imm = map_descriptors.at(it->second).original_fd;
+static std::string bad_reloc_value(const size_t reloc_value) {
+    return "Bad reloc value (" + std::to_string(reloc_value) + "). " + "Make sure to compile with -O2.";
 }
 
 // Structure used to keep track of subprogram relocation data until any subprograms
@@ -217,7 +129,7 @@ struct function_relocation {
     size_t prog_index{};              // Index of source program in std::vector of raw programs.
     ELFIO::Elf_Xword source_offset{}; // Instruction offset in source section of source instruction.
     ELFIO::Elf_Xword relocation_entry_index{};
-    string target_function_name;
+    std::string target_function_name;
 };
 
 static raw_program* find_subprogram(std::vector<raw_program>& programs, const ELFIO::section& subprogram_section,
@@ -231,22 +143,14 @@ static raw_program* find_subprogram(std::vector<raw_program>& programs, const EL
     return nullptr;
 }
 
-static std::map<std::string, size_t> parse_map_section(const libbtf::btf_type_data& btf_data,
-                                                       std::vector<EbpfMapDescriptor>& map_descriptors) {
-    std::map<std::string, size_t> map_offsets;
-    for (const auto& map : parse_btf_map_section(btf_data)) {
-        map_offsets.emplace(map.name, map_descriptors.size());
-        map_descriptors.push_back({
-            .original_fd = gsl::narrow_cast<int>(map.type_id),
-            .type = map.map_type,
-            .key_size = map.key_size,
-            .value_size = map.value_size,
-            .max_entries = map.max_entries,
-            .inner_map_fd = map.inner_map_type_id != 0 ? map.inner_map_type_id : DEFAULT_MAP_FD,
-        });
-    }
-    return map_offsets;
-}
+using map_offsets_t = std::map<std::string, size_t>;
+
+struct elf_global_data {
+    std::set<ELFIO::Elf_Half> map_section_indices;
+    std::vector<EbpfMapDescriptor> map_descriptors;
+    std::variant<size_t, map_offsets_t> map_record_size_or_map_offsets;
+    std::set<ELFIO::Elf_Half> variable_section_indices;
+};
 
 static std::map<int, int> map_typeid_to_fd(const std::vector<EbpfMapDescriptor>& map_descriptors) {
     std::map<int, int> type_id_to_fd_map;
@@ -258,19 +162,6 @@ static std::map<int, int> map_typeid_to_fd(const std::vector<EbpfMapDescriptor>&
         }
     }
     return type_id_to_fd_map;
-}
-
-static void replace_typeids_with_pseudo_fds(std::vector<EbpfMapDescriptor>& map_descriptors) {
-    // Prevail requires:
-    // Map fds are sequential starting from 1.
-    // Map fds are assigned in the order of the maps in the ELF file.
-    const std::map<int, int> type_id_to_fd_map = map_typeid_to_fd(map_descriptors);
-    for (auto& map_descriptor : map_descriptors) {
-        map_descriptor.original_fd = type_id_to_fd_map.at(map_descriptor.original_fd);
-        if (map_descriptor.inner_map_fd != DEFAULT_MAP_FD) {
-            map_descriptor.inner_map_fd = type_id_to_fd_map.at(map_descriptor.inner_map_fd);
-        }
-    }
 }
 
 static ELFIO::const_symbol_section_accessor read_and_validate_symbol_section(const ELFIO::elfio& reader,
@@ -309,8 +200,9 @@ static void dump_btf_types(const libbtf::btf_type_data& btf_data, const std::str
 
 static void update_line_info(std::vector<raw_program>& raw_programs, const ELFIO::section* btf_section,
                              const ELFIO::section* btf_ext) {
-    auto visitor = [&raw_programs](const string& section, const uint32_t instruction_offset, const string& file_name,
-                                   const string& source, const uint32_t line_number, const uint32_t column_number) {
+    auto visitor = [&raw_programs](const std::string& section, const uint32_t instruction_offset,
+                                   const std::string& file_name, const std::string& source, const uint32_t line_number,
+                                   const uint32_t column_number) {
         for (auto& program : raw_programs) {
             if (program.section_name == section && instruction_offset >= program.insn_off &&
                 instruction_offset < program.insn_off + program.prog.size() * sizeof(ebpf_inst)) {
@@ -337,65 +229,124 @@ static void update_line_info(std::vector<raw_program>& raw_programs, const ELFIO
     }
 }
 
-struct global_data_t {
-    std::set<ELFIO::Elf_Half> map_section_indices;
-    std::vector<EbpfMapDescriptor> map_descriptors;
-    std::variant<size_t, std::map<std::string, size_t>> map_record_size_or_map_offsets;
-    std::set<ELFIO::Elf_Half> variable_section_indices;
-};
+static elf_global_data parse_btf_section(const parse_params_t& parse_params, const ELFIO::elfio& reader) {
+    const auto btf_section = reader.sections[".BTF"];
+    if (!btf_section) {
+        return {};
+    }
+    const libbtf::btf_type_data btf_data = vector_of<std::byte>(*btf_section);
+    if (parse_params.options.verbosity_opts.dump_btf_types_json) {
+        dump_btf_types(btf_data, parse_params.path);
+    }
 
-struct params_t {
-    const std::string& path;
-    const ebpf_verifier_options_t& options;
-    const ebpf_platform_t* platform;
-    const std::string desired_section;
-};
+    elf_global_data global;
 
-static global_data_t extract_global_data(const params_t& params, const ELFIO::elfio& reader,
-                                         const ELFIO::const_symbol_section_accessor& symbols) {
-    global_data_t global;
-    if (std::ranges::any_of(reader.sections, [](const auto& section) { return is_map_section(section->get_name()); })) {
-        global.map_record_size_or_map_offsets = parse_map_sections(
-            params.options, params.platform, reader, global.map_descriptors, global.map_section_indices, symbols);
-    } else if (const auto btf_section = reader.sections[".BTF"]) {
-        const libbtf::btf_type_data btf_data = vector_of<std::byte>(*btf_section);
-        if (params.options.verbosity_opts.dump_btf_types_json) {
-            dump_btf_types(btf_data, params.path);
+    {
+        map_offsets_t map_offsets;
+        for (const auto& map : parse_btf_map_section(btf_data)) {
+            map_offsets.emplace(map.name, global.map_descriptors.size());
+            global.map_descriptors.push_back({
+                .original_fd = gsl::narrow_cast<int>(map.type_id),
+                .type = map.map_type,
+                .key_size = map.key_size,
+                .value_size = map.value_size,
+                .max_entries = map.max_entries,
+                .inner_map_fd = map.inner_map_type_id != 0 ? map.inner_map_type_id : DEFAULT_MAP_FD,
+            });
         }
-        global.map_record_size_or_map_offsets = parse_map_section(btf_data, global.map_descriptors);
-        replace_typeids_with_pseudo_fds(global.map_descriptors);
+        global.map_record_size_or_map_offsets = std::move(map_offsets);
+    }
 
-        if (const auto maps_section = reader.sections[".maps"]) {
-            global.map_section_indices.insert(maps_section->get_index());
+    {
+        // Prevail requires:
+        // Map fds are sequential starting from 1.
+        // Map fds are assigned in the order of the maps in the ELF file.
+        const std::map<int, int> type_id_to_fd_map = map_typeid_to_fd(global.map_descriptors);
+        for (auto& map_descriptor : global.map_descriptors) {
+            map_descriptor.original_fd = type_id_to_fd_map.at(map_descriptor.original_fd);
+            if (map_descriptor.inner_map_fd != DEFAULT_MAP_FD) {
+                map_descriptor.inner_map_fd = type_id_to_fd_map.at(map_descriptor.inner_map_fd);
+            }
         }
+    }
 
-        for (const auto section_name : {".rodata", ".data", ".bss"}) {
-            if (const auto section = reader.sections[section_name]) {
-                if (section->get_size() != 0) {
-                    global.variable_section_indices.insert(section->get_index());
-                }
+    if (const auto maps_section = reader.sections[".maps"]) {
+        global.map_section_indices.insert(maps_section->get_index());
+    }
+
+    for (const auto section_name : {".rodata", ".data", ".bss"}) {
+        if (const auto section = reader.sections[section_name]) {
+            if (section->get_size() != 0) {
+                global.variable_section_indices.insert(section->get_index());
             }
         }
     }
     return global;
 }
 
+// parse_maps_sections processes all maps sections in the provided ELF file by calling the platform-specific maps'
+// parser. The section index of each maps section is inserted into map_section_indices.
+static elf_global_data parse_map_sections(const parse_params_t& parse_params, const ELFIO::elfio& reader,
+                                          const ELFIO::const_symbol_section_accessor& symbols) {
+    elf_global_data global;
+    size_t map_record_size = parse_params.platform->map_record_size;
+    for (ELFIO::Elf_Half i = 0; i < reader.sections.size(); ++i) {
+        const auto s = reader.sections[i];
+        if (!is_map_section(s->get_name())) {
+            continue;
+        }
+
+        // Count the number of symbols that point into this maps section.
+        int map_count = 0;
+        for (ELFIO::Elf_Xword index = 0; index < symbols.get_symbols_num(); index++) {
+            const auto symbol_details = get_symbol_details(symbols, index);
+            if (symbol_details.section_index == i && !symbol_details.name.empty()) {
+                map_count++;
+            }
+        }
+
+        if (map_count > 0) {
+            map_record_size = s->get_size() / map_count;
+            if (s->get_data() == nullptr || map_record_size == 0) {
+                throw UnmarshalError("bad maps section");
+            }
+            if (s->get_size() % map_record_size != 0) {
+                throw UnmarshalError("bad maps section size");
+            }
+            parse_params.platform->parse_maps_section(global.map_descriptors, s->get_data(), map_record_size, map_count,
+                                                      parse_params.platform, parse_params.options);
+        }
+        global.map_section_indices.insert(s->get_index());
+    }
+    parse_params.platform->resolve_inner_map_references(global.map_descriptors);
+    global.map_record_size_or_map_offsets = map_record_size;
+    return global;
+}
+
+static elf_global_data extract_global_data(const parse_params_t& parse_params, const ELFIO::elfio& reader,
+                                           const ELFIO::const_symbol_section_accessor& symbols) {
+    if (std::ranges::any_of(reader.sections, [](const auto& section) { return is_map_section(section->get_name()); })) {
+        return parse_map_sections(parse_params, reader, symbols);
+    }
+    return parse_btf_section(parse_params, reader);
+}
+
 class program_reader_t {
-    const params_t& params;
+    const parse_params_t& parse_params;
     const ELFIO::elfio& reader;
     const ELFIO::const_symbol_section_accessor& symbols;
-    const global_data_t& global;
+    const elf_global_data& global;
 
     std::vector<function_relocation> function_relocations;
-    std::vector<string> unresolved_symbols_errors;
+    std::vector<std::string> unresolved_symbol_errors;
     std::map<const raw_program*, bool> resolved_subprograms;
 
   public:
     std::vector<raw_program> raw_programs;
 
-    program_reader_t(const params_t& params, const ELFIO::elfio& reader,
-                     const ELFIO::const_symbol_section_accessor& symbols, const global_data_t& global)
-        : params{params}, reader{reader}, symbols{symbols}, global{global} {}
+    program_reader_t(const parse_params_t& parse_params, const ELFIO::elfio& reader,
+                     const ELFIO::const_symbol_section_accessor& symbols, const elf_global_data& global)
+        : parse_params{parse_params}, reader{reader}, symbols{symbols}, global{global} {}
 
     // Returns an error message, or empty string on success.
     std::string append_subprograms(raw_program& prog) {
@@ -406,7 +357,7 @@ class program_reader_t {
         resolved_subprograms[&prog] = true;
 
         // Perform function relocations and fill in the inst.imm values of CallLocal instructions.
-        std::map<string, ELFIO::Elf_Xword> subprogram_offsets;
+        std::map<std::string, ELFIO::Elf_Xword> subprogram_offsets;
         for (const auto& reloc : function_relocations) {
             if (reloc.prog_index >= raw_programs.size()) {
                 continue;
@@ -419,15 +370,14 @@ class program_reader_t {
             if (!subprogram_offsets.contains(reloc.target_function_name)) {
                 subprogram_offsets[reloc.target_function_name] = prog.prog.size();
 
-                const auto [symbol_name, section_index] =
-                    get_symbol_name_and_section_index(symbols, reloc.relocation_entry_index);
-                if (section_index >= reader.sections.size()) {
-                    throw UnmarshalError("Invalid section index " + std::to_string(section_index) +
+                const auto symbol_details = get_symbol_details(symbols, reloc.relocation_entry_index);
+                if (symbol_details.section_index >= reader.sections.size()) {
+                    throw UnmarshalError("Invalid section index " + std::to_string(symbol_details.section_index) +
                                          " at source offset " + std::to_string(reloc.source_offset));
                 }
-                const ELFIO::section& subprogram_section = *reader.sections[section_index];
+                const ELFIO::section& subprogram_section = *reader.sections[symbol_details.section_index];
 
-                if (const auto subprogram = find_subprogram(raw_programs, subprogram_section, symbol_name)) {
+                if (const auto subprogram = find_subprogram(raw_programs, subprogram_section, symbol_details.name)) {
                     // Make sure subprogram has already had any subprograms of its own appended.
                     std::string error = append_subprograms(*subprogram);
                     if (!error.empty()) {
@@ -442,7 +392,7 @@ class program_reader_t {
                 } else {
                     // The program will be invalid, but continue rather than throwing an exception
                     // since we might be verifying a different program in the file.
-                    return std::string("Subprogram '" + symbol_name + "' not found in section '" +
+                    return std::string("Subprogram '" + symbol_details.name + "' not found in section '" +
                                        subprogram_section.get_name() + "'");
                 }
             }
@@ -460,67 +410,92 @@ class program_reader_t {
         return {};
     }
 
-    void try_reloc(const string& section_name, std::vector<ebpf_inst>& inst_seq, const size_t location,
-                   const ELFIO::Elf_Word index) {
-        if (location >= inst_seq.size()) {
-            throw UnmarshalError("Invalid relocation data");
+    int relocate_map(const std::string& symbol_name, const ELFIO::Elf_Word index) const {
+        // Relocation value is an offset into the "maps" or ".maps" section.
+        size_t reloc_value{};
+        if (const auto* map_record_size = std::get_if<size_t>(&global.map_record_size_or_map_offsets)) {
+            // The older maps section format uses a single map_record_size value,
+            // so we can calculate the map descriptor index directly.
+            const auto symbol_details = get_symbol_details(symbols, index);
+            const auto relocation_offset = symbol_details.value;
+            reloc_value = relocation_offset / *map_record_size;
+        } else {
+            // The newer .maps section format uses a variable-length map descriptor array,
+            // so we need to look up the map descriptor index in a map.
+            const auto& map_descriptors_offsets = std::get<map_offsets_t>(global.map_record_size_or_map_offsets);
+            const auto it = map_descriptors_offsets.find(symbol_name);
+            if (it == map_descriptors_offsets.end()) {
+                throw UnmarshalError("Map descriptor not found for symbol " + symbol_name);
+            }
+            reloc_value = it->second;
         }
+        if (reloc_value >= global.map_descriptors.size()) {
+            throw UnmarshalError(bad_reloc_value(reloc_value));
+        }
+        return global.map_descriptors.at(reloc_value).original_fd;
+    }
 
-        ebpf_inst& reloc_inst = inst_seq[location];
+    int relocate_global_variable(const std::string& symbol_name) const {
+        const auto map_descriptors_offsets = std::get_if<map_offsets_t>(&global.map_record_size_or_map_offsets);
+        if (!map_descriptors_offsets) {
+            throw UnmarshalError("Invalid map_offsets");
+        }
+        const auto it = map_descriptors_offsets->find(symbol_name);
+        if (it == map_descriptors_offsets->end()) {
+            throw UnmarshalError("Map descriptor not found for symbol " + symbol_name);
+        }
+        const size_t reloc_value = it->second;
+        if (reloc_value >= global.map_descriptors.size()) {
+            throw UnmarshalError(bad_reloc_value(reloc_value));
+        }
+        return global.map_descriptors.at(reloc_value).original_fd;
+    }
 
-        const auto [symbol_name, symbol_section_index] = get_symbol_name_and_section_index(symbols, index);
+    bool try_reloc(const std::string& symbol_name, const ELFIO::Elf_Half symbol_section_index,
+                   std::vector<ebpf_inst>& instructions, const size_t location, const ELFIO::Elf_Word index) {
+        ebpf_inst& instruction_to_relocate = instructions[location];
 
         // Queue up relocation for function symbols.
-        if (reloc_inst.opcode == INST_OP_CALL && reloc_inst.src == INST_CALL_LOCAL) {
-            const function_relocation fr{.prog_index = raw_programs.size(),
-                                         .source_offset = location,
-                                         .relocation_entry_index = index,
-                                         .target_function_name = symbol_name};
-            function_relocations.push_back(fr);
-            return;
+        if (instruction_to_relocate.opcode == INST_OP_CALL && instruction_to_relocate.src == INST_CALL_LOCAL) {
+            function_relocations.emplace_back(function_relocation{
+                .prog_index = raw_programs.size(),
+                .source_offset = location,
+                .relocation_entry_index = index,
+                .target_function_name = symbol_name,
+            });
+            return true;
         }
 
         // Verify that this is a map or global variable relocation.
-        if ((reloc_inst.opcode & INST_CLS_MASK) != INST_CLS_LD) {
+        if ((instruction_to_relocate.opcode & INST_CLS_MASK) != INST_CLS_LD) {
             throw UnmarshalError("Illegal operation on symbol " + symbol_name + " at location " +
                                  std::to_string(location));
         }
 
         // Perform relocation for symbols located in the maps section.
         if (global.map_section_indices.contains(symbol_section_index)) {
-            relocate_map(reloc_inst, symbol_name, global.map_record_size_or_map_offsets, global.map_descriptors, index,
-                         symbols);
-            return;
+            instruction_to_relocate.src = INST_LD_MODE_MAP_FD;
+            instruction_to_relocate.imm = relocate_map(symbol_name, index);
+            return true;
         }
 
         if (global.variable_section_indices.contains(symbol_section_index)) {
             // Load instructions are two instructions long, so we need to check the next instruction.
-            if (inst_seq.size() <= location + 1) {
+            if (instructions.size() <= location + 1) {
                 throw UnmarshalError("Invalid relocation data");
             }
-            ebpf_inst& next_reloc_inst = inst_seq[location + 1];
-            relocate_global_variable(reloc_inst, next_reloc_inst, reader.sections[symbol_section_index]->get_name(),
-                                     global.map_descriptors, global.map_record_size_or_map_offsets);
-            return;
+            // Copy the immediate value to the next instruction.
+            instructions[location + 1].imm = instruction_to_relocate.imm;
+            instruction_to_relocate.src = INST_LD_MODE_MAP_VALUE;
+            instruction_to_relocate.imm = relocate_global_variable(reader.sections[symbol_section_index]->get_name());
+            return true;
         }
-
-        unresolved_symbols_errors.push_back("Unresolved external symbol " + symbol_name + " in section " +
-                                            section_name + " at location " + std::to_string(location));
+        return false;
     }
 
-    void update_relocations(std::vector<ebpf_inst>& inst_seq, const string& section_name,
-                            const ELFIO::Elf_Xword program_offset, const size_t program_size) {
-        auto prelocs = reader.sections[".rel" + section_name];
-        if (!prelocs) {
-            prelocs = reader.sections[".rela" + section_name];
-        }
-        if (!prelocs) {
-            return;
-        }
-        if (!prelocs->get_data()) {
-            throw UnmarshalError("Malformed relocation data");
-        }
-        const ELFIO::const_relocation_section_accessor reloc{reader, prelocs};
+    void process_relocations(std::vector<ebpf_inst>& instructions,
+                             const ELFIO::const_relocation_section_accessor& reloc, const std::string& section_name,
+                             const ELFIO::Elf_Xword program_offset, const size_t program_size) {
         for (ELFIO::Elf_Xword i = 0; i < reloc.get_entries_num(); i++) {
             ELFIO::Elf64_Addr offset{};
             ELFIO::Elf_Word index{};
@@ -533,9 +508,32 @@ class program_reader_t {
                 }
                 offset -= program_offset;
                 const unsigned long location = offset / sizeof(ebpf_inst);
-                try_reloc(section_name, inst_seq, location, index);
+                if (location >= instructions.size()) {
+                    throw UnmarshalError("Invalid relocation data");
+                }
+
+                const auto symbol_details = get_symbol_details(symbols, index);
+                if (!try_reloc(symbol_details.name, symbol_details.section_index, instructions, location, index)) {
+                    unresolved_symbol_errors.push_back("Unresolved external symbol " + symbol_details.name +
+                                                       " in section " + section_name + " at location " +
+                                                       std::to_string(location));
+                }
             }
         }
+    }
+
+    const ELFIO::section* get_relocation_section(const std::string& section_name) const {
+        const ELFIO::section* prelocs = reader.sections[".rel" + section_name];
+        if (!prelocs) {
+            prelocs = reader.sections[".rela" + section_name];
+        }
+        if (!prelocs) {
+            return nullptr;
+        }
+        if (!prelocs->get_data()) {
+            throw UnmarshalError("Malformed relocation data");
+        }
+        return prelocs;
     }
 
     void read_programs() {
@@ -552,21 +550,27 @@ class program_reader_t {
             if (section_data == nullptr) {
                 continue;
             }
-            const string section_name = section->get_name();
-            const EbpfProgramType program_type = params.platform->get_program_type(section_name, params.path);
+            const std::string section_name = section->get_name();
+            const EbpfProgramType program_type =
+                parse_params.platform->get_program_type(section_name, parse_params.path);
 
             for (ELFIO::Elf_Xword program_offset = 0; program_offset < section_size;) {
                 auto [program_name, program_size] = get_program_name_and_size(*section, program_offset, symbols);
-                std::vector<ebpf_inst> inst_seq = vector_of<ebpf_inst>(section_data + program_offset, program_size);
-                update_relocations(inst_seq, section_name, program_offset, program_size);
+                std::vector<ebpf_inst> instructions = vector_of<ebpf_inst>(section_data + program_offset, program_size);
+
+                if (const ELFIO::section* reloc_section = get_relocation_section(section_name)) {
+                    const ELFIO::const_relocation_section_accessor reloc{reader, reloc_section};
+                    process_relocations(instructions, reloc, section_name, program_offset, program_size);
+                }
+
                 raw_programs.emplace_back(raw_program{
-                    params.path,
+                    parse_params.path,
                     section_name,
                     gsl::narrow_cast<uint32_t>(program_offset),
                     program_name,
-                    std::move(inst_seq),
+                    std::move(instructions),
                     program_info{
-                        .platform = params.platform,
+                        .platform = parse_params.platform,
                         .map_descriptors = global.map_descriptors,
                         .type = program_type,
                     },
@@ -575,13 +579,13 @@ class program_reader_t {
             }
         }
 
-        // Below, only relocations of symbols located in the map sections are allowed,
+        // Below, only relocations of symbols located in the maps sections are allowed,
         // so if there are relocations there needs to be a maps section.
-        if (!unresolved_symbols_errors.empty()) {
-            for (const auto& unresolved_symbol : unresolved_symbols_errors) {
+        if (!unresolved_symbol_errors.empty()) {
+            for (const auto& unresolved_symbol : unresolved_symbol_errors) {
                 std::cerr << unresolved_symbol << std::endl;
             }
-            throw UnmarshalError("There are relocations in section but no maps sections in file " + params.path +
+            throw UnmarshalError("There are relocations in section but no maps sections in file " + parse_params.path +
                                  "\nMake sure to inline all function calls.");
         }
 
@@ -598,7 +602,7 @@ class program_reader_t {
         for (auto& prog : raw_programs) {
             std::string error = append_subprograms(prog);
             if (!error.empty()) {
-                if (prog.section_name == params.desired_section) {
+                if (prog.section_name == parse_params.desired_section) {
                     throw UnmarshalError(error);
                 }
             }
@@ -606,19 +610,20 @@ class program_reader_t {
 
         // Now that we've incorporated any subprograms from other sections, we can narrow the list
         // to return to just those programs in the desired section, if any.
-        if (!params.desired_section.empty() && !raw_programs.empty()) {
+        if (!parse_params.desired_section.empty() && !raw_programs.empty()) {
             for (int index = raw_programs.size() - 1; index >= 0; index--) {
-                if (raw_programs[index].section_name != params.desired_section) {
+                if (raw_programs[index].section_name != parse_params.desired_section) {
                     raw_programs.erase(raw_programs.begin() + index);
                 }
             }
         }
 
         if (raw_programs.empty()) {
-            if (params.desired_section.empty()) {
-                throw UnmarshalError("Can't find any non-empty TEXT sections in file " + params.path);
+            if (parse_params.desired_section.empty()) {
+                throw UnmarshalError("Can't find any non-empty TEXT sections in file " + parse_params.path);
             }
-            throw UnmarshalError("Can't find section " + params.desired_section + " in file " + params.path);
+            throw UnmarshalError("Can't find section " + parse_params.desired_section + " in file " +
+                                 parse_params.path);
         }
     }
 };
@@ -626,11 +631,12 @@ class program_reader_t {
 std::vector<raw_program> read_elf(std::istream& input_stream, const std::string& path,
                                   const std::string& desired_section, const ebpf_verifier_options_t& options,
                                   const ebpf_platform_t* platform) {
-    const params_t params{.path = path, .options = options, .platform = platform, .desired_section = desired_section};
+    const parse_params_t parse_params{
+        .path = path, .options = options, .platform = platform, .desired_section = desired_section};
     const ELFIO::elfio reader = load_elf(input_stream, path);
     const ELFIO::const_symbol_section_accessor symbols = read_and_validate_symbol_section(reader, path);
-    const global_data_t global = extract_global_data(params, reader, symbols);
-    program_reader_t program_reader{params, reader, symbols, global};
+    const elf_global_data global = extract_global_data(parse_params, reader, symbols);
+    program_reader_t program_reader{parse_params, reader, symbols, global};
     program_reader.read_programs();
     return std::move(program_reader.raw_programs);
 }
