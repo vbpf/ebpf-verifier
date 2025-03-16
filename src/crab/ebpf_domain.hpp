@@ -3,8 +3,6 @@
 #pragma once
 
 // This file is eBPF-specific, not derived from CRAB.
-
-#include <functional>
 #include <optional>
 
 #include "crab/array_domain.hpp"

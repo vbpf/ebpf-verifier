@@ -12,7 +12,6 @@
 #include "config.hpp"
 #include "crab/array_domain.hpp"
 #include "crab/ebpf_domain.hpp"
-#include "crab_utils/num_safety.hpp"
 #include "dsl_syntax.hpp"
 #include "platform.hpp"
 #include "program.hpp"
