@@ -4,15 +4,12 @@
 
 #include <optional>
 
-#include "crab/split_dbm.hpp"
-#include "string_constraints.hpp"
+#include "crab/finite_domain.hpp"
 
-namespace crab {
-
-namespace domains {
+namespace crab::domains {
 
 class AddBottom final {
-    using T = SplitDBM;
+    using T = FiniteDomain;
     std::optional<T> dom{};
     AddBottom() {}
 
@@ -24,6 +21,12 @@ class AddBottom final {
 
     AddBottom& operator=(const AddBottom& o) = default;
     AddBottom& operator=(AddBottom&& o) = default;
+
+    explicit operator bool() const { return static_cast<bool>(dom); }
+
+    T* operator->() { return &dom.value(); }
+
+    const T* operator->() const { return &dom.value(); }
 
     void set_to_top() {
         if (dom) {
@@ -109,7 +112,7 @@ class AddBottom final {
         if (!dom || !o.dom) {
             return bottom();
         }
-        if (auto res = (*dom).meet(*o.dom)) {
+        if (auto res = dom->meet(*o.dom)) {
             return AddBottom(*res);
         }
         return bottom();
@@ -135,35 +138,13 @@ class AddBottom final {
         return bottom();
     }
 
-    void operator-=(variable_t v) {
+    void havoc(variable_t v) {
         if (dom) {
-            (*dom) -= v;
+            dom->havoc(v);
         }
     }
 
-    void assign(std::optional<variable_t> x, const linear_expression_t& e) {
-        if (x) {
-            assign(*x, e);
-        }
-    }
-
-    template <typename V>
-    void assign(variable_t x, const V& value) {
-        if (dom) {
-            // XXX: maybe needs to return false when becomes bottom
-            // is this possible?
-            dom->assign(x, value);
-        }
-    };
-
-    template <typename Op, typename Left, typename Right>
-    void apply(Op op, variable_t x, const Left& left, const Right& right, int finite_width) {
-        if (dom) {
-            dom->apply(op, x, left, right, finite_width);
-        }
-    }
-
-    void operator+=(const linear_constraint_t& cst) {
+    void add_constraint(const linear_constraint_t& cst) {
         if (dom) {
             if (!dom->add_constraint(cst)) {
                 dom = {};
@@ -179,18 +160,33 @@ class AddBottom final {
         return interval_t::bottom();
     }
 
-    interval_t operator[](variable_t x) const {
-        if (dom) {
-            return (*dom)[x];
-        }
-        return interval_t::bottom();
-    }
-
     void set(variable_t x, const interval_t& intv) {
         if (intv.is_bottom()) {
             dom = {};
         } else if (dom) {
             dom->set(x, intv);
+        }
+    }
+
+    void assign(const std::optional<variable_t> x, const linear_expression_t& e) {
+        if (x) {
+            assign(*x, e);
+        }
+    }
+
+    template <typename V>
+    void assign(variable_t x, const V& value) {
+        if (dom) {
+            // XXX: maybe needs to return false when becomes bottom
+            // is this possible?
+            dom->assign(x, value);
+        }
+    }
+
+    template <typename Op, typename Left, typename Right>
+    void apply(Op op, variable_t x, const Left& left, const Right& right, int finite_width) {
+        if (dom) {
+            dom->apply(op, x, left, right, finite_width);
         }
     }
 
@@ -228,5 +224,4 @@ class AddBottom final {
     }
 }; // class AddBottom
 
-} // namespace domains
-} // namespace crab
+} // namespace crab::domains
