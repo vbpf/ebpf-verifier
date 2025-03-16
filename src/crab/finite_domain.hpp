@@ -133,6 +133,8 @@ class FiniteDomain {
     void shl(variable_t svalue, variable_t uvalue, int imm, int finite_width);
     void lshr(variable_t svalue, variable_t uvalue, int imm, int finite_width);
     void ashr(variable_t svalue, variable_t uvalue, const linear_expression_t& right_svalue, int finite_width);
+    void sign_extend(variable_t svalue, variable_t uvalue, const linear_expression_t& right_svalue, int finite_width,
+                     int bits);
 
     bool add_constraint(const linear_constraint_t& cst) { return dom.add_constraint(cst); }
 

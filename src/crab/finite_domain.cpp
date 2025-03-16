@@ -915,8 +915,8 @@ void FiniteDomain::lshr(const variable_t svalue, const variable_t uvalue, int im
             lb_n = lb_n.cast_to<uint64_t>() >> imm;
             ub_n = ub_n.cast_to<uint64_t>() >> imm;
         } else {
-            number_t lb_w = lb_n.cast_to_sint(finite_width);
-            number_t ub_w = ub_n.cast_to_sint(finite_width);
+            const number_t lb_w = lb_n.cast_to_sint(finite_width);
+            const number_t ub_w = ub_n.cast_to_sint(finite_width);
             lb_n = lb_w.cast_to<uint32_t>() >> imm;
             ub_n = ub_w.cast_to<uint32_t>() >> imm;
 
@@ -942,7 +942,7 @@ void FiniteDomain::ashr(const variable_t svalue, const variable_t uvalue, const 
                          left_interval_positive, left_interval_negative);
     if (auto sn = right_interval.singleton()) {
         // The BPF ISA requires masking the imm.
-        int64_t imm = sn->cast_to<int64_t>() & (finite_width - 1);
+        const int64_t imm = sn->cast_to<int64_t>() & (finite_width - 1);
 
         int64_t lb_n = std::numeric_limits<int64_t>::min() >> imm;
         int64_t ub_n = std::numeric_limits<int64_t>::max() >> imm;
@@ -952,8 +952,8 @@ void FiniteDomain::ashr(const variable_t svalue, const variable_t uvalue, const 
                 lb_n = lb.cast_to<int64_t>() >> imm;
                 ub_n = ub.cast_to<int64_t>() >> imm;
             } else {
-                number_t lb_w = lb.cast_to_sint(finite_width) >> gsl::narrow<int>(imm);
-                number_t ub_w = ub.cast_to_sint(finite_width) >> gsl::narrow<int>(imm);
+                const number_t lb_w = lb.cast_to_sint(finite_width) >> gsl::narrow<int>(imm);
+                const number_t ub_w = ub.cast_to_sint(finite_width) >> gsl::narrow<int>(imm);
                 if (lb_w.cast_to<uint32_t>() <= ub_w.cast_to<uint32_t>()) {
                     lb_n = lb_w.cast_to<uint32_t>();
                     ub_n = ub_w.cast_to<uint32_t>();
@@ -966,6 +966,31 @@ void FiniteDomain::ashr(const variable_t svalue, const variable_t uvalue, const 
     } else {
         havoc(svalue);
         havoc(uvalue);
+    }
+}
+
+void FiniteDomain::sign_extend(const variable_t svalue, const variable_t uvalue,
+                               const linear_expression_t& right_svalue, const int finite_width, const int bits) {
+    interval_t right_interval = eval_interval(right_svalue);
+    const int64_t span = 1ULL << bits;
+    if (right_interval.size() >= span) {
+        // Interval covers the full space.
+        if (bits == 64) {
+            havoc(svalue);
+            return;
+        }
+        right_interval = interval_t::signed_int(bits);
+    }
+    const int64_t mask = 1ULL << (bits - 1);
+
+    // Sign extend each bound.
+    const auto [lb, ub] = right_interval.pair<int64_t>();
+    const auto sext = [=](const uint64_t b) -> int64_t { return ((b & (span - 1)) ^ mask) - mask; };
+    set(svalue, interval_t{sext(lb), sext(ub)});
+
+    if (finite_width) {
+        assign(uvalue, svalue);
+        overflow_bounds(svalue, uvalue, finite_width);
     }
 }
 

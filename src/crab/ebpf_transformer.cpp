@@ -1023,35 +1023,12 @@ void ebpf_transformer::ashr(const Reg& dst_reg, const linear_expression_t& right
 
 void ebpf_transformer::sign_extend(const Reg& dst_reg, const linear_expression_t& right_svalue, const int finite_width,
                                    const int bits) {
-    using namespace crab;
-    const reg_pack_t dst = reg_pack(dst_reg);
-    interval_t right_interval = dom.m_inv.eval_interval(right_svalue);
-    type_inv.assign_type(dom.m_inv, dst_reg, T_NUM);
     havoc_offsets(dst_reg);
-    const int64_t span = 1ULL << bits;
-    if (right_interval.ub() - right_interval.lb() >= span) {
-        // Interval covers the full space.
-        if (bits == 64) {
-            dom.m_inv.havoc(dst.svalue);
-            return;
-        }
-        right_interval = interval_t::signed_int(bits);
-    }
-    const int64_t mask = 1ULL << (bits - 1);
 
-    // Sign extend each bound.
-    int64_t lb = right_interval.lb().number().value().cast_to<int64_t>();
-    lb &= span - 1;
-    lb = (lb ^ mask) - mask;
-    int64_t ub = right_interval.ub().number().value().cast_to<int64_t>();
-    ub &= span - 1;
-    ub = (ub ^ mask) - mask;
-    dom.m_inv.set(dst.svalue, interval_t{lb, ub});
+    type_inv.assign_type(dom.m_inv, dst_reg, T_NUM);
 
-    if (finite_width) {
-        dom.m_inv.assign(dst.uvalue, dst.svalue);
-        dom.m_inv->overflow_bounds(dst.svalue, dst.uvalue, finite_width);
-    }
+    const reg_pack_t dst = reg_pack(dst_reg);
+    m_inv->sign_extend(dst.svalue, dst.uvalue, right_svalue, finite_width, bits);
 }
 
 static int _movsx_bits(const Bin::Op op) {
