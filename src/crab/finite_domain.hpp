@@ -93,8 +93,8 @@ class FiniteDomain {
     void apply(const binop_t& op, const variable_t x, const variable_t y, const variable_t z) { apply(op, x, y, z, 0); }
 
     void overflow_bounds(variable_t lhs, int finite_width, bool issigned);
-    void overflow_signed(variable_t lhs, int finite_width);
-    void overflow_unsigned(variable_t lhs, int finite_width);
+    void overflow_bounds(variable_t svalue, variable_t uvalue, int finite_width);
+
     void apply_signed(const binop_t& op, variable_t xs, variable_t xu, variable_t y, const number_t& z,
                       int finite_width);
     void apply_signed(const binop_t& op, variable_t xs, variable_t xu, variable_t y, variable_t z, int finite_width);
@@ -130,6 +130,9 @@ class FiniteDomain {
     void bitwise_xor(variable_t lhss, variable_t lhsu, const number_t& op2);
     void shl_overflow(variable_t lhss, variable_t lhsu, variable_t op2);
     void shl_overflow(variable_t lhss, variable_t lhsu, const number_t& op2);
+    void shl(variable_t svalue, variable_t uvalue, int imm, int finite_width);
+    void lshr(variable_t svalue, variable_t uvalue, int imm, int finite_width);
+    void ashr(variable_t svalue, variable_t uvalue, const linear_expression_t& right_svalue, int finite_width);
 
     bool add_constraint(const linear_constraint_t& cst) { return dom.add_constraint(cst); }
 
@@ -231,11 +234,12 @@ class FiniteDomain {
                                                                   const linear_expression_t& right_svalue,
                                                                   const linear_expression_t& right_uvalue) const;
 
-  public:
     void get_signed_intervals(bool is64, variable_t left_svalue, variable_t left_uvalue,
                               const linear_expression_t& right_svalue, interval_t& left_interval,
                               interval_t& right_interval, interval_t& left_interval_positive,
                               interval_t& left_interval_negative) const;
+
+  public:
     std::vector<linear_constraint_t> assume_cst_imm(Condition::Op op, bool is64, variable_t dst_svalue,
                                                     variable_t dst_uvalue, int64_t imm) const;
     std::vector<linear_constraint_t> assume_cst_reg(Condition::Op op, bool is64, variable_t dst_svalue,

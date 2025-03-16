@@ -745,12 +745,9 @@ void FiniteDomain::overflow_bounds(variable_t lhs, int finite_width, bool issign
     }
 }
 
-void FiniteDomain::overflow_signed(const variable_t lhs, const int finite_width) {
-    overflow_bounds(lhs, finite_width, true);
-}
-
-void FiniteDomain::overflow_unsigned(const variable_t lhs, const int finite_width) {
-    overflow_bounds(lhs, finite_width, false);
+void FiniteDomain::overflow_bounds(const variable_t svalue, const variable_t uvalue, const int finite_width) {
+    overflow_bounds(svalue, finite_width, true);
+    overflow_bounds(uvalue, finite_width, false);
 }
 
 void FiniteDomain::apply_signed(const binop_t& op, const variable_t xs, const variable_t xu, const variable_t y,
@@ -758,8 +755,7 @@ void FiniteDomain::apply_signed(const binop_t& op, const variable_t xs, const va
     apply(op, xs, y, z, finite_width);
     if (finite_width) {
         assign(xu, xs);
-        overflow_signed(xs, finite_width);
-        overflow_unsigned(xu, finite_width);
+        overflow_bounds(xs, xu, finite_width);
     }
 }
 
@@ -768,8 +764,7 @@ void FiniteDomain::apply_signed(const binop_t& op, const variable_t xs, const va
     apply(op, xs, y, z, finite_width);
     if (finite_width) {
         assign(xu, xs);
-        overflow_signed(xs, finite_width);
-        overflow_unsigned(xu, finite_width);
+        overflow_bounds(xs, xu, finite_width);
     }
 }
 
@@ -778,8 +773,7 @@ void FiniteDomain::apply_unsigned(const binop_t& op, const variable_t xs, const 
     apply(op, xu, y, z, finite_width);
     if (finite_width) {
         assign(xs, xu);
-        overflow_signed(xs, finite_width);
-        overflow_unsigned(xu, finite_width);
+        overflow_bounds(xs, xu, finite_width);
     }
 }
 
@@ -788,8 +782,7 @@ void FiniteDomain::apply_unsigned(const binop_t& op, const variable_t xs, const 
     apply(op, xu, y, z, finite_width);
     if (finite_width) {
         assign(xs, xu);
-        overflow_signed(xs, finite_width);
-        overflow_unsigned(xu, finite_width);
+        overflow_bounds(xs, xu, finite_width);
     }
 }
 
@@ -886,6 +879,94 @@ void FiniteDomain::shl_overflow(const variable_t lhss, const variable_t lhsu, co
 }
 void FiniteDomain::shl_overflow(const variable_t lhss, const variable_t lhsu, const number_t& op2) {
     apply_unsigned(bitwise_binop_t::SHL, lhss, lhsu, lhsu, op2, 64);
+}
+
+void FiniteDomain::shl(const variable_t svalue, const variable_t uvalue, const int imm, const int finite_width) {
+    const auto uinterval = eval_interval(uvalue);
+    if (!uinterval.finite_size()) {
+        shl_overflow(svalue, uvalue, imm);
+        return;
+    }
+    auto [lb_n, ub_n] = uinterval.pair<uint64_t>();
+    const uint64_t uint_max = finite_width == 64 ? uint64_t{std::numeric_limits<uint64_t>::max()}
+                                                 : uint64_t{std::numeric_limits<uint32_t>::max()};
+    if (lb_n >> (finite_width - imm) != ub_n >> (finite_width - imm)) {
+        // The bits that will be shifted out to the left are different,
+        // which means all combinations of remaining bits are possible.
+        lb_n = 0;
+        ub_n = uint_max << imm & uint_max;
+    } else {
+        // The bits that will be shifted out to the left are identical
+        // for all values in the interval, so we can safely shift left
+        // to get a new interval.
+        lb_n = lb_n << imm & uint_max;
+        ub_n = ub_n << imm & uint_max;
+    }
+    set(uvalue, interval_t{lb_n, ub_n});
+    assign(svalue, uvalue);
+    overflow_bounds(svalue, uvalue, finite_width);
+}
+
+void FiniteDomain::lshr(const variable_t svalue, const variable_t uvalue, int imm, int finite_width) {
+    const auto uinterval = eval_interval(uvalue);
+    if (uinterval.finite_size()) {
+        auto [lb_n, ub_n] = uinterval.pair_number();
+        if (finite_width == 64) {
+            lb_n = lb_n.cast_to<uint64_t>() >> imm;
+            ub_n = ub_n.cast_to<uint64_t>() >> imm;
+        } else {
+            number_t lb_w = lb_n.cast_to_sint(finite_width);
+            number_t ub_w = ub_n.cast_to_sint(finite_width);
+            lb_n = lb_w.cast_to<uint32_t>() >> imm;
+            ub_n = ub_w.cast_to<uint32_t>() >> imm;
+
+            // The interval must be valid since a signed range crossing 0
+            // was earlier converted to a full unsigned range.
+            assert(lb_n <= ub_n);
+        }
+        set(uvalue, interval_t{lb_n, ub_n});
+    } else {
+        set(uvalue, interval_t{0, std::numeric_limits<uint64_t>::max() >> imm});
+    }
+    assign(svalue, uvalue);
+    overflow_bounds(svalue, uvalue, finite_width);
+}
+
+void FiniteDomain::ashr(const variable_t svalue, const variable_t uvalue, const linear_expression_t& right_svalue,
+                        int finite_width) {
+    interval_t left_interval = interval_t::bottom();
+    interval_t right_interval = interval_t::bottom();
+    interval_t left_interval_positive = interval_t::bottom();
+    interval_t left_interval_negative = interval_t::bottom();
+    get_signed_intervals(finite_width == 64, svalue, uvalue, right_svalue, left_interval, right_interval,
+                         left_interval_positive, left_interval_negative);
+    if (auto sn = right_interval.singleton()) {
+        // The BPF ISA requires masking the imm.
+        int64_t imm = sn->cast_to<int64_t>() & (finite_width - 1);
+
+        int64_t lb_n = std::numeric_limits<int64_t>::min() >> imm;
+        int64_t ub_n = std::numeric_limits<int64_t>::max() >> imm;
+        if (left_interval.finite_size()) {
+            const auto [lb, ub] = left_interval.pair_number();
+            if (finite_width == 64) {
+                lb_n = lb.cast_to<int64_t>() >> imm;
+                ub_n = ub.cast_to<int64_t>() >> imm;
+            } else {
+                number_t lb_w = lb.cast_to_sint(finite_width) >> gsl::narrow<int>(imm);
+                number_t ub_w = ub.cast_to_sint(finite_width) >> gsl::narrow<int>(imm);
+                if (lb_w.cast_to<uint32_t>() <= ub_w.cast_to<uint32_t>()) {
+                    lb_n = lb_w.cast_to<uint32_t>();
+                    ub_n = ub_w.cast_to<uint32_t>();
+                }
+            }
+        }
+        set(svalue, interval_t{lb_n, ub_n});
+        assign(uvalue, svalue);
+        overflow_bounds(svalue, uvalue, finite_width);
+    } else {
+        havoc(svalue);
+        havoc(uvalue);
+    }
 }
 
 } // namespace crab::domains

@@ -611,11 +611,11 @@ void ebpf_transformer::do_store_stack(NumAbsDomain& inv, const linear_expression
             // Keep track of numbers on the stack that might be used as array indices.
             if (const auto stack_svalue = stack.store(inv, data_kind_t::svalues, addr, width, val_svalue)) {
                 inv.assign(stack_svalue, val_svalue);
-                inv->overflow_signed(*stack_svalue, width * 8);
+                inv->overflow_bounds(*stack_svalue, width * 8, true);
             }
             if (const auto stack_uvalue = stack.store(inv, data_kind_t::uvalues, addr, width, val_uvalue)) {
                 inv.assign(stack_uvalue, val_uvalue);
-                inv->overflow_unsigned(*stack_uvalue, width * 8);
+                inv->overflow_bounds(*stack_uvalue, width * 8, false);
             }
         } else {
             stack.havoc(inv, data_kind_t::svalues, addr, width);
@@ -967,10 +967,9 @@ void ebpf_transformer::recompute_stack_numeric_size(NumAbsDomain& inv, const Reg
 
 void ebpf_transformer::add(const Reg& dst_reg, const int imm, const int finite_width) {
     const auto dst = reg_pack(dst_reg);
-    const auto offset = dom.get_type_offset_variable(dst_reg);
     m_inv->add_overflow(dst.svalue, dst.uvalue, imm, finite_width);
-    if (offset.has_value()) {
-        m_inv->add(offset.value(), imm);
+    if (const auto offset = dom.get_type_offset_variable(dst_reg)) {
+        m_inv->add(*offset, imm);
         if (imm > 0) {
             // Since the start offset is increasing but
             // the end offset is not, the numeric size decreases.
@@ -983,122 +982,43 @@ void ebpf_transformer::add(const Reg& dst_reg, const int imm, const int finite_w
 }
 
 void ebpf_transformer::shl(const Reg& dst_reg, int imm, const int finite_width) {
-    const reg_pack_t dst = reg_pack(dst_reg);
+    havoc_offsets(dst_reg);
 
     // The BPF ISA requires masking the imm.
     imm &= finite_width - 1;
-
+    const reg_pack_t dst = reg_pack(dst_reg);
     if (m_inv.entail(type_is_number(dst))) {
-        const auto interval = m_inv.eval_interval(dst.uvalue);
-        if (interval.finite_size()) {
-            const number_t lb = interval.lb().number().value();
-            const number_t ub = interval.ub().number().value();
-            uint64_t lb_n = lb.cast_to<uint64_t>();
-            uint64_t ub_n = ub.cast_to<uint64_t>();
-            const uint64_t uint_max = finite_width == 64 ? uint64_t{std::numeric_limits<uint64_t>::max()}
-                                                         : uint64_t{std::numeric_limits<uint32_t>::max()};
-            if (lb_n >> (finite_width - imm) != ub_n >> (finite_width - imm)) {
-                // The bits that will be shifted out to the left are different,
-                // which means all combinations of remaining bits are possible.
-                lb_n = 0;
-                ub_n = uint_max << imm & uint_max;
-            } else {
-                // The bits that will be shifted out to the left are identical
-                // for all values in the interval, so we can safely shift left
-                // to get a new interval.
-                lb_n = lb_n << imm & uint_max;
-                ub_n = ub_n << imm & uint_max;
-            }
-            m_inv.set(dst.uvalue, interval_t{lb_n, ub_n});
-            m_inv.assign(dst.svalue, dst.uvalue);
-            m_inv->overflow_signed(dst.svalue, finite_width);
-            m_inv->overflow_unsigned(dst.uvalue, finite_width);
-            return;
-        }
+        m_inv->shl(dst.svalue, dst.uvalue, imm, finite_width);
+    } else {
+        m_inv.havoc(dst.svalue);
+        m_inv.havoc(dst.uvalue);
     }
-    m_inv->shl_overflow(dst.svalue, dst.uvalue, imm);
-    havoc_offsets(dst_reg);
 }
 
 void ebpf_transformer::lshr(const Reg& dst_reg, int imm, int finite_width) {
-    reg_pack_t dst = reg_pack(dst_reg);
+    havoc_offsets(dst_reg);
 
     // The BPF ISA requires masking the imm.
     imm &= finite_width - 1;
-
+    const reg_pack_t dst = reg_pack(dst_reg);
     if (m_inv.entail(type_is_number(dst))) {
-        auto interval = m_inv.eval_interval(dst.uvalue);
-        number_t lb_n{0};
-        number_t ub_n{std::numeric_limits<uint64_t>::max() >> imm};
-        if (interval.finite_size()) {
-            number_t lb = interval.lb().number().value();
-            number_t ub = interval.ub().number().value();
-            if (finite_width == 64) {
-                lb_n = lb.cast_to<uint64_t>() >> imm;
-                ub_n = ub.cast_to<uint64_t>() >> imm;
-            } else {
-                number_t lb_w = lb.cast_to_sint(finite_width);
-                number_t ub_w = ub.cast_to_sint(finite_width);
-                lb_n = lb_w.cast_to<uint32_t>() >> imm;
-                ub_n = ub_w.cast_to<uint32_t>() >> imm;
-
-                // The interval must be valid since a signed range crossing 0
-                // was earlier converted to a full unsigned range.
-                assert(lb_n <= ub_n);
-            }
-        }
-        m_inv.set(dst.uvalue, interval_t{lb_n, ub_n});
-        m_inv.assign(dst.svalue, dst.uvalue);
-        m_inv->overflow_signed(dst.svalue, finite_width);
-        m_inv->overflow_unsigned(dst.uvalue, finite_width);
-        return;
+        m_inv->lshr(dst.svalue, dst.uvalue, imm, finite_width);
+    } else {
+        m_inv.havoc(dst.svalue);
+        m_inv.havoc(dst.uvalue);
     }
-    m_inv.havoc(dst.svalue);
-    m_inv.havoc(dst.uvalue);
-    havoc_offsets(dst_reg);
 }
 
-void ebpf_transformer::ashr(const Reg& dst_reg, const linear_expression_t& right_svalue, int finite_width) {
-    using namespace crab;
-
-    reg_pack_t dst = reg_pack(dst_reg);
-    if (m_inv.entail(type_is_number(dst))) {
-        interval_t left_interval = interval_t::bottom();
-        interval_t right_interval = interval_t::bottom();
-        interval_t left_interval_positive = interval_t::bottom();
-        interval_t left_interval_negative = interval_t::bottom();
-        m_inv->get_signed_intervals(finite_width == 64, dst.svalue, dst.uvalue, right_svalue, left_interval,
-                                    right_interval, left_interval_positive, left_interval_negative);
-        if (auto sn = right_interval.singleton()) {
-            // The BPF ISA requires masking the imm.
-            int64_t imm = sn->cast_to<int64_t>() & (finite_width - 1);
-
-            int64_t lb_n = std::numeric_limits<int64_t>::min() >> imm;
-            int64_t ub_n = std::numeric_limits<int64_t>::max() >> imm;
-            if (left_interval.finite_size()) {
-                const auto [lb, ub] = left_interval.pair_number();
-                if (finite_width == 64) {
-                    lb_n = lb.cast_to<int64_t>() >> imm;
-                    ub_n = ub.cast_to<int64_t>() >> imm;
-                } else {
-                    number_t lb_w = lb.cast_to_sint(finite_width) >> gsl::narrow<int>(imm);
-                    number_t ub_w = ub.cast_to_sint(finite_width) >> gsl::narrow<int>(imm);
-                    if (lb_w.cast_to<uint32_t>() <= ub_w.cast_to<uint32_t>()) {
-                        lb_n = lb_w.cast_to<uint32_t>();
-                        ub_n = ub_w.cast_to<uint32_t>();
-                    }
-                }
-            }
-            m_inv.set(dst.svalue, interval_t{lb_n, ub_n});
-            m_inv.assign(dst.uvalue, dst.svalue);
-            m_inv->overflow_signed(dst.svalue, finite_width);
-            m_inv->overflow_unsigned(dst.uvalue, finite_width);
-            return;
-        }
-    }
-    m_inv.havoc(dst.svalue);
-    m_inv.havoc(dst.uvalue);
+void ebpf_transformer::ashr(const Reg& dst_reg, const linear_expression_t& right_svalue, const int finite_width) {
     havoc_offsets(dst_reg);
+
+    const reg_pack_t dst = reg_pack(dst_reg);
+    if (m_inv.entail(type_is_number(dst))) {
+        m_inv->ashr(dst.svalue, dst.uvalue, right_svalue, finite_width);
+    } else {
+        m_inv.havoc(dst.svalue);
+        m_inv.havoc(dst.uvalue);
+    }
 }
 
 void ebpf_transformer::sign_extend(const Reg& dst_reg, const linear_expression_t& right_svalue, const int finite_width,
@@ -1130,8 +1050,7 @@ void ebpf_transformer::sign_extend(const Reg& dst_reg, const linear_expression_t
 
     if (finite_width) {
         dom.m_inv.assign(dst.uvalue, dst.svalue);
-        dom.m_inv->overflow_signed(dst.svalue, finite_width);
-        dom.m_inv->overflow_unsigned(dst.uvalue, finite_width);
+        dom.m_inv->overflow_bounds(dst.svalue, dst.uvalue, finite_width);
     }
 }
 
@@ -1171,7 +1090,7 @@ void ebpf_transformer::operator()(const Bin& bin) {
         case Bin::Op::MOV:
             m_inv.assign(dst.svalue, imm);
             m_inv.assign(dst.uvalue, imm);
-            m_inv->overflow_unsigned(dst.uvalue, bin.is64 ? 64 : 32);
+            m_inv->overflow_bounds(dst.uvalue, bin.is64 ? 64 : 32, false);
             type_inv.assign_type(m_inv, bin.dst, T_NUM);
             havoc_offsets(bin.dst);
             break;
