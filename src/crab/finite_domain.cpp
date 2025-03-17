@@ -972,53 +972,11 @@ void FiniteDomain::ashr(const variable_t svalue, const variable_t uvalue, const 
 void FiniteDomain::sign_extend(const variable_t svalue, const variable_t uvalue,
                                const linear_expression_t& right_svalue, const int finite_width, const int bits) {
     const interval_t right_interval = eval_interval(right_svalue);
-    const uint64_t span = 1ULL << bits;
-    const uint64_t mask = 1ULL << (bits - 1);
-    const auto sext = [span, mask](const uint64_t val) -> int64_t {
-        const uint64_t masked = val & (span - 1);
-        return (masked ^ mask) - mask;
-    };
-
-    if (right_interval.size() >= span) {
-        // Covers full range — result is full signed interval
-        if (finite_width == 64) {
-            havoc(svalue);
-            havoc(uvalue);
-        } else {
-            set(svalue, interval_t::signed_int(finite_width));
-            set(uvalue, interval_t::unsigned_int(finite_width));
-        }
-        return;
+    const interval_t extended = right_interval.sign_extend(bits);
+    if (extended.is_bottom()) {
+        CRAB_ERROR("Sign extension failed ", right_interval, bits, " becomes bottom");
     }
-    const auto [lb, ub] = right_interval.pair<uint64_t>();
-
-    const uint64_t reduced_lb = lb % span;
-    const uint64_t reduced_ub = ub % span;
-
-    // Does it wrap over the modulo boundary?
-    const bool crosses_boundary = reduced_lb > reduced_ub;
-    const bool straddles_signbit = (reduced_lb < mask) != (reduced_ub < mask);
-
-    if (crosses_boundary || straddles_signbit) {
-        // Too imprecise, overapproximate - but if the range is small enough, we can do better
-        constexpr long enumeration_threshold = 256;
-        if (ub - lb < enumeration_threshold) {
-            int64_t new_lb = sext(lb);
-            int64_t new_ub = sext(lb);
-            for (uint64_t v = lb + 1; v <= ub; ++v) {
-                int64_t ext = sext(v);
-                new_lb = std::min(new_lb, ext);
-                new_ub = std::max(new_ub, ext);
-            }
-            set(svalue, interval_t{new_lb, new_ub});
-        } else {
-            // Too imprecise, overapproximate
-            havoc(svalue);
-        }
-    } else {
-        set(svalue, {sext(reduced_lb), sext(reduced_ub)});
-    }
-
+    set(svalue, extended);
     assign(uvalue, svalue);
     overflow_bounds(svalue, uvalue, finite_width);
 }

@@ -64,5 +64,6 @@ code:
 
 post:
   - r1.type=number
+  - r1.svalue=[-2147483648, 2147483647]
   - r2.type=number
   - r2.svalue=[-5, 4294967299]

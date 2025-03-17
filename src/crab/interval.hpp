@@ -299,6 +299,8 @@ class interval_t final {
     [[nodiscard]]
     interval_t AShr(const interval_t& x) const;
 
+    interval_t sign_extend(int bits) const;
+
     interval_t truncate_to_sint(bool is64) const = delete;
     [[nodiscard]]
     interval_t truncate_to_sint(const int width) const {
