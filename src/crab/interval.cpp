@@ -372,46 +372,55 @@ interval_t interval_t::LShr(const interval_t& x) const {
     }
     return top();
 }
-
 interval_t interval_t::sign_extend(const int bits) const {
     if (bits >= 64) {
         CRAB_ERROR("Invalid width ", bits);
     }
+
     const uint64_t span = 1ULL << bits;
     if (size() >= span) {
         return signed_int(bits);
     }
 
-    auto [lb, ub] = pair<int64_t>();
-    const uint64_t highest_bit = 1ULL << (bits - 1);
-    const uint64_t reduced_lb = lb % span;
-    const uint64_t reduced_ub = ub % span;
+    auto [lb, ub] = pair<uint64_t>(); // Use uint64_t for masking
+    const uint64_t mask = span - 1;
+    const int shift = 64 - bits;
 
-    const bool crosses_boundary = reduced_lb > reduced_ub;
-    const bool straddles_signbit = (reduced_lb < highest_bit) != (reduced_ub < highest_bit);
+    const uint64_t lb_mod = lb & mask;
+    const uint64_t ub_mod = ub & mask;
 
-    const auto sext = [span, highest_bit](const uint64_t val) -> int64_t {
-        const uint64_t masked = val & (span - 1);
-        return (masked ^ highest_bit) - highest_bit;
-    };
+    const int64_t lb_shifted = static_cast<int64_t>(lb_mod << shift);
+    const int64_t ub_shifted = static_cast<int64_t>(ub_mod << shift);
 
-    if (!crosses_boundary && !straddles_signbit) {
-        // Happy path
-        return interval_t{sext(reduced_lb), sext(reduced_ub)};
-    }
-
-    constexpr long enumeration_threshold = 256;
-    if (ub - lb < enumeration_threshold) {
-        int64_t new_lb = sext(lb);
-        int64_t new_ub = sext(lb);
-        for (uint64_t v = lb + 1; v <= ub; ++v) {
-            int64_t ext = sext(v);
-            new_lb = std::min(new_lb, ext);
-            new_ub = std::max(new_ub, ext);
-        }
+    if (lb_shifted < 0 && ub_shifted < 0) {
+        // All negative values
+        const int64_t new_lb = lb_shifted >> shift;
+        const int64_t new_ub = ub_shifted >> shift;
         return interval_t{new_lb, new_ub};
     }
-    return signed_int(bits);
-}
 
+    if (lb_shifted >= 0 && ub_shifted >= 0) {
+        // All positive values
+        const int64_t new_lb = lb_shifted >> shift;
+        const int64_t new_ub = ub_shifted >> shift;
+        return interval_t{new_lb, new_ub};
+    }
+
+    if (lb_shifted < 0 && ub_shifted >= 0) {
+        // Crosses zero, normal interval
+        const int64_t new_lb = lb_shifted >> shift;
+        const int64_t new_ub = ub_shifted >> shift;
+        return interval_t{new_lb, new_ub};
+    }
+
+    // Wrapped interval: lb ≥ 0, ub < 0
+    // Real range: [sign_bit, ub_mod]
+    const uint64_t sign_bit = 1ULL << (bits - 1);
+    const uint64_t real_lb = sign_bit;
+    const uint64_t real_ub = ub_mod;
+
+    const int64_t signed_lb = static_cast<int64_t>(real_lb << shift) >> shift;
+    const int64_t signed_ub = static_cast<int64_t>(real_ub << shift) >> shift;
+    return interval_t{signed_lb, signed_ub};
+}
 } // namespace crab
