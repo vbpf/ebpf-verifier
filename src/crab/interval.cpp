@@ -372,6 +372,7 @@ interval_t interval_t::LShr(const interval_t& x) const {
     }
     return top();
 }
+
 interval_t interval_t::sign_extend(const int bits) const {
     if (bits >= 64) {
         CRAB_ERROR("Invalid width ", bits);
@@ -382,45 +383,22 @@ interval_t interval_t::sign_extend(const int bits) const {
         return signed_int(bits);
     }
 
-    auto [lb, ub] = pair<uint64_t>(); // Use uint64_t for masking
-    const uint64_t mask = span - 1;
+    const auto [_lb, _ub] = pair<int64_t>();
+    // interpret as unsigned to avoid undefined behavior on signed shift
+    const auto [lb, ub] = std::tuple{to_unsigned(_lb), to_unsigned(_ub)};
     const int shift = 64 - bits;
 
-    const uint64_t lb_mod = lb & mask;
-    const uint64_t ub_mod = ub & mask;
-
-    const int64_t lb_shifted = static_cast<int64_t>(lb_mod << shift);
-    const int64_t ub_shifted = static_cast<int64_t>(ub_mod << shift);
-
-    if (lb_shifted < 0 && ub_shifted < 0) {
-        // All negative values
-        const int64_t new_lb = lb_shifted >> shift;
-        const int64_t new_ub = ub_shifted >> shift;
+    const int64_t new_lb = keep_signed<int64_t>(lb << shift) >> shift;
+    const int64_t new_ub = keep_signed<int64_t>(ub << shift) >> shift;
+    if (new_lb < 0 || new_ub >= 0) {
         return interval_t{new_lb, new_ub};
     }
-
-    if (lb_shifted >= 0 && ub_shifted >= 0) {
-        // All positive values
-        const int64_t new_lb = lb_shifted >> shift;
-        const int64_t new_ub = ub_shifted >> shift;
-        return interval_t{new_lb, new_ub};
-    }
-
-    if (lb_shifted < 0 && ub_shifted >= 0) {
-        // Crosses zero, normal interval
-        const int64_t new_lb = lb_shifted >> shift;
-        const int64_t new_ub = ub_shifted >> shift;
-        return interval_t{new_lb, new_ub};
-    }
-
     // Wrapped interval: lb ≥ 0, ub < 0
-    // Real range: [sign_bit, ub_mod]
-    const uint64_t sign_bit = 1ULL << (bits - 1);
-    const uint64_t real_lb = sign_bit;
-    const uint64_t real_ub = ub_mod;
-
-    const int64_t signed_lb = static_cast<int64_t>(real_lb << shift) >> shift;
-    const int64_t signed_ub = static_cast<int64_t>(real_ub << shift) >> shift;
+    // Real range: [1ULL << (bits - 1), ub & (span - 1)]
+    const uint64_t real_lb = 1ULL << (bits - 1);
+    const uint64_t real_ub = ub & (span - 1);
+    const int64_t signed_lb = keep_signed<int64_t>(real_lb << shift) >> shift;
+    const int64_t signed_ub = keep_signed<int64_t>(real_ub << shift) >> shift;
     return interval_t{signed_lb, signed_ub};
 }
 } // namespace crab
