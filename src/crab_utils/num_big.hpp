@@ -273,7 +273,7 @@ class number_t final {
         return number_t{(cpp_int(1) << (msb(_n) + 1)) - 1};
     }
 
-    friend std::ostream& operator<<(std::ostream& o, const number_t& z) { return o << z._n.str(); }
+    friend std::ostream& operator<<(std::ostream& o, const number_t& z);
 
     [[nodiscard]]
     std::string to_string() const;

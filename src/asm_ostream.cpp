@@ -33,6 +33,7 @@ std::ostream& operator<<(std::ostream& o, const interval_t& interval) {
     }
     return o;
 }
+std::ostream& operator<<(std::ostream& o, const number_t& z) { return o << z._n.str(); }
 
 std::string number_t::to_string() const { return _n.str(); }
 
