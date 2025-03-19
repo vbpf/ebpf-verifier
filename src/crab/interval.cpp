@@ -269,7 +269,7 @@ interval_t interval_t::And(const interval_t& x) const {
                 return interval_t{lb32_n, ub32_n};
             }
         }
-        return full<uint32_t>();
+        return unsigned_int(32);
     }
     if (x.contains(std::numeric_limits<uint64_t>::max())) {
         return truncate_to<uint64_t>();

@@ -500,12 +500,8 @@ void ebpf_transformer::do_load_packet_or_shared(NumAbsDomain& inv, const Reg& ta
     havoc_register(inv, target_reg);
 
     // A 1 or 2 byte copy results in a limited range of values that may be used as array indices.
-    if (width == 1) {
-        const interval_t full = interval_t::full<uint8_t>();
-        inv.set(target.svalue, full);
-        inv.set(target.uvalue, full);
-    } else if (width == 2) {
-        const interval_t full = interval_t::full<uint16_t>();
+    if (width == 1 || width == 2) {
+        const interval_t full = interval_t::unsigned_int(width * 8);
         inv.set(target.svalue, full);
         inv.set(target.uvalue, full);
     }

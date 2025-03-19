@@ -312,32 +312,22 @@ class interval_t final {
     [[nodiscard]]
     interval_t zero_extend(int width) const;
 
-    template <std::integral T>
+    template <std::signed_integral T>
     [[nodiscard]]
     interval_t truncate_to() const {
-        if (*this <= full<T>()) {
-            return *this;
-        }
-        if (const auto size = finite_size()) {
-            if (size->fits<T>()) {
-                T llb = lb().number()->truncate_to<T>();
-                T lub = ub().number()->truncate_to<T>();
-                if (llb <= lub) {
-                    // Interval can be accurately represented in 64 width.
-                    return interval_t{llb, lub};
-                }
-            }
-        }
-        return full<T>();
+        return sign_extend(static_cast<int>(sizeof(T)) * 8);
+    }
+
+    template <std::unsigned_integral T>
+    [[nodiscard]]
+    interval_t truncate_to() const {
+        return zero_extend(static_cast<int>(sizeof(T)) * 8);
     }
 
     interval_t signed_int(bool is64) const = delete;
     // Return an interval in the range [INT_MIN, INT_MAX] which can only
     // be represented as an svalue.
     static interval_t signed_int(const int width) {
-        if (width <= 0) {
-            CRAB_ERROR("Invalid width ", width);
-        }
         return interval_t{number_t::min_int(width), number_t::max_int(width)};
     }
 
@@ -378,17 +368,10 @@ class interval_t final {
     }
 
     interval_t unsigned_high(bool is64) const = delete;
-    // Return an interval in the range [INT_MAX+1, UINT_MAX], which can only
-    // be represented as a uvalue.
+    // Return an interval in the range [INT_MAX+1, UINT_MAX], which can only be represented as a uvalue.
     // The svalue equivalent using the same width would be negative().
     static interval_t unsigned_high(const int width) {
-        switch (width) {
-        case 8: return high<uint8_t>();
-        case 16: return high<uint16_t>();
-        case 32: return high<uint32_t>();
-        case 64: return high<uint64_t>();
-        default: CRAB_ERROR("Invalid width ", width);
-        }
+        return interval_t{number_t::max_int(width) + 1, number_t::max_uint(width)};
     }
 
     [[nodiscard]]
