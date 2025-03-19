@@ -310,15 +310,7 @@ class interval_t final {
 
     interval_t zero_extend(bool is64) const = delete;
     [[nodiscard]]
-    interval_t zero_extend(const int width) const {
-        switch (width) {
-        case 8: return truncate_to<uint8_t>();
-        case 16: return truncate_to<uint16_t>();
-        case 32: return truncate_to<uint32_t>();
-        case 64: return truncate_to<uint64_t>();
-        default: CRAB_ERROR("Invalid width ", width);
-        }
-    }
+    interval_t zero_extend(int width) const;
 
     template <std::integral T>
     [[nodiscard]]

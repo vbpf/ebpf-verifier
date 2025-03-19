@@ -380,30 +380,28 @@ interval_t interval_t::sign_extend(const int width) const {
 
     const interval_t full_range = signed_int(width);
     if (size() < full_range.size()) {
-        // If the sign–extended endpoints are in order, no wrap occurred.
         if (interval_t extended{_lb.sign_extend(width), _ub.sign_extend(width)}) {
+            // If the sign–extended endpoints are in order, no wrap occurred.
             return extended;
         }
     }
-    // otherwise:
     // [0b0111..., 0b1000...] is in the original range, so the result is [0b1000..., 0b0111...] which is the full range.
     return full_range;
 }
 
-// interval_t interval_t::zero_extend(const int width) const {
-//     if (width <= 0) {
-//         CRAB_ERROR("Invalid width ", width);
-//     }
-//
-//     const interval_t full_range = unsigned_int(width);
-//     if (size() < full_range.size()) {
-//         // If the sign–extended endpoints are in order, no wrap occurred.
-//         if (interval_t extended{_lb.zero_extend(width), _ub.zero_extend(width)}) {
-//             return extended;
-//         }
-//     }
-//     // otherwise:
-//     // [0b1111..., 0b0000...] is in the original range, so the result is [0b1000..., 0b0111...] which is the full
-//     range. return full_range;
-// }
+interval_t interval_t::zero_extend(const int width) const {
+    if (width <= 0) {
+        CRAB_ERROR("Invalid width ", width);
+    }
+
+    const interval_t full_range = unsigned_int(width);
+    if (size() < full_range.size()) {
+        if (interval_t extended{_lb.zero_extend(width), _ub.zero_extend(width)}) {
+            // If the sign–extended endpoints are in order, no wrap occurred.
+            return extended;
+        }
+    }
+    // [0b1111..., 0b0000...] is in the original range, so the result is [0b0000..., 0b1111...] which is the full
+    return full_range;
+}
 } // namespace crab
