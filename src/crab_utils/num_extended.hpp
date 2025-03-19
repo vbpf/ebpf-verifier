@@ -189,6 +189,14 @@ class extended_number final {
         return _n.sign_extend(width);
     }
 
+    [[nodiscard]]
+    number_t zero_extend(const int width) const {
+        if (is_infinite()) {
+            CRAB_ERROR("Bound: infinity cannot be zero_extended");
+        }
+        return _n.zero_extend(width);
+    }
+
     /*	operator<= and operator>= use a somewhat optimized implementation.
      *	results include up to 20% improvements in performance in the octagon domain
      *	over a more naive implementation.

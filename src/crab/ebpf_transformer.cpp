@@ -85,7 +85,7 @@ class ebpf_transformer final {
     void shl(const Reg& dst_reg, int imm, int finite_width);
     void lshr(const Reg& dst_reg, int imm, int finite_width);
     void ashr(const Reg& dst_reg, const linear_expression_t& right_svalue, int finite_width);
-    void sign_extend(const Reg& dst_reg, const linear_expression_t& right_svalue, int finite_width, int bits);
+    void sign_extend(const Reg& dst_reg, const linear_expression_t& right_svalue, int target_width, int source_width);
 }; // end ebpf_domain_t
 
 void ebpf_domain_transform(ebpf_domain_t& inv, const Instruction& ins) {
@@ -1021,14 +1021,14 @@ void ebpf_transformer::ashr(const Reg& dst_reg, const linear_expression_t& right
     }
 }
 
-void ebpf_transformer::sign_extend(const Reg& dst_reg, const linear_expression_t& right_svalue, const int finite_width,
-                                   const int bits) {
+void ebpf_transformer::sign_extend(const Reg& dst_reg, const linear_expression_t& right_svalue, const int target_width,
+                                   const int source_width) {
     havoc_offsets(dst_reg);
 
     type_inv.assign_type(dom.m_inv, dst_reg, T_NUM);
 
     const reg_pack_t dst = reg_pack(dst_reg);
-    m_inv->sign_extend(dst.svalue, dst.uvalue, right_svalue, finite_width, bits);
+    m_inv->sign_extend(dst.svalue, dst.uvalue, right_svalue, target_width, source_width);
 }
 
 static int _movsx_bits(const Bin::Op op) {
@@ -1328,13 +1328,13 @@ void ebpf_transformer::operator()(const Bin& bin) {
         case Bin::Op::MOVSX8:
         case Bin::Op::MOVSX16:
         case Bin::Op::MOVSX32: {
-            const int bits = _movsx_bits(bin.op);
+            const int source_width = _movsx_bits(bin.op);
             // Keep relational information if operation is a no-op.
-            if (dst.svalue == src.svalue && m_inv.eval_interval(dst.svalue) <= interval_t::signed_int(bits)) {
+            if (dst.svalue == src.svalue && m_inv.eval_interval(dst.svalue) <= interval_t::signed_int(source_width)) {
                 return;
             }
             if (m_inv.entail(type_is_number(src_reg))) {
-                sign_extend(bin.dst, src.svalue, finite_width, bits);
+                sign_extend(bin.dst, src.svalue, finite_width, source_width);
                 break;
             }
             m_inv.havoc(dst.svalue);

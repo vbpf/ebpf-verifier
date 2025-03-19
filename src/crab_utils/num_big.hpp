@@ -113,12 +113,11 @@ class number_t final {
     [[nodiscard]]
     number_t sign_extend(const int width) const {
         using namespace boost::multiprecision;
-
         if (width <= 0) {
             return *this;
         }
 
-        // Create a mask for the sign bit and a value mask for truncation.
+        // Create a mask for the sign bit.
         const cpp_int sign_bit = cpp_int(1) << (width - 1);
         const cpp_int value_mask = (cpp_int(1) << width) - 1;
 
@@ -135,19 +134,20 @@ class number_t final {
     // Unlike casting, zero_extend will not throw a crab error if the number doesn't fit.
     [[nodiscard]]
     number_t zero_extend(const int width) const {
-        switch (width) {
-        case 0: return *this; // No finite width.
-        case 8: return truncate_to<uint8_t>();
-        case 16: return truncate_to<uint16_t>();
-        case 32: return truncate_to<uint32_t>();
-        case 64: return truncate_to<uint64_t>();
-        default: CRAB_ERROR("invalid finite width");
+        using namespace boost::multiprecision;
+        if (width <= 0) {
+            return *this;
         }
+        const cpp_int value_mask = (cpp_int(1) << width) - 1;
+        const cpp_int truncated = _n & value_mask;
+        return truncated;
     }
 
-    static number_t max_int(const int width) { return number_t{cpp_int(1) << width} - 1; }
+    static number_t max_uint(const int width) { return max_int(width + 1); }
 
-    static number_t min_int(const int width) { return number_t{-(cpp_int(1) << width)}; }
+    static number_t max_int(const int width) { return number_t{(cpp_int(1) << (width - 1)) - 1}; }
+
+    static number_t min_int(const int width) { return number_t{-(cpp_int(1) << (width - 1))}; }
 
     number_t operator+(const number_t& x) const { return number_t(_n + x._n); }
 

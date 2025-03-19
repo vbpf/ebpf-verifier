@@ -970,15 +970,16 @@ void FiniteDomain::ashr(const variable_t svalue, const variable_t uvalue, const 
 }
 
 void FiniteDomain::sign_extend(const variable_t svalue, const variable_t uvalue,
-                               const linear_expression_t& right_svalue, const int finite_width, const int bits) {
+                               const linear_expression_t& right_svalue, const int target_width,
+                               const int source_width) {
     const interval_t right_interval = eval_interval(right_svalue);
-    const interval_t extended = right_interval.sign_extend(bits);
+    const interval_t extended = right_interval.sign_extend(source_width);
     if (extended.is_bottom()) {
-        CRAB_ERROR("Sign extension failed ", right_interval, bits, " becomes bottom");
+        CRAB_ERROR("Sign extension failed ", right_interval, source_width, " becomes bottom");
     }
     set(svalue, extended);
     assign(uvalue, svalue);
-    overflow_bounds(svalue, uvalue, finite_width);
+    overflow_bounds(svalue, uvalue, target_width);
 }
 
 } // namespace crab::domains

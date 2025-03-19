@@ -373,27 +373,37 @@ interval_t interval_t::LShr(const interval_t& x) const {
     return top();
 }
 
-interval_t interval_t::sign_extend(const int bits) const {
-    if (bits <= 0) {
-        CRAB_ERROR("Invalid width ", bits);
+interval_t interval_t::sign_extend(const int width) const {
+    if (width <= 0) {
+        CRAB_ERROR("Invalid width ", width);
     }
 
-    const interval_t full_range = signed_int(bits);
-    if (size() >= full_range.size()) {
-        return full_range;
-    }
-
-    // int64_t is guaranteed to hold {_lb, _ub}.
-    const number_t lb_sext = _lb.sign_extend(bits);
-    const number_t ub_sext = _ub.sign_extend(bits);
-
-    // If the sign–extended endpoints are in order, no wrap occurred.
-    if (lb_sext <= ub_sext) {
-        return interval_t{lb_sext, ub_sext};
+    const interval_t full_range = signed_int(width);
+    if (size() < full_range.size()) {
+        // If the sign–extended endpoints are in order, no wrap occurred.
+        if (interval_t extended{_lb.sign_extend(width), _ub.sign_extend(width)}) {
+            return extended;
+        }
     }
     // otherwise:
-    // * 0b1000... is in the range (<=ub), so lb must be the minimum.
-    // * 0b0111... is in the range (>=lb), so ub must be the maximum.
+    // [0b0111..., 0b1000...] is in the original range, so the result is [0b1000..., 0b0111...] which is the full range.
     return full_range;
 }
+
+// interval_t interval_t::zero_extend(const int width) const {
+//     if (width <= 0) {
+//         CRAB_ERROR("Invalid width ", width);
+//     }
+//
+//     const interval_t full_range = unsigned_int(width);
+//     if (size() < full_range.size()) {
+//         // If the sign–extended endpoints are in order, no wrap occurred.
+//         if (interval_t extended{_lb.zero_extend(width), _ub.zero_extend(width)}) {
+//             return extended;
+//         }
+//     }
+//     // otherwise:
+//     // [0b1111..., 0b0000...] is in the original range, so the result is [0b1000..., 0b0111...] which is the full
+//     range. return full_range;
+// }
 } // namespace crab

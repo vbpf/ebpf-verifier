@@ -110,6 +110,11 @@ class interval_t final {
     }
 
     [[nodiscard]]
+    explicit operator bool() const {
+        return !is_bottom();
+    }
+
+    [[nodiscard]]
     bool is_bottom() const {
         return _lb > _ub;
     }
@@ -301,7 +306,7 @@ class interval_t final {
 
     interval_t sign_extend(bool is64) const = delete;
     [[nodiscard]]
-    interval_t sign_extend(int bits) const;
+    interval_t sign_extend(int width) const;
 
     interval_t zero_extend(bool is64) const = delete;
     [[nodiscard]]
@@ -338,56 +343,26 @@ class interval_t final {
     // Return an interval in the range [INT_MIN, INT_MAX] which can only
     // be represented as an svalue.
     static interval_t signed_int(const int width) {
-        if (width == 64) {
-            return full<int64_t>();
-        }
-        if (width <= 0 || width >= 64) {
+        if (width <= 0) {
             CRAB_ERROR("Invalid width ", width);
         }
-        const int64_t highest_bit = 1LL << (width - 1);
-        const int64_t lower = -highest_bit;
-        const int64_t upper = highest_bit - 1;
-        return interval_t{lower, upper};
+        return interval_t{number_t::min_int(width), number_t::max_int(width)};
     }
 
     interval_t unsigned_int(bool is64) const = delete;
     // Return an interval in the range [0, UINT_MAX] which can only be
     // represented as a uvalue.
-    static interval_t unsigned_int(const int width) {
-        switch (width) {
-        case 8: return full<uint8_t>();
-        case 16: return full<uint16_t>();
-        case 32: return full<uint32_t>();
-        case 64: return full<uint64_t>();
-        default: CRAB_ERROR("Invalid width ", width);
-        }
-    }
+    static interval_t unsigned_int(const int width) { return interval_t{0, number_t::max_uint(width)}; }
 
     interval_t nonnegative(bool is64) const = delete;
     // Return a non-negative interval in the range [0, INT_MAX],
     // which can be represented as both an svalue and a uvalue.
-    static interval_t nonnegative(const int width) {
-        switch (width) {
-        case 8: return nonnegative<int8_t>();
-        case 16: return nonnegative<int16_t>();
-        case 32: return nonnegative<int32_t>();
-        case 64: return nonnegative<int64_t>();
-        default: CRAB_ERROR("Invalid width ", width);
-        }
-    }
+    static interval_t nonnegative(const int width) { return interval_t{number_t{0}, number_t::max_int(width)}; }
 
     interval_t negative(bool is64) const = delete;
     // Return a negative interval in the range [INT_MIN, -1],
     // which can be represented as both an svalue and a uvalue.
-    static interval_t negative(const int width) {
-        switch (width) {
-        case 8: return negative<int8_t>();
-        case 16: return negative<int16_t>();
-        case 32: return negative<int32_t>();
-        case 64: return negative<int64_t>();
-        default: CRAB_ERROR("Invalid width ", width);
-        }
-    }
+    static interval_t negative(const int width) { return interval_t{number_t::min_int(width), number_t{-1}}; }
 
     template <std::integral T>
     static interval_t nonnegative() {
