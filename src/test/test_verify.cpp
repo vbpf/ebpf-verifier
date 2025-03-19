@@ -597,13 +597,13 @@ TEST_SECTION_FAIL("cilium", "bpf_xdp_snat_linux.o", "2/16")
 // False positive, unknown cause
 TEST_SECTION_FAIL("linux", "test_map_in_map_kern.o", "kprobe/sys_connect")
 
-// Failures due to #679: sign extension (r1 s32= r1) leading to bottom
-TEST_SECTION_LEGACY_FAIL("cilium", "bpf_netdev.o", "from-netdev")
-TEST_SECTION_LEGACY_FAIL("bpf_cilium_test", "bpf_netdev.o", "from-netdev")
-TEST_SECTION_FAIL("cilium", "bpf_lxc.o", "2/7")
-TEST_SECTION_LEGACY_FAIL("cilium", "bpf_lxc.o", "2/10")
-TEST_SECTION_FAIL("cilium", "bpf_lxc.o", "2/11")
-TEST_SECTION_FAIL("cilium", "bpf_lxc.o", "2/12")
+// Used to fail due to #679: sign extension (r1 s32= r1) leading to bottom
+TEST_SECTION_LEGACY("cilium", "bpf_netdev.o", "from-netdev")
+TEST_SECTION_LEGACY("bpf_cilium_test", "bpf_netdev.o", "from-netdev")
+TEST_SECTION("cilium", "bpf_lxc.o", "2/7")
+TEST_SECTION_LEGACY("cilium", "bpf_lxc.o", "2/10")
+TEST_SECTION("cilium", "bpf_lxc.o", "2/11")
+TEST_SECTION("cilium", "bpf_lxc.o", "2/12")
 
 void test_analyze_thread(const Program* prog, program_info* info, bool* res) {
     thread_local_program_info.set(*info);

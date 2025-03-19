@@ -96,7 +96,7 @@ class ebpf_transformer final {
     void shl_overflow(variable_t lhss, variable_t lhsu, const number_t& op2);
     void lshr(const Reg& reg, int imm, int finite_width);
     void ashr(const Reg& dst_reg, const linear_expression_t& right_svalue, int finite_width);
-    void sign_extend(const Reg& dst_reg, const linear_expression_t& right_svalue, int finite_width, Bin::Op op);
+    void sign_extend(const Reg& dst_reg, const linear_expression_t& right_svalue, int target_width, int source_width);
 
     void assume(const linear_constraint_t& cst);
 
@@ -136,12 +136,13 @@ void ebpf_domain_transform(ebpf_domain_t& inv, const Instruction& ins) {
     if (inv.is_bottom()) {
         return;
     }
+    const auto pre = inv;
     std::visit(ebpf_transformer{inv}, ins);
     if (inv.is_bottom() && !std::holds_alternative<Assume>(ins)) {
         // Fail. raise an exception to stop the analysis.
         std::stringstream msg;
         msg << "Bug! pre-invariant:\n"
-            << inv << "\n followed by instruction: " << ins << "\n"
+            << pre << "\n followed by instruction: " << ins << "\n"
             << "leads to bottom";
         throw std::logic_error(msg.str());
     }
@@ -1992,40 +1993,17 @@ static int _movsx_bits(const Bin::Op op) {
     }
 }
 
-void ebpf_transformer::sign_extend(const Reg& dst_reg, const linear_expression_t& right_svalue, const int finite_width,
-                                   const Bin::Op op) {
-    using namespace crab;
-
-    const int bits = _movsx_bits(op);
-    const reg_pack_t dst = reg_pack(dst_reg);
-    interval_t right_interval = m_inv.eval_interval(right_svalue);
-    type_inv.assign_type(m_inv, dst_reg, T_NUM);
+void ebpf_transformer::sign_extend(const Reg& dst_reg, const linear_expression_t& right_svalue, const int target_width,
+                                   const int source_width) {
     havoc_offsets(dst_reg);
-    const int64_t span = 1ULL << bits;
-    if (right_interval.ub() - right_interval.lb() >= span) {
-        // Interval covers the full space.
-        if (bits == 64) {
-            havoc(dst.svalue);
-            return;
-        }
-        right_interval = interval_t::signed_int(bits);
-    }
-    const int64_t mask = 1ULL << (bits - 1);
 
-    // Sign extend each bound.
-    int64_t lb = right_interval.lb().number().value().cast_to<int64_t>();
-    lb &= span - 1;
-    lb = (lb ^ mask) - mask;
-    int64_t ub = right_interval.ub().number().value().cast_to<int64_t>();
-    ub &= span - 1;
-    ub = (ub ^ mask) - mask;
-    m_inv.set(dst.svalue, interval_t{lb, ub});
+    type_inv.assign_type(dom.m_inv, dst_reg, T_NUM);
 
-    if (finite_width) {
-        m_inv.assign(dst.uvalue, dst.svalue);
-        overflow_signed(m_inv, dst.svalue, finite_width);
-        overflow_unsigned(m_inv, dst.uvalue, finite_width);
-    }
+    const reg_pack_t dst = reg_pack(dst_reg);
+    m_inv.set(dst.svalue, m_inv.eval_interval(right_svalue).sign_extend(source_width));
+    m_inv.assign(dst.uvalue, dst.svalue);
+    overflow_unsigned(m_inv, dst.uvalue, target_width);
+    overflow_signed(m_inv, dst.svalue, target_width);
 }
 
 void ebpf_transformer::ashr(const Reg& dst_reg, const linear_expression_t& right_svalue, int finite_width) {
@@ -2369,7 +2347,7 @@ void ebpf_transformer::operator()(const Bin& bin) {
                 return;
             }
             if (m_inv.entail(type_is_number(src_reg))) {
-                sign_extend(bin.dst, src.svalue, finite_width, bin.op);
+                sign_extend(bin.dst, src.svalue, finite_width, _movsx_bits(bin.op));
                 break;
             }
             havoc(dst.svalue);
