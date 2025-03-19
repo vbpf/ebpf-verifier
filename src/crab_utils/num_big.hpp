@@ -108,24 +108,33 @@ class number_t final {
         return static_cast<T>(static_cast<U>(_n & mask));
     }
 
-    // Allow truncating to int32_t or int64_t as needed for finite width operations.
-    // Unlike casting, truncating will not throw a crab error if the number doesn't fit.
+    // Allow truncating to signed int as needed for finite width operations.
+    // Unlike casting, sign_extend will not throw a crab error if the number doesn't fit.
     [[nodiscard]]
-    number_t truncate_to_sint(const int width) const {
-        switch (width) {
-        case 0: return *this; // No finite width.
-        case 8: return truncate_to<int8_t>();
-        case 16: return truncate_to<int16_t>();
-        case 32: return truncate_to<int32_t>();
-        case 64: return truncate_to<int64_t>();
-        default: CRAB_ERROR("invalid finite width");
+    number_t sign_extend(const int width) const {
+        using namespace boost::multiprecision;
+
+        if (width <= 0) {
+            return *this;
         }
+
+        // Create a mask for the sign bit and a value mask for truncation.
+        const cpp_int sign_bit = cpp_int(1) << (width - 1);
+        const cpp_int value_mask = (cpp_int(1) << width) - 1;
+
+        const cpp_int truncated = _n & value_mask;
+
+        // If sign bit is set, extend with 1s; otherwise, return truncated.
+        if (truncated & sign_bit) {
+            return truncated - (cpp_int(1) << width);
+        }
+        return truncated;
     }
 
-    // Allow truncating to uint32_t or uint64_t as needed for finite width operations.
-    // Unlike casting, truncating will not throw a crab error if the number doesn't fit.
+    // Allow truncating to unsigned int as needed for finite width operations.
+    // Unlike casting, zero_extend will not throw a crab error if the number doesn't fit.
     [[nodiscard]]
-    number_t truncate_to_uint(const int width) const {
+    number_t zero_extend(const int width) const {
         switch (width) {
         case 0: return *this; // No finite width.
         case 8: return truncate_to<uint8_t>();

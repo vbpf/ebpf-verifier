@@ -299,23 +299,13 @@ class interval_t final {
     [[nodiscard]]
     interval_t AShr(const interval_t& x) const;
 
+    interval_t sign_extend(bool is64) const = delete;
+    [[nodiscard]]
     interval_t sign_extend(int bits) const;
 
-    interval_t truncate_to_sint(bool is64) const = delete;
+    interval_t zero_extend(bool is64) const = delete;
     [[nodiscard]]
-    interval_t truncate_to_sint(const int width) const {
-        switch (width) {
-        case 8: return truncate_to<int8_t>();
-        case 16: return truncate_to<int16_t>();
-        case 32: return truncate_to<int32_t>();
-        case 64: return truncate_to<int64_t>();
-        default: CRAB_ERROR("Invalid width ", width);
-        }
-    }
-
-    interval_t truncate_to_uint(bool is64) const = delete;
-    [[nodiscard]]
-    interval_t truncate_to_uint(const int width) const {
+    interval_t zero_extend(const int width) const {
         switch (width) {
         case 8: return truncate_to<uint8_t>();
         case 16: return truncate_to<uint16_t>();

@@ -538,7 +538,7 @@ FiniteDomain::assume_unsigned_cst_interval(Condition::Op op, bool is64, variable
     // Handle uvalue != right.
     if (op == Condition::Op::NE) {
         if (auto rn = right_interval.singleton()) {
-            if (rn == left_interval.truncate_to_uint(is64 ? 64 : 32).lb().number()) {
+            if (rn == left_interval.zero_extend(is64 ? 64 : 32).lb().number()) {
                 // "NE lower bound" is equivalent to "GT lower bound".
                 op = Condition::Op::GT;
                 right_interval = interval_t{left_interval.lb()};
@@ -727,8 +727,8 @@ void FiniteDomain::overflow_bounds(variable_t lhs, int finite_width, bool issign
     // For a signed result, we need to ensure the signed and unsigned results match
     // so for a 32-bit operation, 0x80000000 should be a positive 64-bit number not
     // a sign extended negative one.
-    number_t lb = lb_value.truncate_to_uint(finite_width);
-    number_t ub = ub_value.truncate_to_uint(finite_width);
+    number_t lb = lb_value.zero_extend(finite_width);
+    number_t ub = ub_value.zero_extend(finite_width);
     if (issigned) {
         lb = lb.truncate_to<int64_t>();
         ub = ub.truncate_to<int64_t>();

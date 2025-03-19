@@ -1351,12 +1351,12 @@ static interval_t get_interval(const SplitDBM::vert_map_t& m, const SplitDBM::gr
     extended_number lb = extended_number::minus_infinity();
     extended_number ub = extended_number::plus_infinity();
     if (r.elem(v, 0)) {
-        lb = x.is_unsigned() ? (-number_t(r.edge_val(v, 0))).truncate_to_uint(finite_width)
-                             : (-number_t(r.edge_val(v, 0))).truncate_to_sint(finite_width);
+        lb = x.is_unsigned() ? (-number_t(r.edge_val(v, 0))).zero_extend(finite_width)
+                             : (-number_t(r.edge_val(v, 0))).sign_extend(finite_width);
     }
     if (r.elem(0, v)) {
-        ub = x.is_unsigned() ? number_t(r.edge_val(0, v)).truncate_to_uint(finite_width)
-                             : number_t(r.edge_val(0, v)).truncate_to_sint(finite_width);
+        ub = x.is_unsigned() ? number_t(r.edge_val(0, v)).zero_extend(finite_width)
+                             : number_t(r.edge_val(0, v)).sign_extend(finite_width);
     }
     return {lb, ub};
 }
