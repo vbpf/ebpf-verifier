@@ -28,8 +28,8 @@ static bool maybe_between(const NumAbsDomain& dom, const extended_number& x, con
     assert(x.is_finite());
     const linear_expression_t num(*x.number());
     NumAbsDomain tmp(dom);
-    tmp += num >= symb_lb;
-    tmp += num <= symb_ub;
+    tmp.add_constraint(num >= symb_lb);
+    tmp.add_constraint(num <= symb_ub);
     return !tmp.is_bottom();
 }
 
@@ -542,13 +542,13 @@ static std::optional<std::pair<offset_t, unsigned>> kill_and_find_var(NumAbsDoma
     if (!cells.empty()) {
         // Forget the scalars from the numerical domain
         for (const auto& c : cells) {
-            inv -= c.get_scalar(kind);
+            inv.havoc(c.get_scalar(kind));
 
             // Forget signed and unsigned values together.
             if (kind == data_kind_t::svalues) {
-                inv -= c.get_scalar(data_kind_t::uvalues);
+                inv.havoc(c.get_scalar(data_kind_t::uvalues));
             } else if (kind == data_kind_t::uvalues) {
-                inv -= c.get_scalar(data_kind_t::svalues);
+                inv.havoc(c.get_scalar(data_kind_t::svalues));
             }
         }
         // Remove the cells. If needed again they will be re-created.
@@ -811,13 +811,13 @@ void array_domain_t::store_numbers(const NumAbsDomain& inv, const variable_t _id
         return;
     }
 
-    const std::optional<number_t> idx_n = inv[_idx].singleton();
+    const std::optional<number_t> idx_n = inv.eval_interval(_idx).singleton();
     if (!idx_n) {
         CRAB_WARN("array expansion store range ignored because ", "lower bound is not constant");
         return;
     }
 
-    const std::optional<number_t> width = inv[_width].singleton();
+    const std::optional<number_t> width = inv.eval_interval(_width).singleton();
     if (!width) {
         CRAB_WARN("array expansion store range ignored because ", "upper bound is not constant");
         return;

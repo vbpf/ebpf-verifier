@@ -746,7 +746,7 @@ std::optional<SplitDBM> SplitDBM::meet(const SplitDBM& o) const {
     return res;
 }
 
-void SplitDBM::operator-=(const variable_t v) {
+void SplitDBM::havoc(const variable_t v) {
     if (const auto y = try_at(vert_map, v)) {
         g.forget(*y);
         rev_map[*y] = std::nullopt;
@@ -831,7 +831,7 @@ void SplitDBM::assign(variable_t lhs, const linear_expression_t& e) {
     if (value_interval.lb().is_finite()) {
         Weight tmp;
         if (convert_NtoW_overflow(-*value_interval.lb().number(), tmp)) {
-            operator-=(lhs);
+            havoc(lhs);
             CRAB_LOG("zones-split", std::cout << "---" << lhs << ":=" << e << "\n" << *this << "\n");
             normalize();
             return;
@@ -841,7 +841,7 @@ void SplitDBM::assign(variable_t lhs, const linear_expression_t& e) {
     if (value_interval.ub().is_finite()) {
         Weight tmp;
         if (convert_NtoW_overflow(*value_interval.ub().number(), tmp)) {
-            operator-=(lhs);
+            havoc(lhs);
             CRAB_LOG("zones-split", std::cout << "---" << lhs << ":=" << e << "\n" << *this << "\n");
             normalize();
             return;
@@ -869,7 +869,7 @@ void SplitDBM::assign(variable_t lhs, const linear_expression_t& e) {
 
     Weight e_val;
     if (eval_expression_overflow(e, e_val)) {
-        operator-=(lhs);
+        havoc(lhs);
         return;
     }
     // Allocate a new vertex for x
@@ -905,7 +905,7 @@ void SplitDBM::assign(variable_t lhs, const linear_expression_t& e) {
         g.update_edge(0, *ub_w, vert);
     }
     // Clear the old x vertex
-    operator-=(lhs);
+    havoc(lhs);
     vert_map.emplace(lhs, vert);
 
     normalize();
@@ -964,7 +964,7 @@ void SplitDBM::set(const variable_t x, const interval_t& intv) {
     ScopedCrabStats __st__("SplitDBM.assign");
     assert(!intv.is_bottom());
 
-    this->operator-=(x);
+    havoc(x);
 
     if (intv.is_top()) {
         return;
@@ -1116,7 +1116,7 @@ void SplitDBM::forget(const variable_vector_t& variables) {
 
     for (const auto v : variables) {
         if (vert_map.contains(v)) {
-            operator-=(v);
+            havoc(v);
         }
     }
     normalize();

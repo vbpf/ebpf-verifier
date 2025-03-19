@@ -219,8 +219,6 @@ class SplitDBM final {
     [[nodiscard]]
     SplitDBM narrow(const SplitDBM& o) const;
 
-    void operator-=(variable_t v);
-
     void assign(variable_t lhs, const linear_expression_t& e);
 
     void assign(std::optional<variable_t> x, const linear_expression_t& e) {
@@ -236,9 +234,11 @@ class SplitDBM final {
         if (e) {
             assign(x, *e);
         } else {
-            *this -= x;
+            havoc(x);
         }
     }
+
+    void havoc(variable_t v);
 
     void apply(arith_binop_t op, variable_t x, variable_t y, variable_t z, int finite_width);
 

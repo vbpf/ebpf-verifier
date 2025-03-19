@@ -12,7 +12,6 @@
 #include "config.hpp"
 #include "crab/array_domain.hpp"
 #include "crab/ebpf_domain.hpp"
-#include "crab_utils/num_safety.hpp"
 #include "dsl_syntax.hpp"
 #include "platform.hpp"
 #include "program.hpp"
@@ -98,7 +97,7 @@ void ebpf_domain_assume(ebpf_domain_t& dom, const Assertion& assertion) {
     ebpf_checker{dom, assertion,
                  [](NumAbsDomain& inv, const linear_constraint_t& cst, const std::string&) {
                      // avoid redundant errors
-                     inv += cst;
+                     inv.add_constraint(cst);
                  }}
         .visit(assertion);
 }
@@ -238,6 +237,9 @@ void ebpf_checker::operator()(const BoundedLoopCount& s) const {
 
 void ebpf_checker::operator()(const FuncConstraint& s) const {
     // Look up the helper function id.
+    if (!m_inv) {
+        return;
+    }
     const reg_pack_t& reg = reg_pack(s.reg);
     const auto src_interval = m_inv.eval_interval(reg.svalue);
     if (const auto sn = src_interval.singleton()) {
@@ -303,7 +305,7 @@ void ebpf_checker::operator()(const ValidMapKeyValue& s) const {
             variable_t lb = access_reg.stack_offset;
             linear_expression_t ub = lb + width;
             if (!stack.all_num(inv, lb, ub)) {
-                auto lb_is = inv[lb].lb().number();
+                auto lb_is = inv.eval_interval(lb).lb().number();
                 std::string lb_s = lb_is && lb_is->fits<int32_t>() ? std::to_string(lb_is->narrow<int32_t>()) : "-oo";
                 auto ub_is = inv.eval_interval(ub).ub().number();
                 std::string ub_s = ub_is && ub_is->fits<int32_t>() ? std::to_string(ub_is->narrow<int32_t>()) : "oo";
@@ -314,7 +316,7 @@ void ebpf_checker::operator()(const ValidMapKeyValue& s) const {
                 if (map_type.is_array) {
                     // Get offset value.
                     variable_t key_ptr = access_reg.stack_offset;
-                    std::optional<number_t> offset = inv[key_ptr].singleton();
+                    std::optional<number_t> offset = inv.eval_interval(key_ptr).singleton();
                     if (!offset.has_value()) {
                         require("Pointer must be a singleton");
                     } else if (s.key) {

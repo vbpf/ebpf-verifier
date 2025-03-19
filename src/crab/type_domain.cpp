@@ -211,7 +211,7 @@ void TypeDomain::assign_type(NumAbsDomain& inv, const Reg& lhs, const std::optio
     inv.assign(reg_pack(lhs).type, rhs);
 }
 
-void TypeDomain::havoc_type(NumAbsDomain& inv, const Reg& r) { inv -= reg_pack(r).type; }
+void TypeDomain::havoc_type(NumAbsDomain& inv, const Reg& r) { inv.havoc(reg_pack(r).type); }
 
 type_encoding_t TypeDomain::get_type(const NumAbsDomain& inv, const linear_expression_t& v) const {
     const auto res = inv.eval_interval(v).singleton();
@@ -222,7 +222,7 @@ type_encoding_t TypeDomain::get_type(const NumAbsDomain& inv, const linear_expre
 }
 
 type_encoding_t TypeDomain::get_type(const NumAbsDomain& inv, const Reg& r) const {
-    const auto res = inv[reg_pack(r).type].singleton();
+    const auto res = inv.eval_interval(reg_pack(r).type).singleton();
     if (!res) {
         return T_UNINIT;
     }
@@ -231,7 +231,7 @@ type_encoding_t TypeDomain::get_type(const NumAbsDomain& inv, const Reg& r) cons
 
 // Check whether a given type value is within the range of a given type variable's value.
 bool TypeDomain::has_type(const NumAbsDomain& inv, const Reg& r, const type_encoding_t type) const {
-    const interval_t interval = inv[reg_pack(r).type];
+    const interval_t interval = inv.eval_interval(reg_pack(r).type);
     return interval.contains(type);
 }
 
@@ -246,7 +246,7 @@ NumAbsDomain TypeDomain::join_over_types(const NumAbsDomain& inv, const Reg& reg
     if (types.is_bottom()) {
         return NumAbsDomain::bottom();
     }
-    if (types.is_top()) {
+    if (types.contains(T_UNINIT)) {
         NumAbsDomain res(inv);
         transition(res, T_UNINIT);
         return res;

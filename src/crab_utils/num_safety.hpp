@@ -22,4 +22,9 @@ constexpr auto to_unsigned(std::signed_integral auto x) -> std::make_unsigned_t<
     return static_cast<std::make_unsigned_t<decltype(x)>>(x);
 }
 
+// a guard to ensure that the signedness of the result is the same as the input
+constexpr auto keep_signed(std::signed_integral auto x) -> decltype(x) { return x; }
+
+// a guard to ensure that the signedness of the result is the same as the input
+constexpr auto keep_unsigned(std::unsigned_integral auto x) -> decltype(x) { return x; }
 } // namespace crab

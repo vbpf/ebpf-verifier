@@ -110,11 +110,12 @@ if (VERIFIER_ENABLE_TESTS)
             "./src/test/test_conformance.cpp"
             "./src/test/test_marshal.cpp"
             "./src/test/test_print.cpp"
-            "./src/test/test_sign_extension.cpp"
             "./src/test/test_verify.cpp"
             "./src/test/test_wto.cpp"
             "./src/test/test_yaml.cpp"
+            "./src/test/test_sign_extension.cpp"
     )
+
     set(LIB_SRC ${LIB_SRC} "./src/test/ebpf_yaml.cpp")
 endif ()
 

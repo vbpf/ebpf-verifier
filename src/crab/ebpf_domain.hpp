@@ -3,8 +3,6 @@
 #pragma once
 
 // This file is eBPF-specific, not derived from CRAB.
-
-#include <functional>
 #include <optional>
 
 #include "crab/array_domain.hpp"
@@ -76,8 +74,8 @@ class ebpf_domain_t final {
 
   private:
     // private generic domain functions
-    void operator+=(const linear_constraint_t& cst);
-    void operator-=(variable_t var);
+    void add_constraint(const linear_constraint_t& cst);
+    void havoc(variable_t var);
 
     [[nodiscard]]
     std::optional<uint32_t> get_map_type(const Reg& map_fd_reg) const;

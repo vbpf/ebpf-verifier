@@ -40,7 +40,7 @@ std::optional<variable_t> ebpf_domain_t::get_type_offset_variable(const Reg& reg
     return get_type_offset_variable(reg, m_inv);
 }
 
-string_invariant ebpf_domain_t::to_set() const { return this->m_inv.to_set() + this->stack.to_set(); }
+string_invariant ebpf_domain_t::to_set() const { return m_inv.to_set() + stack.to_set(); }
 
 ebpf_domain_t ebpf_domain_t::top() {
     ebpf_domain_t abs;
@@ -118,21 +118,21 @@ ebpf_domain_t ebpf_domain_t::calculate_constant_limits() {
     using namespace crab::dsl_syntax;
     for (const int i : {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}) {
         const auto r = reg_pack(i);
-        inv += r.svalue <= std::numeric_limits<int32_t>::max();
-        inv += r.svalue >= std::numeric_limits<int32_t>::min();
-        inv += r.uvalue <= std::numeric_limits<uint32_t>::max();
-        inv += r.uvalue >= 0;
-        inv += r.stack_offset <= EBPF_TOTAL_STACK_SIZE;
-        inv += r.stack_offset >= 0;
-        inv += r.shared_offset <= r.shared_region_size;
-        inv += r.shared_offset >= 0;
-        inv += r.packet_offset <= variable_t::packet_size();
-        inv += r.packet_offset >= 0;
+        inv.add_constraint(r.svalue <= std::numeric_limits<int32_t>::max());
+        inv.add_constraint(r.svalue >= std::numeric_limits<int32_t>::min());
+        inv.add_constraint(r.uvalue <= std::numeric_limits<uint32_t>::max());
+        inv.add_constraint(r.uvalue >= 0);
+        inv.add_constraint(r.stack_offset <= EBPF_TOTAL_STACK_SIZE);
+        inv.add_constraint(r.stack_offset >= 0);
+        inv.add_constraint(r.shared_offset <= r.shared_region_size);
+        inv.add_constraint(r.shared_offset >= 0);
+        inv.add_constraint(r.packet_offset <= variable_t::packet_size());
+        inv.add_constraint(r.packet_offset >= 0);
         if (thread_local_options.cfg_opts.check_for_termination) {
             for (const variable_t counter : variable_t::get_loop_counters()) {
-                inv += counter <= std::numeric_limits<int32_t>::max();
-                inv += counter >= 0;
-                inv += counter <= r.svalue;
+                inv.add_constraint(counter <= std::numeric_limits<int32_t>::max());
+                inv.add_constraint(counter >= 0);
+                inv.add_constraint(counter <= r.svalue);
             }
         }
     }
@@ -153,15 +153,15 @@ ebpf_domain_t ebpf_domain_t::narrow(const ebpf_domain_t& other) const {
     return ebpf_domain_t(m_inv.narrow(other.m_inv), stack & other.stack);
 }
 
-void ebpf_domain_t::operator+=(const linear_constraint_t& cst) { m_inv += cst; }
+void ebpf_domain_t::add_constraint(const linear_constraint_t& cst) { m_inv.add_constraint(cst); }
 
-void ebpf_domain_t::operator-=(const variable_t var) { m_inv -= var; }
+void ebpf_domain_t::havoc(const variable_t var) { m_inv.havoc(var); }
 
 // Get the start and end of the range of possible map fd values.
 // In the future, it would be cleaner to use a set rather than an interval
 // for map fds.
 bool ebpf_domain_t::get_map_fd_range(const Reg& map_fd_reg, int32_t* start_fd, int32_t* end_fd) const {
-    const interval_t& map_fd_interval = m_inv[reg_pack(map_fd_reg).map_fd];
+    const interval_t& map_fd_interval = m_inv.eval_interval(reg_pack(map_fd_reg).map_fd);
     const auto lb = map_fd_interval.lb().number();
     const auto ub = map_fd_interval.ub().number();
     if (!lb || !lb->fits<int32_t>() || !ub || !ub->fits<int32_t>()) {
@@ -276,12 +276,12 @@ interval_t ebpf_domain_t::get_map_max_entries(const Reg& map_fd_reg) const {
 extended_number ebpf_domain_t::get_loop_count_upper_bound() const {
     extended_number ub{0};
     for (const variable_t counter : variable_t::get_loop_counters()) {
-        ub = std::max(ub, m_inv[counter].ub());
+        ub = std::max(ub, m_inv.eval_interval(counter).ub());
     }
     return ub;
 }
 
-interval_t ebpf_domain_t::get_r0() const { return m_inv[reg_pack(R0_RETURN_VALUE).svalue]; }
+interval_t ebpf_domain_t::get_r0() const { return m_inv.eval_interval(reg_pack(R0_RETURN_VALUE).svalue); }
 
 std::ostream& operator<<(std::ostream& o, const ebpf_domain_t& dom) {
     if (dom.is_bottom()) {
@@ -295,15 +295,15 @@ std::ostream& operator<<(std::ostream& o, const ebpf_domain_t& dom) {
 void ebpf_domain_t::initialize_packet() {
     using namespace crab::dsl_syntax;
     ebpf_domain_t& inv = *this;
-    inv -= variable_t::packet_size();
-    inv -= variable_t::meta_offset();
+    inv.havoc(variable_t::packet_size());
+    inv.havoc(variable_t::meta_offset());
 
-    inv += 0 <= variable_t::packet_size();
-    inv += variable_t::packet_size() < MAX_PACKET_SIZE;
+    inv.add_constraint(0 <= variable_t::packet_size());
+    inv.add_constraint(variable_t::packet_size() < MAX_PACKET_SIZE);
     const auto info = *thread_local_program_info;
     if (info.type.context_descriptor->meta >= 0) {
-        inv += variable_t::meta_offset() <= 0;
-        inv += variable_t::meta_offset() >= -4098;
+        inv.add_constraint(variable_t::meta_offset() <= 0);
+        inv.add_constraint(variable_t::meta_offset() >= -4098);
     } else {
         inv.m_inv.assign(variable_t::meta_offset(), 0);
     }
@@ -316,7 +316,7 @@ ebpf_domain_t ebpf_domain_t::from_constraints(const std::set<std::string>& const
     }
     auto numeric_ranges = std::vector<interval_t>();
     for (const auto& cst : parse_linear_constraints(constraints, numeric_ranges)) {
-        inv += cst;
+        inv.add_constraint(cst);
     }
     for (const interval_t& range : numeric_ranges) {
         const int start = range.lb().narrow<int>();
@@ -333,8 +333,8 @@ ebpf_domain_t ebpf_domain_t::setup_entry(const bool init_r1) {
     ebpf_domain_t inv;
     const auto r10 = reg_pack(R10_STACK_POINTER);
     constexpr Reg r10_reg{R10_STACK_POINTER};
-    inv.m_inv += EBPF_TOTAL_STACK_SIZE <= r10.svalue;
-    inv.m_inv += r10.svalue <= PTR_MAX;
+    inv.m_inv.add_constraint(EBPF_TOTAL_STACK_SIZE <= r10.svalue);
+    inv.m_inv.add_constraint(r10.svalue <= PTR_MAX);
     inv.m_inv.assign(r10.stack_offset, EBPF_TOTAL_STACK_SIZE);
     // stack_numeric_size would be 0, but TOP has the same result
     // so no need to assign it.
@@ -343,8 +343,8 @@ ebpf_domain_t ebpf_domain_t::setup_entry(const bool init_r1) {
     if (init_r1) {
         const auto r1 = reg_pack(R1_ARG);
         constexpr Reg r1_reg{R1_ARG};
-        inv.m_inv += 1 <= r1.svalue;
-        inv.m_inv += r1.svalue <= PTR_MAX;
+        inv.m_inv.add_constraint(1 <= r1.svalue);
+        inv.m_inv.add_constraint(r1.svalue <= PTR_MAX);
         inv.m_inv.assign(r1.ctx_offset, 0);
         inv.type_inv.assign_type(inv.m_inv, r1_reg, T_CTX);
     }
