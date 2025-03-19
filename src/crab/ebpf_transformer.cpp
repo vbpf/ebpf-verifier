@@ -92,12 +92,13 @@ void ebpf_domain_transform(ebpf_domain_t& inv, const Instruction& ins) {
     if (inv.is_bottom()) {
         return;
     }
+    const auto pre = inv;
     std::visit(ebpf_transformer{inv}, ins);
     if (inv.is_bottom() && !std::holds_alternative<Assume>(ins)) {
         // Fail. raise an exception to stop the analysis.
         std::stringstream msg;
         msg << "Bug! pre-invariant:\n"
-            << inv << "\n followed by instruction: " << ins << "\n"
+            << pre << "\n followed by instruction: " << ins << "\n"
             << "leads to bottom";
         throw std::logic_error(msg.str());
     }
@@ -225,6 +226,9 @@ static linear_constraint_t assume_cst_offsets_reg(const Condition::Op op, const 
 }
 
 void ebpf_transformer::operator()(const Assume& s) {
+    if (m_inv.is_bottom()) {
+        return;
+    }
     const Condition cond = s.cond;
     const auto dst = reg_pack(cond.left);
     if (const auto psrc_reg = std::get_if<Reg>(&cond.right)) {
@@ -270,6 +274,9 @@ constexpr T truncate(T x) noexcept {
 }
 
 void ebpf_transformer::operator()(const Un& stmt) {
+    if (m_inv.is_bottom()) {
+        return;
+    }
     const auto dst = reg_pack(stmt.dst);
     auto swap_endianness = [&](const variable_t v, auto be_or_le) {
         if (m_inv.entail(type_is_number(stmt.dst))) {
@@ -355,6 +362,9 @@ void ebpf_transformer::operator()(const Un& stmt) {
 }
 
 void ebpf_transformer::operator()(const Exit& a) {
+    if (m_inv.is_bottom()) {
+        return;
+    }
     // Clean up any state for the current stack frame.
     const std::string prefix = a.stack_frame_prefix;
     if (prefix.empty()) {
@@ -373,6 +383,9 @@ void ebpf_transformer::operator()(const Jmp&) const {
 }
 
 void ebpf_transformer::operator()(const Packet& a) {
+    if (m_inv.is_bottom()) {
+        return;
+    }
     const auto reg = reg_pack(R0_RETURN_VALUE);
     constexpr Reg r0_reg{R0_RETURN_VALUE};
     type_inv.assign_type(m_inv, r0_reg, T_NUM);
@@ -904,7 +917,12 @@ void ebpf_transformer::do_load_mapfd(const Reg& dst_reg, const int mapfd, const 
     assign_valid_ptr(dst_reg, maybe_null);
 }
 
-void ebpf_transformer::operator()(const LoadMapFd& ins) { do_load_mapfd(ins.dst, ins.mapfd, false); }
+void ebpf_transformer::operator()(const LoadMapFd& ins) {
+    if (m_inv.is_bottom()) {
+        return;
+    }
+    do_load_mapfd(ins.dst, ins.mapfd, false);
+}
 
 void ebpf_transformer::do_load_map_address(const Reg& dst_reg, const int mapfd, const int32_t offset) {
     const EbpfMapDescriptor& desc = thread_local_program_info->platform->get_map_descriptor(mapfd);
@@ -922,7 +940,12 @@ void ebpf_transformer::do_load_map_address(const Reg& dst_reg, const int mapfd, 
     assign_valid_ptr(dst_reg, false);
 }
 
-void ebpf_transformer::operator()(const LoadMapAddress& ins) { do_load_map_address(ins.dst, ins.mapfd, ins.offset); }
+void ebpf_transformer::operator()(const LoadMapAddress& ins) {
+    if (m_inv.is_bottom()) {
+        return;
+    }
+    do_load_map_address(ins.dst, ins.mapfd, ins.offset);
+}
 
 void ebpf_transformer::assign_valid_ptr(const Reg& dst_reg, const bool maybe_null) {
     using namespace crab::dsl_syntax;
@@ -1037,11 +1060,22 @@ static int _movsx_bits(const Bin::Op op) {
 }
 
 void ebpf_transformer::operator()(const Bin& bin) {
+    if (m_inv.is_bottom()) {
+        return;
+    }
     using namespace crab::dsl_syntax;
 
     auto dst = reg_pack(bin.dst);
     int finite_width = bin.is64 ? 64 : 32;
 
+    // TODO: Unusable states and values should be better handled.
+    //       Probably by propagating an error state.
+    if (type_inv.has_type(m_inv, bin.dst, T_UNINIT) &&
+        !std::set{Bin::Op::MOV, Bin::Op::MOVSX8, Bin::Op::MOVSX16, Bin::Op::MOVSX32}.contains(bin.op)) {
+        havoc_register(m_inv, bin.dst);
+        type_inv.havoc_type(m_inv, bin.dst);
+        return;
+    }
     if (auto pimm = std::get_if<Imm>(&bin.v)) {
         // dst += K
         int64_t imm;
@@ -1130,10 +1164,15 @@ void ebpf_transformer::operator()(const Bin& bin) {
         // dst op= src
         auto src_reg = std::get<Reg>(bin.v);
         auto src = reg_pack(src_reg);
+        if (type_inv.has_type(m_inv, src_reg, T_UNINIT)) {
+            havoc_register(m_inv, bin.dst);
+            type_inv.havoc_type(m_inv, bin.dst);
+            return;
+        }
         switch (bin.op) {
         case Bin::Op::ADD: {
             if (type_inv.same_type(m_inv, bin.dst, std::get<Reg>(bin.v))) {
-                // both must be numbers
+                // both must have been checked to be numbers
                 m_inv->add_overflow(dst.svalue, dst.uvalue, src.svalue, finite_width);
             } else {
                 // Here we're not sure that lhs and rhs are the same type; they might be.
@@ -1407,6 +1446,9 @@ void ebpf_transformer::initialize_loop_counter(const label_t& label) {
 }
 
 void ebpf_transformer::operator()(const IncrementLoopCounter& ins) {
+    if (m_inv.is_bottom()) {
+        return;
+    }
     const auto counter = variable_t::loop_counter(to_string(ins.name));
     m_inv->add(counter, 1);
 }

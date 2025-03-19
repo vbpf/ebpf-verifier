@@ -11,9 +11,6 @@ code:
     r1 /= r2
 
 post:
-  - r1.type=number
-  - r1.svalue=6
-  - r1.uvalue=6
   - r2.svalue=1
   - r2.uvalue=1
 

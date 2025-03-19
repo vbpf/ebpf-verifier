@@ -246,7 +246,7 @@ NumAbsDomain TypeDomain::join_over_types(const NumAbsDomain& inv, const Reg& reg
     if (types.is_bottom()) {
         return NumAbsDomain::bottom();
     }
-    if (types.is_top()) {
+    if (types.contains(T_UNINIT)) {
         NumAbsDomain res(inv);
         transition(res, T_UNINIT);
         return res;
