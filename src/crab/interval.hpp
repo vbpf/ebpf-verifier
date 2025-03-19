@@ -110,6 +110,11 @@ class interval_t final {
     }
 
     [[nodiscard]]
+    explicit operator bool() const {
+        return !is_bottom();
+    }
+
+    [[nodiscard]]
     bool is_bottom() const {
         return _lb > _ub;
     }
@@ -123,7 +128,7 @@ class interval_t final {
         if (is_bottom()) {
             return x.is_bottom();
         } else {
-            return (_lb == x._lb) && (_ub == x._ub);
+            return _lb == x._lb && _ub == x._ub;
         }
     }
 
@@ -135,7 +140,7 @@ class interval_t final {
         } else if (x.is_bottom()) {
             return false;
         } else {
-            return (x._lb <= _lb) && (_ub <= x._ub);
+            return x._lb <= _lb && _ub <= x._ub;
         }
     }
 
@@ -176,8 +181,8 @@ class interval_t final {
         } else if (x.is_bottom()) {
             return *this;
         } else {
-            bound_t lb = x._lb < _lb ? ts.get_prev(x._lb) : _lb;
-            bound_t ub = _ub < x._ub ? ts.get_next(x._ub) : _ub;
+            const bound_t lb = x._lb < _lb ? ts.get_prev(x._lb) : _lb;
+            const bound_t ub = _ub < x._ub ? ts.get_next(x._ub) : _ub;
             return interval_t{lb, ub};
         }
     }
@@ -232,7 +237,7 @@ class interval_t final {
         if (is_bottom()) {
             return bound_t{number_t{0}};
         }
-        return _ub - _lb;
+        return _ub - _lb + 1;
     }
 
     [[nodiscard]]
@@ -242,7 +247,7 @@ class interval_t final {
 
     [[nodiscard]]
     std::optional<number_t> singleton() const {
-        if (!is_bottom() && _lb == _ub) {
+        if (is_singleton()) {
             return _lb.number();
         } else {
             return std::optional<number_t>();
@@ -257,176 +262,88 @@ class interval_t final {
         return _lb <= b && b <= _ub;
     }
 
-    friend std::ostream& operator<<(std::ostream& o, const interval_t& interval) {
-        if (interval.is_bottom()) {
-            o << "_|_";
-        } else {
-            o << "[" << interval._lb << ", " << interval._ub << "]";
-        }
-        return o;
-    }
+    friend std::ostream& operator<<(std::ostream& o, const interval_t& interval);
 
     // division and remainder operations
 
     [[nodiscard]]
-    interval_t SDiv(const interval_t& x) const;
+    interval_t sdiv(const interval_t& x) const;
 
     [[nodiscard]]
-    interval_t UDiv(const interval_t& x) const;
+    interval_t udiv(const interval_t& x) const;
 
     [[nodiscard]]
-    interval_t SRem(const interval_t& x) const;
+    interval_t srem(const interval_t& x) const;
 
     [[nodiscard]]
-    interval_t URem(const interval_t& x) const;
+    interval_t urem(const interval_t& x) const;
 
     // bitwise operations
     [[nodiscard]]
-    interval_t And(const interval_t& x) const;
+    interval_t bitwise_and(const interval_t& x) const;
 
     [[nodiscard]]
-    interval_t Or(const interval_t& x) const;
+    interval_t bitwise_or(const interval_t& x) const;
 
     [[nodiscard]]
-    interval_t Xor(const interval_t& x) const;
+    interval_t bitwise_xor(const interval_t& x) const;
 
     [[nodiscard]]
-    interval_t Shl(const interval_t& x) const;
+    interval_t shl(const interval_t& x) const;
 
     [[nodiscard]]
-    interval_t LShr(const interval_t& x) const;
+    interval_t lshr(const interval_t& x) const;
 
     [[nodiscard]]
-    interval_t AShr(const interval_t& x) const;
+    interval_t ashr(const interval_t& x) const;
 
-    interval_t truncate_to_sint(bool is64) const = delete;
+    interval_t sign_extend(bool is64) const = delete;
     [[nodiscard]]
-    interval_t truncate_to_sint(const int width) const {
-        switch (width) {
-        case 8: return truncate_to<int8_t>();
-        case 16: return truncate_to<int16_t>();
-        case 32: return truncate_to<int32_t>();
-        case 64: return truncate_to<int64_t>();
-        default: CRAB_ERROR("Invalid width ", width);
-        }
-    }
+    interval_t sign_extend(int width) const;
 
-    interval_t truncate_to_uint(bool is64) const = delete;
+    interval_t zero_extend(bool is64) const = delete;
     [[nodiscard]]
-    interval_t truncate_to_uint(const int width) const {
-        switch (width) {
-        case 8: return truncate_to<uint8_t>();
-        case 16: return truncate_to<uint16_t>();
-        case 32: return truncate_to<uint32_t>();
-        case 64: return truncate_to<uint64_t>();
-        default: CRAB_ERROR("Invalid width ", width);
-        }
-    }
+    interval_t zero_extend(int width) const;
 
-    template <std::integral T>
+    template <std::signed_integral T>
     [[nodiscard]]
     interval_t truncate_to() const {
-        if (*this <= full<T>()) {
-            return *this;
-        }
-        if (const auto size = finite_size()) {
-            if (size->fits<T>()) {
-                T llb = lb().number()->truncate_to<T>();
-                T lub = ub().number()->truncate_to<T>();
-                if (llb <= lub) {
-                    // Interval can be accurately represented in 64 width.
-                    return interval_t{llb, lub};
-                }
-            }
-        }
-        return full<T>();
+        return sign_extend(static_cast<int>(sizeof(T)) * 8);
+    }
+
+    template <std::unsigned_integral T>
+    [[nodiscard]]
+    interval_t truncate_to() const {
+        return zero_extend(static_cast<int>(sizeof(T)) * 8);
     }
 
     interval_t signed_int(bool is64) const = delete;
     // Return an interval in the range [INT_MIN, INT_MAX] which can only
     // be represented as an svalue.
     static interval_t signed_int(const int width) {
-        switch (width) {
-        case 8: return full<int8_t>();
-        case 16: return full<int16_t>();
-        case 32: return full<int32_t>();
-        case 64: return full<int64_t>();
-        default: CRAB_ERROR("Invalid width ", width);
-        }
+        return interval_t{number_t::min_int(width), number_t::max_int(width)};
     }
 
     interval_t unsigned_int(bool is64) const = delete;
     // Return an interval in the range [0, UINT_MAX] which can only be
     // represented as a uvalue.
-    static interval_t unsigned_int(const int width) {
-        switch (width) {
-        case 8: return full<uint8_t>();
-        case 16: return full<uint16_t>();
-        case 32: return full<uint32_t>();
-        case 64: return full<uint64_t>();
-        default: CRAB_ERROR("Invalid width ", width);
-        }
-    }
+    static interval_t unsigned_int(const int width) { return interval_t{0, number_t::max_uint(width)}; }
 
     interval_t nonnegative(bool is64) const = delete;
     // Return a non-negative interval in the range [0, INT_MAX],
     // which can be represented as both an svalue and a uvalue.
-    static interval_t nonnegative(const int width) {
-        switch (width) {
-        case 8: return nonnegative<int8_t>();
-        case 16: return nonnegative<int16_t>();
-        case 32: return nonnegative<int32_t>();
-        case 64: return nonnegative<int64_t>();
-        default: CRAB_ERROR("Invalid width ", width);
-        }
-    }
+    static interval_t nonnegative(const int width) { return interval_t{number_t{0}, number_t::max_int(width)}; }
 
     interval_t negative(bool is64) const = delete;
     // Return a negative interval in the range [INT_MIN, -1],
     // which can be represented as both an svalue and a uvalue.
-    static interval_t negative(const int width) {
-        switch (width) {
-        case 8: return negative<int8_t>();
-        case 16: return negative<int16_t>();
-        case 32: return negative<int32_t>();
-        case 64: return negative<int64_t>();
-        default: CRAB_ERROR("Invalid width ", width);
-        }
-    }
-
-    template <std::integral T>
-    static interval_t nonnegative() {
-        return {number_t{0}, number_t{std::numeric_limits<T>::max()}};
-    }
-
-    template <std::integral T>
-    static interval_t negative() {
-        return {number_t{std::numeric_limits<T>::min()}, number_t{-1}};
-    }
-
-    template <std::integral T>
-    static interval_t full() {
-        return {number_t{std::numeric_limits<T>::min()}, number_t{std::numeric_limits<T>::max()}};
-    }
-
-    template <std::unsigned_integral T>
-    static interval_t high() {
-        return interval_t{number_t{std::numeric_limits<std::make_signed_t<T>>::max()} + 1,
-                          number_t{std::numeric_limits<T>::max()}};
-    }
+    static interval_t negative(const int width) { return interval_t{number_t::min_int(width), number_t{-1}}; }
 
     interval_t unsigned_high(bool is64) const = delete;
-    // Return an interval in the range [INT_MAX+1, UINT_MAX], which can only
-    // be represented as a uvalue.
+    // Return an interval in the range [INT_MAX+1, UINT_MAX], which can only be represented as a uvalue.
     // The svalue equivalent using the same width would be negative().
     static interval_t unsigned_high(const int width) {
-        switch (width) {
-        case 8: return high<uint8_t>();
-        case 16: return high<uint16_t>();
-        case 32: return high<uint32_t>();
-        case 64: return high<uint64_t>();
-        default: CRAB_ERROR("Invalid width ", width);
-        }
+        return interval_t{number_t::max_int(width) + 1, number_t::max_uint(width)};
     }
 
     [[nodiscard]]

@@ -25,7 +25,18 @@ using std::vector;
 
 namespace crab {
 
+std::ostream& operator<<(std::ostream& o, const number_t& z) { return o << z._n.str(); }
+
 std::string number_t::to_string() const { return _n.str(); }
+
+std::ostream& operator<<(std::ostream& o, const interval_t& interval) {
+    if (interval.is_bottom()) {
+        o << "_|_";
+    } else {
+        o << "[" << interval._lb << ", " << interval._ub << "]";
+    }
+    return o;
+}
 
 std::string interval_t::to_string() const {
     std::ostringstream s;

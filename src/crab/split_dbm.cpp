@@ -1002,10 +1002,10 @@ void SplitDBM::apply(const arith_binop_t op, const variable_t x, const variable_
     case arith_binop_t::SUB: assign(x, linear_expression_t(y).subtract(z)); break;
     // For the rest of operations, we fall back on intervals.
     case arith_binop_t::MUL: set(x, get_interval(y, finite_width) * get_interval(z, finite_width)); break;
-    case arith_binop_t::SDIV: set(x, get_interval(y, finite_width).SDiv(get_interval(z, finite_width))); break;
-    case arith_binop_t::UDIV: set(x, get_interval(y, finite_width).UDiv(get_interval(z, finite_width))); break;
-    case arith_binop_t::SREM: set(x, get_interval(y, finite_width).SRem(get_interval(z, finite_width))); break;
-    case arith_binop_t::UREM: set(x, get_interval(y, finite_width).URem(get_interval(z, finite_width))); break;
+    case arith_binop_t::SDIV: set(x, get_interval(y, finite_width).sdiv(get_interval(z, finite_width))); break;
+    case arith_binop_t::UDIV: set(x, get_interval(y, finite_width).udiv(get_interval(z, finite_width))); break;
+    case arith_binop_t::SREM: set(x, get_interval(y, finite_width).srem(get_interval(z, finite_width))); break;
+    case arith_binop_t::UREM: set(x, get_interval(y, finite_width).urem(get_interval(z, finite_width))); break;
     default: CRAB_ERROR("DBM: unreachable");
     }
     normalize();
@@ -1048,16 +1048,16 @@ void SplitDBM::apply(const arith_binop_t op, const variable_t x, const variable_
         break;
         // For the rest of operations, we fall back on intervals.
     case arith_binop_t::SDIV:
-        set(x, get_interval(y, finite_width).SDiv(interval_t{read_imm_for_sdiv_or_smod(k, finite_width)}));
+        set(x, get_interval(y, finite_width).sdiv(interval_t{read_imm_for_sdiv_or_smod(k, finite_width)}));
         break;
     case arith_binop_t::UDIV:
-        set(x, get_interval(y, finite_width).UDiv(interval_t{read_imm_for_udiv_or_umod(k, finite_width)}));
+        set(x, get_interval(y, finite_width).udiv(interval_t{read_imm_for_udiv_or_umod(k, finite_width)}));
         break;
     case arith_binop_t::SREM:
-        set(x, get_interval(y, finite_width).SRem(interval_t{read_imm_for_sdiv_or_smod(k, finite_width)}));
+        set(x, get_interval(y, finite_width).srem(interval_t{read_imm_for_sdiv_or_smod(k, finite_width)}));
         break;
     case arith_binop_t::UREM:
-        set(x, get_interval(y, finite_width).URem(interval_t{read_imm_for_udiv_or_umod(k, finite_width)}));
+        set(x, get_interval(y, finite_width).urem(interval_t{read_imm_for_udiv_or_umod(k, finite_width)}));
         break;
     default: CRAB_ERROR("DBM: unreachable");
     }
@@ -1073,12 +1073,12 @@ void SplitDBM::apply(bitwise_binop_t op, variable_t x, variable_t y, variable_t 
     interval_t zi = this->operator[](z);
     interval_t xi = interval_t::bottom();
     switch (op) {
-    case bitwise_binop_t::AND: xi = yi.And(zi); break;
-    case bitwise_binop_t::OR: xi = yi.Or(zi); break;
-    case bitwise_binop_t::XOR: xi = yi.Xor(zi); break;
-    case bitwise_binop_t::SHL: xi = yi.Shl(zi); break;
-    case bitwise_binop_t::LSHR: xi = yi.LShr(zi); break;
-    case bitwise_binop_t::ASHR: xi = yi.AShr(zi); break;
+    case bitwise_binop_t::AND: xi = yi.bitwise_and(zi); break;
+    case bitwise_binop_t::OR: xi = yi.bitwise_or(zi); break;
+    case bitwise_binop_t::XOR: xi = yi.bitwise_xor(zi); break;
+    case bitwise_binop_t::SHL: xi = yi.shl(zi); break;
+    case bitwise_binop_t::LSHR: xi = yi.lshr(zi); break;
+    case bitwise_binop_t::ASHR: xi = yi.ashr(zi); break;
     default: CRAB_ERROR("DBM: unreachable");
     }
     set(x, xi);
@@ -1097,12 +1097,12 @@ void SplitDBM::apply(bitwise_binop_t op, variable_t x, variable_t y, const numbe
     interval_t xi = interval_t::bottom();
 
     switch (op) {
-    case bitwise_binop_t::AND: xi = yi.And(zi); break;
-    case bitwise_binop_t::OR: xi = yi.Or(zi); break;
-    case bitwise_binop_t::XOR: xi = yi.Xor(zi); break;
-    case bitwise_binop_t::SHL: xi = yi.Shl(zi); break;
-    case bitwise_binop_t::LSHR: xi = yi.LShr(zi); break;
-    case bitwise_binop_t::ASHR: xi = yi.AShr(zi); break;
+    case bitwise_binop_t::AND: xi = yi.bitwise_and(zi); break;
+    case bitwise_binop_t::OR: xi = yi.bitwise_or(zi); break;
+    case bitwise_binop_t::XOR: xi = yi.bitwise_xor(zi); break;
+    case bitwise_binop_t::SHL: xi = yi.shl(zi); break;
+    case bitwise_binop_t::LSHR: xi = yi.lshr(zi); break;
+    case bitwise_binop_t::ASHR: xi = yi.ashr(zi); break;
     default: CRAB_ERROR("DBM: unreachable");
     }
     set(x, xi);
@@ -1351,12 +1351,12 @@ static interval_t get_interval(const SplitDBM::vert_map_t& m, const SplitDBM::gr
     extended_number lb = extended_number::minus_infinity();
     extended_number ub = extended_number::plus_infinity();
     if (r.elem(v, 0)) {
-        lb = x.is_unsigned() ? (-number_t(r.edge_val(v, 0))).truncate_to_uint(finite_width)
-                             : (-number_t(r.edge_val(v, 0))).truncate_to_sint(finite_width);
+        lb = x.is_unsigned() ? (-number_t(r.edge_val(v, 0))).zero_extend(finite_width)
+                             : (-number_t(r.edge_val(v, 0))).sign_extend(finite_width);
     }
     if (r.elem(0, v)) {
-        ub = x.is_unsigned() ? number_t(r.edge_val(0, v)).truncate_to_uint(finite_width)
-                             : number_t(r.edge_val(0, v)).truncate_to_sint(finite_width);
+        ub = x.is_unsigned() ? number_t(r.edge_val(0, v)).zero_extend(finite_width)
+                             : number_t(r.edge_val(0, v)).sign_extend(finite_width);
     }
     return {lb, ub};
 }
