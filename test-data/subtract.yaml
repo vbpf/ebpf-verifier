@@ -25,8 +25,7 @@ code:
 post:
   - r0.type=number
   - r0.svalue=[2147483645, 2147483647]
-  - r0.uvalue=[2147483645, 2147483647]
-  - r0.svalue=r0.uvalue
+  - r0.uvalue=r0.svalue
 ---
 test-case: subtract a register from itself
 
@@ -101,7 +100,8 @@ test-case: allow subtraction of equal dual-typed pointers
 
 pre: ["r2.type=[-2, -1]", "r2.packet_offset=4", "r2.stack_offset=4",
       "r3.type=[-2, -1]", "r3.packet_offset=8", "r3.stack_offset=8",
-      "r2.type=r3.type", "meta_offset=-4", "packet_size=[16,32]"]
+      "r2.type=r3.type", "meta_offset=-4", "packet_size=[16,32]",
+      "r10.type=stack", "r10.stack_offset=512"]
 
 code:
   <start>: |
@@ -114,6 +114,8 @@ post:
   - r3.type=number
   - r3.svalue=4
   - r3.uvalue=4
+  - r10.type=stack
+  - r10.stack_offset=512
   - meta_offset=-4
   - packet_size=[16, 32]
 
@@ -137,8 +139,9 @@ post:
 ---
 test-case: disallow subtraction of pointer from invalid pointer to a singleton region
 
-pre: ["r1.type=stack", "r1.stack_offset=[500, 580]",
-      "r2.type=stack", "r2.stack_offset=[140, 230]"]
+pre: ["r1.type=stack", "r1.stack_offset=[4040, 4130]",
+      "r2.type=stack", "r2.stack_offset=[140, 230]",
+      "r10.type=stack", "r10.stack_offset=4096"]
 
 code:
   <start>: |
@@ -146,10 +149,12 @@ code:
 
 post:
   - r1.type=number
-  - r1.svalue=[270, 440]
-  - r1.uvalue=[270, 440]
-  - r1.svalue=r1.uvalue
+  - r1.svalue=[3810, 3990]
+  - r1.uvalue=r1.svalue
   - r2.type=stack
   - r2.stack_offset=[140, 230]
+  - r10.type=stack
+  - r10.stack_offset=4096
 messages:
-  - "0: Upper bound must be at most EBPF_STACK_SIZE (r2.type == number or r1.type == r2.type in {ctx, stack, packet})"
+  - "0: Upper bound must be at most EBPF_TOTAL_STACK_SIZE (r2.type == number or r1.type == r2.type in {ctx, stack, packet})"
+  - "0: Lower bound must be at least r10.stack_offset - EBPF_SUBPROGRAM_STACK_SIZE (r2.type == number or r1.type == r2.type in {ctx, stack, packet})"

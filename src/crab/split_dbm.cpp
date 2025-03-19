@@ -6,13 +6,14 @@
 
 #include "crab/split_dbm.hpp"
 #include "crab_utils/debug.hpp"
+#include "crab_utils/graph_ops.hpp"
 #include "crab_utils/stats.hpp"
 #include "string_constraints.hpp"
 #include "type_encoding.hpp"
 
 namespace crab::domains {
 
-static std::optional<SplitDBM::vert_id> try_at(const SplitDBM::vert_map_t& map, variable_t v) {
+static std::optional<SplitDBM::vert_id> try_at(const SplitDBM::vert_map_t& map, const variable_t v) {
     const auto it = map.find(v);
     if (it == map.end()) {
         return std::nullopt;
@@ -79,7 +80,7 @@ void SplitDBM::diffcsts_of_assign(variable_t x, const linear_expression_t& exp,
         return;
     }
 
-    for (auto [y, n] : exp.variable_terms()) {
+    for (const auto& [y, n] : exp.variable_terms()) {
         Weight coeff;
         if (convert_NtoW_overflow(n, coeff)) {
             continue;
@@ -122,7 +123,7 @@ void SplitDBM::diffcsts_of_assign(variable_t x, const linear_expression_t& exp,
         // coefficient
         diff_csts.emplace_back(*unbounded_var, residual);
     } else {
-        for (auto [v, n] : terms) {
+        for (const auto& [v, n] : terms) {
             diff_csts.emplace_back(v, residual - n);
         }
     }
@@ -155,7 +156,7 @@ void SplitDBM::diffcsts_of_lin_leq(const linear_expression_t& exp,
     std::optional<variable_t> unbounded_ubvar;
 
     std::vector<std::pair<std::pair<Weight, variable_t>, Weight>> pos_terms, neg_terms;
-    for (auto [y, n] : exp.variable_terms()) {
+    for (const auto& [y, n] : exp.variable_terms()) {
         Weight coeff;
         if (convert_NtoW_overflow(n, coeff)) {
             continue;
@@ -196,14 +197,14 @@ void SplitDBM::diffcsts_of_lin_leq(const linear_expression_t& exp,
     }
 
     if (unbounded_lbvar) {
-        variable_t x(*unbounded_lbvar);
+        variable_t x{*unbounded_lbvar};
         if (unbounded_ubvar) {
             if (unbounded_lbcoeff == Weight(1) && unbounded_ubcoeff == Weight(1)) {
                 csts.push_back({{x, *unbounded_ubvar}, exp_ub});
             }
         } else {
             if (unbounded_lbcoeff == Weight(1)) {
-                for (auto [nv, k] : neg_terms) {
+                for (const auto& [nv, k] : neg_terms) {
                     csts.push_back({{x, nv.second}, exp_ub - k});
                 }
             }
@@ -212,28 +213,32 @@ void SplitDBM::diffcsts_of_lin_leq(const linear_expression_t& exp,
         }
     } else {
         if (unbounded_ubvar) {
-            variable_t y(*unbounded_ubvar);
+            variable_t y{*unbounded_ubvar};
             if (unbounded_ubcoeff == Weight(1)) {
-                for (auto [nv, k] : pos_terms) {
+                for (const auto& [nv, k] : pos_terms) {
                     csts.push_back({{nv.second, y}, exp_ub + k});
                 }
             }
             // Add bounds for y
             lbs.emplace_back(y, -exp_ub / unbounded_ubcoeff);
         } else {
-            for (auto [neg_nv, neg_k] : neg_terms) {
-                for (auto [pos_nv, pos_k] : pos_terms) {
+            for (const auto& [neg_nv, neg_k] : neg_terms) {
+                for (const auto& [pos_nv, pos_k] : pos_terms) {
                     csts.push_back({{pos_nv.second, neg_nv.second}, exp_ub - neg_k + pos_k});
                 }
             }
-            for (auto [neg_nv, neg_k] : neg_terms) {
+            for (const auto& [neg_nv, neg_k] : neg_terms) {
                 lbs.emplace_back(neg_nv.second, -exp_ub / neg_nv.first + neg_k);
             }
-            for (auto [pos_nv, pos_k] : pos_terms) {
+            for (const auto& [pos_nv, pos_k] : pos_terms) {
                 ubs.emplace_back(pos_nv.second, exp_ub / pos_nv.first + pos_k);
             }
         }
     }
+}
+
+static GraphOps::PotentialFunction index_to_call(const GraphOps::WeightVector& p) {
+    return [&p](GraphOps::vert_id v) -> GraphOps::Weight { return p[v]; };
 }
 
 bool SplitDBM::add_linear_leq(const linear_expression_t& exp) {
@@ -241,9 +246,9 @@ bool SplitDBM::add_linear_leq(const linear_expression_t& exp) {
     std::vector<diffcst_t> csts;
     diffcsts_of_lin_leq(exp, csts, lbs, ubs);
 
-    for (auto [var, n] : lbs) {
+    for (const auto& [var, n] : lbs) {
         CRAB_LOG("zones-split", std::cout << var << ">=" << n << "\n");
-        vert_id vert = get_vert(var);
+        const vert_id vert = get_vert(var);
         if (auto w = g.lookup(vert, 0)) {
             if (*w <= -n) {
                 continue;
@@ -255,9 +260,9 @@ bool SplitDBM::add_linear_leq(const linear_expression_t& exp) {
             return false;
         }
     }
-    for (auto [var, n] : ubs) {
+    for (const auto& [var, n] : ubs) {
         CRAB_LOG("zones-split", std::cout << var << "<=" << n << "\n");
-        vert_id vert = get_vert(var);
+        const vert_id vert = get_vert(var);
         if (auto w = g.lookup(0, vert)) {
             if (*w <= n) {
                 continue;
@@ -269,18 +274,18 @@ bool SplitDBM::add_linear_leq(const linear_expression_t& exp) {
         }
     }
 
-    for (auto [diff, k] : csts) {
+    for (const auto& [diff, k] : csts) {
         CRAB_LOG("zones-split", std::cout << diff.first << "-" << diff.second << "<=" << k << "\n");
 
-        vert_id src = get_vert(diff.second);
-        vert_id dest = get_vert(diff.first);
+        const vert_id src = get_vert(diff.second);
+        const vert_id dest = get_vert(diff.first);
         g.update_edge(src, k, dest);
         if (!repair_potential(src, dest)) {
             return false;
         }
-        GrOps::close_over_edge(g, src, dest);
+        GraphOps::close_over_edge(g, src, dest);
     }
-    GrOps::apply_delta(g, GrOps::close_after_assign(g, potential, 0));
+    GraphOps::apply_delta(g, GraphOps::close_after_assign(g, index_to_call(potential), 0));
     normalize();
     return true;
 }
@@ -323,7 +328,7 @@ bool SplitDBM::add_univar_disequation(variable_t x, const number_t& n) {
                     return false;
                 }
                 // Update other bounds
-                for (auto e : g.e_preds(v)) {
+                for (const auto e : g.e_preds(v)) {
                     if (e.vert == 0) {
                         continue;
                     }
@@ -349,7 +354,7 @@ bool SplitDBM::add_univar_disequation(variable_t x, const number_t& n) {
                     return false;
                 }
                 // Update other bounds
-                for (auto e : g.e_succs(v)) {
+                for (const auto e : g.e_succs(v)) {
                     if (e.vert == 0) {
                         continue;
                     }
@@ -384,7 +389,7 @@ bool SplitDBM::operator<=(const SplitDBM& o) const {
     // Set up a mapping from o to this.
     std::vector<unsigned int> vert_renaming(o.g.size(), -1);
     vert_renaming[0] = 0;
-    for (auto [v, n] : o.vert_map) {
+    for (const auto& [v, n] : o.vert_map) {
         if (o.g.succs(n).size() == 0 && o.g.preds(n).size() == 0) {
             continue;
         }
@@ -405,7 +410,7 @@ bool SplitDBM::operator<=(const SplitDBM& o) const {
 
         assert(vert_renaming[ox] != (unsigned)-1);
         vert_id x = vert_renaming[ox];
-        for (auto edge : o.g.e_succs(ox)) {
+        for (const auto edge : o.g.e_succs(ox)) {
             vert_id oy = edge.vert;
             assert(vert_renaming[oy] != (unsigned)-1);
             vert_id y = vert_renaming[oy];
@@ -463,7 +468,7 @@ SplitDBM SplitDBM::operator|(const SplitDBM& o) const& {
     perm_y.push_back(0);
     out_revmap.push_back(std::nullopt);
 
-    for (auto [v, n] : vert_map) {
+    for (const auto& [v, n] : vert_map) {
         if (auto y = try_at(o.vert_map, v)) {
             // Variable exists in both
             out_vmap.emplace(v, gsl::narrow<vert_id>(perm_x.size()));
@@ -501,9 +506,9 @@ SplitDBM SplitDBM::operator|(const SplitDBM& o) const& {
     }
     // Apply the deferred relations, and re-close.
     bool is_closed;
-    graph_t g_rx(GrOps::meet(gx, g_ix_ry, is_closed));
+    graph_t g_rx(GraphOps::meet(gx, g_ix_ry, is_closed));
     if (!is_closed) {
-        GrOps::apply_delta(g_rx, GrOps::close_after_meet(SubGraph(g_rx, 0), pot_rx, gx, g_ix_ry));
+        GraphOps::apply_delta(g_rx, GraphOps::close_after_meet(SubGraph(g_rx, 0), index_to_call(pot_rx), gx, g_ix_ry));
     }
 
     graph_t g_rx_iy;
@@ -522,14 +527,14 @@ SplitDBM SplitDBM::operator|(const SplitDBM& o) const& {
         }
     }
     // Similarly, should use a SubGraph view.
-    graph_t g_ry(GrOps::meet(gy, g_rx_iy, is_closed));
+    graph_t g_ry(GraphOps::meet(gy, g_rx_iy, is_closed));
     if (!is_closed) {
-        GrOps::apply_delta(g_ry, GrOps::close_after_meet(SubGraph(g_ry, 0), pot_ry, gy, g_rx_iy));
+        GraphOps::apply_delta(g_ry, GraphOps::close_after_meet(SubGraph(g_ry, 0), index_to_call(pot_ry), gy, g_rx_iy));
     }
 
     // We now have the relevant set of relations. Because g_rx and g_ry are closed,
     // the result is also closed.
-    graph_t join_g(GrOps::join(g_rx, g_ry));
+    graph_t join_g(GraphOps::join(g_rx, g_ry));
 
     // Now reapply the missing independent relations.
     // Need to derive vert_ids from lb_up/lb_down, and make sure the vertices exist
@@ -626,7 +631,7 @@ SplitDBM SplitDBM::widen(const SplitDBM& o) const {
     std::vector<vert_id> perm_y = {0};
     vert_map_t out_vmap;
     rev_map_t out_revmap = {std::nullopt};
-    for (auto [v, n] : vert_map) {
+    for (const auto& [v, n] : vert_map) {
         if (auto y = try_at(o.vert_map, v)) {
             // Variable exists in both
             out_vmap.emplace(v, gsl::narrow<vert_id>(perm_x.size()));
@@ -646,7 +651,7 @@ SplitDBM SplitDBM::widen(const SplitDBM& o) const {
 
     // Now perform the widening
     vert_set_t widen_unstable(unstable);
-    graph_t widen_g(GrOps::widen(gx, gy, widen_unstable));
+    graph_t widen_g(GraphOps::widen(gx, gy, widen_unstable));
 
     SplitDBM res(std::move(out_vmap), std::move(out_revmap), std::move(widen_g), std::move(widen_pot),
                  std::move(widen_unstable));
@@ -683,7 +688,7 @@ std::optional<SplitDBM> SplitDBM::meet(const SplitDBM& o) const {
     perm_y.push_back(0);
     meet_pi.emplace_back(0);
     meet_rev.push_back(std::nullopt);
-    for (auto [v, n] : vert_map) {
+    for (const auto& [v, n] : vert_map) {
         vert_id vv = gsl::narrow<vert_id>(perm_x.size());
         meet_verts.emplace(v, vv);
         meet_rev.push_back(v);
@@ -694,7 +699,7 @@ std::optional<SplitDBM> SplitDBM::meet(const SplitDBM& o) const {
     }
 
     // Add missing mappings from the right operand.
-    for (auto [v, n] : o.vert_map) {
+    for (const auto& [v, n] : o.vert_map) {
         auto it = meet_verts.find(v);
 
         if (it == meet_verts.end()) {
@@ -717,30 +722,31 @@ std::optional<SplitDBM> SplitDBM::meet(const SplitDBM& o) const {
     GraphPerm gy(perm_y, o.g);
 
     // Compute the syntactic meet of the permuted graphs.
-    bool is_closed;
-    graph_t meet_g(GrOps::meet(gx, gy, is_closed));
+    bool is_closed{};
+    graph_t meet_g(GraphOps::meet(gx, gy, is_closed));
 
     // Compute updated potentials on the zero-enriched graph
     // vector<Weight> meet_pi(meet_g.size());
     // We've warm-started pi with the operand potentials
-    if (!GrOps::select_potentials(meet_g, meet_pi)) {
+    if (!GraphOps::select_potentials(meet_g, meet_pi)) {
         // Potentials cannot be selected -- state is infeasible.
         return {};
     }
 
     if (!is_closed) {
-        GrOps::apply_delta(meet_g, GrOps::close_after_meet(SubGraph(meet_g, 0), meet_pi, gx, gy));
+        const auto potential_func = index_to_call(meet_pi);
+        GraphOps::apply_delta(meet_g, GraphOps::close_after_meet(SubGraph(meet_g, 0), potential_func, gx, gy));
 
         // Recover updated LBs and UBs.<
 
-        GrOps::apply_delta(meet_g, GrOps::close_after_assign(meet_g, meet_pi, 0));
+        GraphOps::apply_delta(meet_g, GraphOps::close_after_assign(meet_g, potential_func, 0));
     }
     SplitDBM res(std::move(meet_verts), std::move(meet_rev), std::move(meet_g), std::move(meet_pi), vert_set_t());
     CRAB_LOG("zones-split", std::cout << "Result meet:\n" << res << "\n");
     return res;
 }
 
-void SplitDBM::operator-=(variable_t v) {
+void SplitDBM::havoc(const variable_t v) {
     if (const auto y = try_at(vert_map, v)) {
         g.forget(*y);
         rev_map[*y] = std::nullopt;
@@ -785,8 +791,7 @@ bool SplitDBM::add_constraint(const linear_constraint_t& cst) {
     case constraint_kind_t::EQUALS_ZERO: {
         const linear_expression_t& exp = cst.expression();
         if (!add_linear_leq(exp) || !add_linear_leq(exp.negate())) {
-            CRAB_LOG("zones-split", std::cout << " ~~> _|_"
-                                              << "\n");
+            CRAB_LOG("zones-split", std::cout << " ~~> _|_" << "\n");
             return false;
         }
         // g.check_adjs();
@@ -826,7 +831,7 @@ void SplitDBM::assign(variable_t lhs, const linear_expression_t& e) {
     if (value_interval.lb().is_finite()) {
         Weight tmp;
         if (convert_NtoW_overflow(-*value_interval.lb().number(), tmp)) {
-            operator-=(lhs);
+            havoc(lhs);
             CRAB_LOG("zones-split", std::cout << "---" << lhs << ":=" << e << "\n" << *this << "\n");
             normalize();
             return;
@@ -836,7 +841,7 @@ void SplitDBM::assign(variable_t lhs, const linear_expression_t& e) {
     if (value_interval.ub().is_finite()) {
         Weight tmp;
         if (convert_NtoW_overflow(*value_interval.ub().number(), tmp)) {
-            operator-=(lhs);
+            havoc(lhs);
             CRAB_LOG("zones-split", std::cout << "---" << lhs << ":=" << e << "\n" << *this << "\n");
             normalize();
             return;
@@ -864,7 +869,7 @@ void SplitDBM::assign(variable_t lhs, const linear_expression_t& e) {
 
     Weight e_val;
     if (eval_expression_overflow(e, e_val)) {
-        operator-=(lhs);
+        havoc(lhs);
         return;
     }
     // Allocate a new vertex for x
@@ -879,19 +884,19 @@ void SplitDBM::assign(variable_t lhs, const linear_expression_t& e) {
     }
 
     {
-        edge_vector delta;
-        for (auto [var, n] : diffs_lb) {
+        GraphOps::edge_vector delta;
+        for (const auto& [var, n] : diffs_lb) {
             delta.emplace_back(vert, get_vert(var), -n);
         }
 
-        for (auto [var, n] : diffs_ub) {
+        for (const auto& [var, n] : diffs_ub) {
             delta.emplace_back(get_vert(var), vert, n);
         }
 
         // apply_delta should be safe here, as x has no edges in G.
-        GrOps::apply_delta(g, delta);
+        GraphOps::apply_delta(g, delta);
     }
-    GrOps::apply_delta(g, GrOps::close_after_assign(SubGraph(g, 0), potential, vert));
+    GraphOps::apply_delta(g, GraphOps::close_after_assign(SubGraph(g, 0), index_to_call(potential), vert));
 
     if (lb_w) {
         g.update_edge(vert, *lb_w, 0);
@@ -900,7 +905,7 @@ void SplitDBM::assign(variable_t lhs, const linear_expression_t& e) {
         g.update_edge(0, *ub_w, vert);
     }
     // Clear the old x vertex
-    operator-=(lhs);
+    havoc(lhs);
     vert_map.emplace(lhs, vert);
 
     normalize();
@@ -923,9 +928,15 @@ class vert_set_wrap_t {
   public:
     explicit vert_set_wrap_t(const SplitDBM::vert_set_t& _vs) : vs(_vs) {}
 
-    bool operator[](SplitDBM::vert_id v) const { return vs.contains(v); }
+    bool operator[](const SplitDBM::vert_id v) const { return vs.contains(v); }
     const SplitDBM::vert_set_t& vs;
 };
+
+bool SplitDBM::repair_potential(vert_id src, vert_id dest) {
+    return GraphOps::repair_potential(g, potential, src, dest);
+}
+
+void SplitDBM::clear_thread_local_state() { GraphOps::clear_thread_local_state(); }
 
 void SplitDBM::normalize() {
     CrabStats::count("SplitDBM.count.normalize");
@@ -937,22 +948,23 @@ void SplitDBM::normalize() {
         return;
     }
 
-    edge_vector delta;
-    // GrOps::close_after_widen(g, potential, vert_set_wrap_t(unstable), delta);
+    GraphOps::edge_vector delta;
+    // GraphOps::close_after_widen(g, potential, vert_set_wrap_t(unstable), delta);
     // GKG: Check
-    GrOps::apply_delta(g, GrOps::close_after_widen(SubGraph(g, 0), potential, vert_set_wrap_t(unstable)));
+    const auto p = index_to_call(potential);
+    GraphOps::apply_delta(g, GraphOps::close_after_widen(SubGraph(g, 0), p, vert_set_wrap_t(unstable)));
     // Retrieve variable bounds
-    GrOps::apply_delta(g, GrOps::close_after_assign(g, potential, 0));
+    GraphOps::apply_delta(g, GraphOps::close_after_assign(g, p, 0));
 
     unstable.clear();
 }
 
-void SplitDBM::set(variable_t x, const interval_t& intv) {
+void SplitDBM::set(const variable_t x, const interval_t& intv) {
     CrabStats::count("SplitDBM.count.assign");
     ScopedCrabStats __st__("SplitDBM.assign");
     assert(!intv.is_bottom());
 
-    this->operator-=(x);
+    havoc(x);
 
     if (intv.is_top()) {
         return;
@@ -980,7 +992,8 @@ void SplitDBM::set(variable_t x, const interval_t& intv) {
     normalize();
 }
 
-void SplitDBM::apply(arith_binop_t op, variable_t x, variable_t y, variable_t z, int finite_width) {
+void SplitDBM::apply(const arith_binop_t op, const variable_t x, const variable_t y, const variable_t z,
+                     const int finite_width) {
     CrabStats::count("SplitDBM.count.apply");
     ScopedCrabStats __st__("SplitDBM.apply");
 
@@ -989,28 +1002,63 @@ void SplitDBM::apply(arith_binop_t op, variable_t x, variable_t y, variable_t z,
     case arith_binop_t::SUB: assign(x, linear_expression_t(y).subtract(z)); break;
     // For the rest of operations, we fall back on intervals.
     case arith_binop_t::MUL: set(x, get_interval(y, finite_width) * get_interval(z, finite_width)); break;
-    case arith_binop_t::SDIV: set(x, get_interval(y, finite_width).SDiv(get_interval(z, finite_width))); break;
-    case arith_binop_t::UDIV: set(x, get_interval(y, finite_width).UDiv(get_interval(z, finite_width))); break;
-    case arith_binop_t::SREM: set(x, get_interval(y, finite_width).SRem(get_interval(z, finite_width))); break;
-    case arith_binop_t::UREM: set(x, get_interval(y, finite_width).URem(get_interval(z, finite_width))); break;
+    case arith_binop_t::SDIV: set(x, get_interval(y, finite_width).sdiv(get_interval(z, finite_width))); break;
+    case arith_binop_t::UDIV: set(x, get_interval(y, finite_width).udiv(get_interval(z, finite_width))); break;
+    case arith_binop_t::SREM: set(x, get_interval(y, finite_width).srem(get_interval(z, finite_width))); break;
+    case arith_binop_t::UREM: set(x, get_interval(y, finite_width).urem(get_interval(z, finite_width))); break;
     default: CRAB_ERROR("DBM: unreachable");
     }
     normalize();
 }
 
-void SplitDBM::apply(arith_binop_t op, variable_t x, variable_t y, const number_t& k, int finite_width) {
+// As defined in the BPF ISA specification, the immediate value of an unsigned modulo and division is treated
+// differently depending on the width:
+// * for 32 bit, as a 32-bit unsigned integer
+// * for 64 bit, as a 32-bit (not 64 bit) signed integer
+static number_t read_imm_for_udiv_or_umod(const number_t& imm, const int width) {
+    assert(width == 32 || width == 64);
+    if (width == 32) {
+        return number_t{imm.cast_to<uint32_t>()};
+    }
+    return number_t{imm.cast_to<int32_t>()};
+}
+
+// As defined in the BPF ISA specification, the immediate value of a signed modulo and division is treated
+// differently depending on the width:
+// * for 32 bit, as a 32-bit signed integer
+// * for 64 bit, as a 64-bit signed integer
+static number_t read_imm_for_sdiv_or_smod(const number_t& imm, const int width) {
+    assert(width == 32 || width == 64);
+    if (width == 32) {
+        return number_t{imm.cast_to<int32_t>()};
+    }
+    return number_t{imm.cast_to<int64_t>()};
+}
+
+void SplitDBM::apply(const arith_binop_t op, const variable_t x, const variable_t y, const number_t& k,
+                     const int finite_width) {
     CrabStats::count("SplitDBM.count.apply");
     ScopedCrabStats __st__("SplitDBM.apply");
 
     switch (op) {
     case arith_binop_t::ADD: assign(x, linear_expression_t(y).plus(k)); break;
     case arith_binop_t::SUB: assign(x, linear_expression_t(y).subtract(k)); break;
-    case arith_binop_t::MUL: assign(x, linear_expression_t(k, y)); break;
-    // For the rest of operations, we fall back on intervals.
-    case arith_binop_t::SDIV: set(x, get_interval(y, finite_width).SDiv(interval_t(k))); break;
-    case arith_binop_t::UDIV: set(x, get_interval(y, finite_width).UDiv(interval_t(k))); break;
-    case arith_binop_t::SREM: set(x, get_interval(y, finite_width).SRem(interval_t(k))); break;
-    case arith_binop_t::UREM: set(x, get_interval(y, finite_width).URem(interval_t(k))); break;
+    case arith_binop_t::MUL:
+        assign(x, linear_expression_t(k, y));
+        break;
+        // For the rest of operations, we fall back on intervals.
+    case arith_binop_t::SDIV:
+        set(x, get_interval(y, finite_width).sdiv(interval_t{read_imm_for_sdiv_or_smod(k, finite_width)}));
+        break;
+    case arith_binop_t::UDIV:
+        set(x, get_interval(y, finite_width).udiv(interval_t{read_imm_for_udiv_or_umod(k, finite_width)}));
+        break;
+    case arith_binop_t::SREM:
+        set(x, get_interval(y, finite_width).srem(interval_t{read_imm_for_sdiv_or_smod(k, finite_width)}));
+        break;
+    case arith_binop_t::UREM:
+        set(x, get_interval(y, finite_width).urem(interval_t{read_imm_for_udiv_or_umod(k, finite_width)}));
+        break;
     default: CRAB_ERROR("DBM: unreachable");
     }
     normalize();
@@ -1025,12 +1073,12 @@ void SplitDBM::apply(bitwise_binop_t op, variable_t x, variable_t y, variable_t 
     interval_t zi = this->operator[](z);
     interval_t xi = interval_t::bottom();
     switch (op) {
-    case bitwise_binop_t::AND: xi = yi.And(zi); break;
-    case bitwise_binop_t::OR: xi = yi.Or(zi); break;
-    case bitwise_binop_t::XOR: xi = yi.Xor(zi); break;
-    case bitwise_binop_t::SHL: xi = yi.Shl(zi); break;
-    case bitwise_binop_t::LSHR: xi = yi.LShr(zi); break;
-    case bitwise_binop_t::ASHR: xi = yi.AShr(zi); break;
+    case bitwise_binop_t::AND: xi = yi.bitwise_and(zi); break;
+    case bitwise_binop_t::OR: xi = yi.bitwise_or(zi); break;
+    case bitwise_binop_t::XOR: xi = yi.bitwise_xor(zi); break;
+    case bitwise_binop_t::SHL: xi = yi.shl(zi); break;
+    case bitwise_binop_t::LSHR: xi = yi.lshr(zi); break;
+    case bitwise_binop_t::ASHR: xi = yi.ashr(zi); break;
     default: CRAB_ERROR("DBM: unreachable");
     }
     set(x, xi);
@@ -1049,12 +1097,12 @@ void SplitDBM::apply(bitwise_binop_t op, variable_t x, variable_t y, const numbe
     interval_t xi = interval_t::bottom();
 
     switch (op) {
-    case bitwise_binop_t::AND: xi = yi.And(zi); break;
-    case bitwise_binop_t::OR: xi = yi.Or(zi); break;
-    case bitwise_binop_t::XOR: xi = yi.Xor(zi); break;
-    case bitwise_binop_t::SHL: xi = yi.Shl(zi); break;
-    case bitwise_binop_t::LSHR: xi = yi.LShr(zi); break;
-    case bitwise_binop_t::ASHR: xi = yi.AShr(zi); break;
+    case bitwise_binop_t::AND: xi = yi.bitwise_and(zi); break;
+    case bitwise_binop_t::OR: xi = yi.bitwise_or(zi); break;
+    case bitwise_binop_t::XOR: xi = yi.bitwise_xor(zi); break;
+    case bitwise_binop_t::SHL: xi = yi.shl(zi); break;
+    case bitwise_binop_t::LSHR: xi = yi.lshr(zi); break;
+    case bitwise_binop_t::ASHR: xi = yi.ashr(zi); break;
     default: CRAB_ERROR("DBM: unreachable");
     }
     set(x, xi);
@@ -1066,15 +1114,15 @@ void SplitDBM::forget(const variable_vector_t& variables) {
         return;
     }
 
-    for (auto v : variables) {
+    for (const auto v : variables) {
         if (vert_map.contains(v)) {
-            operator-=(v);
+            havoc(v);
         }
     }
     normalize();
 }
 
-static std::string to_string(variable_t vd, variable_t vs, const SplitDBM::Weight& w, bool eq) {
+static std::string to_string(const variable_t vd, const variable_t vs, const SplitDBM::Weight& w, const bool eq) {
     std::stringstream elem;
     if (eq) {
         if (w.operator>(0)) {
@@ -1094,30 +1142,72 @@ string_invariant SplitDBM::to_set() const {
     if (this->is_top()) {
         return string_invariant::top();
     }
-
-    std::set<std::string> result;
-    // Intervals
-
     // Extract all the edges
-    SubGraph g_excl(this->g, 0);
+    SubGraph g_excl{this->g, 0};
+
+    std::map<variable_t, variable_t> equivalence_classes;
+    std::set<std::tuple<variable_t, variable_t, Weight>> diff_csts;
+    for (const vert_id s : g_excl.verts()) {
+        const variable_t vs = *rev_map.at(s);
+        variable_t least = vs;
+        for (const vert_id d : g_excl.succs(s)) {
+            const variable_t vd = *rev_map.at(d);
+            const Weight w = g_excl.edge_val(s, d);
+            if (w == 0) {
+                least = std::min(least, vd, variable_t::printing_order);
+            } else {
+                diff_csts.emplace(vd, vs, w);
+            }
+        }
+        equivalence_classes.insert_or_assign(vs, least);
+    }
+
+    std::set<variable_t> representatives;
+    std::set<std::string> result;
+    for (const auto [vs, least] : equivalence_classes) {
+        if (vs == least) {
+            representatives.insert(least);
+        } else {
+            result.insert(vs.name() + "=" + least.name());
+        }
+    }
+
+    // simplify: x - y <= k && y - x <= -k
+    //        -> x <= y + k <= x
+    //        -> x = y + k
+    for (const auto& [vd, vs, w] : diff_csts) {
+        if (!representatives.contains(vd) || !representatives.contains(vs)) {
+            continue;
+        }
+        auto dual = to_string(vs, vd, -w, false);
+        if (result.contains(dual)) {
+            assert(w != 0);
+            result.erase(dual);
+            result.insert(to_string(vd, vs, w, true));
+        } else {
+            result.insert(to_string(vd, vs, w, false));
+        }
+    }
+
+    // Intervals
     for (vert_id v : g_excl.verts()) {
-        if (!this->rev_map[v]) {
+        const auto pvar = this->rev_map[v];
+        if (!pvar || !representatives.contains(*pvar)) {
             continue;
         }
         if (!this->g.elem(0, v) && !this->g.elem(v, 0)) {
             continue;
         }
-        interval_t v_out =
-            interval_t(this->g.elem(v, 0) ? -number_t(this->g.edge_val(v, 0)) : extended_number::minus_infinity(),
-                       this->g.elem(0, v) ? number_t(this->g.edge_val(0, v)) : extended_number::plus_infinity());
+        interval_t v_out{this->g.elem(v, 0) ? -number_t(this->g.edge_val(v, 0)) : extended_number::minus_infinity(),
+                         this->g.elem(0, v) ? number_t(this->g.edge_val(0, v)) : extended_number::plus_infinity()};
         assert(!v_out.is_bottom());
 
-        variable_t variable = *this->rev_map[v];
+        variable_t variable = *pvar;
 
         std::stringstream elem;
         elem << variable;
         if (variable.is_type()) {
-            auto [lb, ub] = v_out.bound(T_MIN, T_MAX);
+            auto [lb, ub] = v_out.bound(T_UNINIT, T_MAX);
             if (lb == ub) {
                 if (variable.is_in_stack() && lb == T_NUM) {
                     // no need to show this
@@ -1129,7 +1219,7 @@ string_invariant SplitDBM::to_set() const {
             }
         } else {
             elem << "=";
-            if (v_out.lb() == v_out.ub()) {
+            if (v_out.is_singleton()) {
                 elem << v_out.lb();
             } else {
                 elem << v_out;
@@ -1138,32 +1228,6 @@ string_invariant SplitDBM::to_set() const {
         result.insert(elem.str());
     }
 
-    std::set<std::tuple<variable_t, variable_t, Weight>> diff_csts;
-    for (vert_id s : g_excl.verts()) {
-        if (!this->rev_map[s]) {
-            continue;
-        }
-        variable_t vs = *this->rev_map[s];
-        for (vert_id d : g_excl.succs(s)) {
-            if (!this->rev_map[d]) {
-                continue;
-            }
-            variable_t vd = *this->rev_map[d];
-            diff_csts.emplace(vd, vs, g_excl.edge_val(s, d));
-        }
-    }
-    // simplify: x - y <= k && y - x <= -k
-    //        -> x <= y + k <= x
-    //        -> x = y + k
-    for (const auto& [vd, vs, w] : diff_csts) {
-        auto dual = to_string(vs, vd, -w, false);
-        if (result.count(dual)) {
-            result.erase(dual);
-            result.insert(to_string(vd, vs, w, true));
-        } else {
-            result.insert(to_string(vd, vs, w, false));
-        }
-    }
     return string_invariant{result};
 }
 
@@ -1184,7 +1248,7 @@ bool SplitDBM::eval_expression_overflow(const linear_expression_t& e, Weight& ou
     return false;
 }
 
-interval_t SplitDBM::compute_residual(const linear_expression_t& e, variable_t pivot) const {
+interval_t SplitDBM::compute_residual(const linear_expression_t& e, const variable_t pivot) const {
     interval_t residual(-e.constant_term());
     for (const auto& [variable, coefficient] : e.variable_terms()) {
         if (variable != pivot) {
@@ -1194,7 +1258,7 @@ interval_t SplitDBM::compute_residual(const linear_expression_t& e, variable_t p
     return residual;
 }
 
-SplitDBM::Weight SplitDBM::pot_value(variable_t v) const {
+SplitDBM::Weight SplitDBM::pot_value(const variable_t v) const {
     if (const auto y = try_at(vert_map, v)) {
         return potential[*y];
     }
@@ -1270,15 +1334,15 @@ bool SplitDBM::entail(const linear_constraint_t& rhs) const {
     //       if (dom.is_top()) { ... }
 }
 
-void SplitDBM::diffcsts_of_assign(variable_t x, const linear_expression_t& exp,
+void SplitDBM::diffcsts_of_assign(const variable_t x, const linear_expression_t& exp,
                                   std::vector<std::pair<variable_t, Weight>>& lb,
-                                  std::vector<std::pair<variable_t, Weight>>& ub) {
+                                  std::vector<std::pair<variable_t, Weight>>& ub) const {
     diffcsts_of_assign(x, exp, true, ub);
     diffcsts_of_assign(x, exp, false, lb);
 }
 
-static interval_t get_interval(const SplitDBM::vert_map_t& m, const SplitDBM::graph_t& r, variable_t x,
-                               int finite_width) {
+static interval_t get_interval(const SplitDBM::vert_map_t& m, const SplitDBM::graph_t& r, const variable_t x,
+                               const int finite_width) {
     const auto it = m.find(x);
     if (it == m.end()) {
         return interval_t::top();
@@ -1287,20 +1351,20 @@ static interval_t get_interval(const SplitDBM::vert_map_t& m, const SplitDBM::gr
     extended_number lb = extended_number::minus_infinity();
     extended_number ub = extended_number::plus_infinity();
     if (r.elem(v, 0)) {
-        lb = x.is_unsigned() ? (-number_t(r.edge_val(v, 0))).truncate_to_uint(finite_width)
-                             : (-number_t(r.edge_val(v, 0))).truncate_to_sint(finite_width);
+        lb = x.is_unsigned() ? (-number_t(r.edge_val(v, 0))).zero_extend(finite_width)
+                             : (-number_t(r.edge_val(v, 0))).sign_extend(finite_width);
     }
     if (r.elem(0, v)) {
-        ub = x.is_unsigned() ? number_t(r.edge_val(0, v)).truncate_to_uint(finite_width)
-                             : number_t(r.edge_val(0, v)).truncate_to_sint(finite_width);
+        ub = x.is_unsigned() ? number_t(r.edge_val(0, v)).zero_extend(finite_width)
+                             : number_t(r.edge_val(0, v)).sign_extend(finite_width);
     }
     return {lb, ub};
 }
 
-interval_t SplitDBM::get_interval(variable_t x, int finite_width) const {
+interval_t SplitDBM::get_interval(const variable_t x, const int finite_width) const {
     return domains::get_interval(vert_map, g, x, finite_width);
 }
 
-interval_t SplitDBM::operator[](variable_t x) const { return domains::get_interval(vert_map, g, x, 0); }
+interval_t SplitDBM::operator[](const variable_t x) const { return domains::get_interval(vert_map, g, x, 0); }
 
 } // namespace crab::domains

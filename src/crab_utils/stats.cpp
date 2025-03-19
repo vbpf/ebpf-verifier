@@ -36,7 +36,7 @@ long Stopwatch::systemTime() const {
 #else
     struct rusage ru;
     getrusage(RUSAGE_SELF, &ru);
-    long r = ru.ru_utime.tv_sec * 1000000L + ru.ru_utime.tv_usec;
+    const long r = ru.ru_utime.tv_sec * 1000000L + ru.ru_utime.tv_usec;
     return r;
 #endif
 }
@@ -71,16 +71,13 @@ long Stopwatch::getTimeElapsed() const {
     }
 }
 
-double Stopwatch::toSeconds() {
-    double time = ((double)getTimeElapsed() / 1000000);
-    return time;
-}
+double Stopwatch::toSeconds() const { return static_cast<double>(getTimeElapsed()) / 1000000; }
 
 void Stopwatch::Print(std::ostream& out) const {
-    long time = getTimeElapsed();
-    long h = time / 3600000000L;
-    long m = time / 60000000L - h * 60;
-    float s = ((float)time / 1000000L) - m * 60 - h * 3600;
+    const long time = getTimeElapsed();
+    const long h = time / 3600000000L;
+    const long m = time / 60000000L - h * 60;
+    const float s = ((float)time / 1000000L) - m * 60 - h * 3600;
 
     if (h > 0) {
         out << h << "h";
@@ -96,23 +93,20 @@ void CrabStats::reset() {
     sw.clear();
 }
 
-void CrabStats::count(const std::string& name) { ++(*counters)[name]; }
-void CrabStats::count_max(const std::string& name, unsigned v) { (*counters)[name] = std::max((*counters)[name], v); }
+void CrabStats::count_max(const std::string& name, const unsigned v) {
+    (*counters)[name] = std::max((*counters)[name], v);
+}
 
-unsigned CrabStats::uset(const std::string& n, unsigned v) { return (*counters)[n] = v; }
+unsigned CrabStats::uset(const std::string& n, const unsigned v) { return (*counters)[n] = v; }
 unsigned CrabStats::get(const std::string& n) { return (*counters)[n]; }
-
-void CrabStats::start(const std::string& name) { (*sw)[name].start(); }
-void CrabStats::stop(const std::string& name) { (*sw)[name].stop(); }
-void CrabStats::resume(const std::string& name) { (*sw)[name].resume(); }
 
 /** Outputs all statistics to std output */
 void CrabStats::Print(std::ostream& OS) {
     OS << "\n\n************** STATS ***************** \n";
-    for (auto& kv : (*counters)) {
+    for (const auto& kv : (*counters)) {
         OS << kv.first << ": " << kv.second << "\n";
     }
-    for (auto& kv : (*sw)) {
+    for (const auto& kv : (*sw)) {
         OS << kv.first << ": " << kv.second << "\n";
     }
     OS << "************** STATS END ***************** \n";
@@ -120,16 +114,16 @@ void CrabStats::Print(std::ostream& OS) {
 
 void CrabStats::PrintBrunch(std::ostream& OS) {
     OS << "\n\n************** BRUNCH STATS ***************** \n";
-    for (auto& kv : (*counters)) {
+    for (const auto& kv : *counters) {
         OS << "BRUNCH_STAT " << kv.first << " " << kv.second << "\n";
     }
-    for (auto& kv : (*sw)) {
-        OS << "BRUNCH_STAT " << kv.first << " " << (kv.second).toSeconds() << "sec \n";
+    for (const auto& kv : *sw) {
+        OS << "BRUNCH_STAT " << kv.first << " " << kv.second.toSeconds() << "sec \n";
     }
     OS << "************** BRUNCH STATS END ***************** \n";
 }
 
-ScopedCrabStats::ScopedCrabStats(const std::string& name, bool reset) : m_name(name) {
+ScopedCrabStats::ScopedCrabStats(const std::string& name, const bool reset) : m_name(name) {
     if (reset) {
         m_name += ".last";
         CrabStats::start(m_name);

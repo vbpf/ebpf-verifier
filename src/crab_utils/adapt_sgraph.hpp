@@ -178,7 +178,7 @@ class AdaptGraph final {
         g.growTo(o.size());
 
         for (vert_id s : o.verts()) {
-            for (auto e : o.e_succs(s)) {
+            for (const auto& e : o.e_succs(s)) {
                 g.add_edge(s, e.val, e.vert);
             }
         }
@@ -256,7 +256,7 @@ class AdaptGraph final {
     };
 
     struct edge_const_range_t {
-        using elt_range_t = typename smap_t::elt_range_t;
+        using elt_range_t = smap_t::elt_range_t;
         using iterator = edge_const_iter;
 
         elt_range_t r;
@@ -279,8 +279,8 @@ class AdaptGraph final {
     using fwd_edge_const_iter = edge_const_iter;
     using rev_edge_const_iter = edge_const_iter;
 
-    using adj_range_t = typename smap_t::key_const_range_t;
-    using adj_const_range_t = typename smap_t::key_const_range_t;
+    using adj_range_t = smap_t::key_const_range_t;
+    using adj_const_range_t = smap_t::key_const_range_t;
     using neighbour_range = adj_range_t;
     using neighbour_const_range = adj_const_range_t;
 
@@ -338,6 +338,8 @@ class AdaptGraph final {
     }
 
     void growTo(size_t v) {
+        _succs.reserve(v);
+        _preds.reserve(v);
         while (size() < v) {
             new_vertex();
         }

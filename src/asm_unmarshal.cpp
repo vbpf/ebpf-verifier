@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "asm_unmarshal.hpp"
+#include "crab_utils/debug.hpp"
 #include "crab_utils/num_safety.hpp"
 #include "ebpf_vm_isa.hpp"
 
@@ -338,7 +339,7 @@ struct Unmarshaller {
             const uint8_t basereg = isLoad ? inst.src : inst.dst;
 
             if (basereg == R10_STACK_POINTER &&
-                (inst.offset + opcode_to_width(inst.opcode) > 0 || inst.offset < -EBPF_STACK_SIZE)) {
+                (inst.offset + opcode_to_width(inst.opcode) > 0 || inst.offset < -EBPF_TOTAL_STACK_SIZE)) {
                 note("Stack access out of bounds");
             }
             auto res = Mem{
@@ -416,8 +417,8 @@ struct Unmarshaller {
     }
 
     [[nodiscard]]
-    auto makeLddw(const ebpf_inst inst, const int32_t next_imm, const vector<ebpf_inst>& insts, const pc_t pc) const
-        -> Instruction {
+    auto makeLddw(const ebpf_inst inst, const int32_t next_imm, const vector<ebpf_inst>& insts,
+                  const pc_t pc) const -> Instruction {
         if (!info.platform->supports_group(bpf_conformance_groups_t::base64)) {
             throw InvalidInstruction{pc, inst.opcode};
         }
@@ -428,7 +429,7 @@ struct Unmarshaller {
         if (next.opcode != 0 || next.dst != 0 || next.src != 0 || next.offset != 0) {
             throw InvalidInstruction(pc, "invalid lddw");
         }
-        if (inst.src > 1) {
+        if (inst.src > INST_LD_MODE_MAP_VALUE) {
             throw InvalidInstruction(pc, make_opcode_message("bad instruction", inst.opcode));
         }
         if (inst.offset != 0) {
@@ -438,7 +439,16 @@ struct Unmarshaller {
             throw InvalidInstruction(pc, "bad register");
         }
 
-        if (inst.src == 1) {
+        switch (inst.src) {
+        case INST_LD_MODE_IMM:
+            return Bin{
+                .op = Bin::Op::MOV,
+                .dst = Reg{inst.dst},
+                .v = Imm{merge(inst.imm, next_imm)},
+                .is64 = true,
+                .lddw = true,
+            };
+        case INST_LD_MODE_MAP_FD: {
             // magic number, meaning we're a per-process file descriptor defining the map.
             // (for details, look for BPF_PSEUDO_MAP_FD in the kernel)
             if (next.imm != 0) {
@@ -446,14 +456,9 @@ struct Unmarshaller {
             }
             return LoadMapFd{.dst = Reg{inst.dst}, .mapfd = inst.imm};
         }
-
-        return Bin{
-            .op = Bin::Op::MOV,
-            .dst = Reg{inst.dst},
-            .v = Imm{merge(inst.imm, next_imm)},
-            .is64 = true,
-            .lddw = true,
-        };
+        case INST_LD_MODE_MAP_VALUE: return LoadMapAddress{.dst = Reg{inst.dst}, .mapfd = inst.imm, .offset = next_imm};
+        default: throw InvalidInstruction(pc, make_opcode_message("bad instruction", inst.opcode));
+        }
     }
 
     static ArgSingle::Kind toArgSingleKind(const ebpf_argument_type_t t) {
@@ -696,7 +701,7 @@ struct Unmarshaller {
         }
     }
 
-    vector<LabeledInstruction> unmarshal(vector<ebpf_inst> const& insts, vector<btf_line_info_t> const& line_info) {
+    vector<LabeledInstruction> unmarshal(vector<ebpf_inst> const& insts) {
         vector<LabeledInstruction> prog;
         int exit_count = 0;
         if (insts.empty()) {
@@ -773,8 +778,8 @@ struct Unmarshaller {
 
             std::optional<btf_line_info_t> current_line_info = {};
 
-            if (pc < line_info.size()) {
-                current_line_info = line_info[pc];
+            if (pc < info.line_info.size()) {
+                current_line_info = info.line_info.at(pc);
             }
 
             prog.emplace_back(label_t(gsl::narrow<int>(pc)), new_ins, current_line_info);
@@ -794,9 +799,9 @@ struct Unmarshaller {
 };
 
 std::variant<InstructionSeq, std::string> unmarshal(const raw_program& raw_prog, vector<vector<string>>& notes) {
-    global_program_info = raw_prog.info;
+    thread_local_program_info = raw_prog.info;
     try {
-        return Unmarshaller{notes, raw_prog.info}.unmarshal(raw_prog.prog, raw_prog.line_info);
+        return Unmarshaller{notes, raw_prog.info}.unmarshal(raw_prog.prog);
     } catch (InvalidInstruction& arg) {
         std::ostringstream ss;
         ss << arg.pc << ": " << arg.what() << "\n";

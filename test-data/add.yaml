@@ -25,8 +25,7 @@ code:
 post:
   - r0.type=number
   - r0.svalue=[2147483649, 2147483651]
-  - r0.uvalue=[2147483649, 2147483651]
-  - r0.svalue=r0.uvalue
+  - r0.uvalue=r0.svalue
 ---
 test-case: add immediate to unknown number
 
@@ -90,8 +89,7 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[10, 15]
-  - r1.uvalue=[10, 15]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
 
 ---
 test-case: add constant register number to finite interval number
@@ -106,15 +104,12 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[10, 15]
-  - r1.uvalue=[10, 15]
   - r2.type=number
   - r2.svalue=5
   - r2.uvalue=5
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
   - r1.svalue-r2.svalue<=10
-  - r1.uvalue-r2.svalue<=10
   - r2.svalue-r1.svalue<=-5
-  - r2.svalue-r1.uvalue<=-5
 
 ---
 test-case: add interval number register to constant register pointer
@@ -130,20 +125,12 @@ post:
   - r2.type=packet
   - r2.packet_offset=[3, 5]
   - r2.svalue=[10, 16]
-  - r2.uvalue=[10, 16]
-  - r2.svalue=r2.uvalue
+  - r2.uvalue=r2.svalue
   - r7.type=number
-  - r7.svalue=[3, 5]
   - r7.uvalue=[3, 5]
-  - r7.svalue-r2.svalue<=-7
-  - r7.svalue-r2.uvalue<=-7
-  - r2.svalue-r7.svalue<=11
-  - r2.uvalue-r7.svalue<=11
   - r2.packet_offset-r2.svalue<=-7
-  - r2.packet_offset-r2.uvalue<=-7
   - r2.svalue-r2.packet_offset<=11
-  - r2.uvalue-r2.packet_offset<=11
-  - r2.packet_offset=r7.svalue
+  - r7.svalue=r2.packet_offset
 
 ---
 test-case: add constant register pointer to interval number
@@ -159,19 +146,14 @@ post:
   - r7.type=packet
   - r7.packet_offset=[3, 5]
   - r7.svalue=[10, 16]
-  - r7.uvalue=[10, 16]
-  - r7.svalue=r7.uvalue
+  - r7.uvalue=r7.svalue
   - r2.type=packet
   - r2.packet_offset=0
   - r2.svalue=[7, 11]
   - r2.uvalue=[7, 11]
   - r2.svalue-r7.svalue<=-3
-  - r2.svalue-r7.uvalue<=-3
   - r7.svalue-r2.svalue<=5
-  - r7.uvalue-r2.svalue<=5
   - r2.packet_offset-r7.packet_offset<=-3
   - r7.packet_offset-r2.packet_offset<=5
   - r7.packet_offset-r7.svalue<=-7
-  - r7.packet_offset-r7.uvalue<=-7
   - r7.svalue-r7.packet_offset<=11
-  - r7.uvalue-r7.packet_offset<=11

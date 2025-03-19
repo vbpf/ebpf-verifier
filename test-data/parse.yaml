@@ -2,28 +2,28 @@
 # SPDX-License-Identifier: MIT
 ---
 test-case: "parse 0 invariant"
-pre: ["r1.svalue=0", "r1.uvalue=0"]
+pre: ["r1.type=number", "r1.svalue=0", "r1.uvalue=0"]
 code:
   <start>: r1 = r1
-post: ["r1.svalue=0", "r1.uvalue=0"]
+post: ["r1.type=number", "r1.svalue=0", "r1.uvalue=0"]
 ---
 test-case: "parse -1 invariant"
-pre: ["r1.svalue=-1", "r1.uvalue=18446744073709551615"]
+pre: ["r1.type=number", "r1.svalue=-1", "r1.uvalue=18446744073709551615"]
 code:
   <start>: r1 = r1
-post: ["r1.svalue=-1", "r1.uvalue=18446744073709551615"]
+post: ["r1.type=number", "r1.svalue=-1", "r1.uvalue=18446744073709551615"]
 ---
 test-case: "parse INT_MIN+1 invariant"  # smallest number that does not underflow
-pre: ["r1.svalue=-9223372036854775807", "r1.uvalue=9223372036854775809"]
+pre: ["r1.type=number", "r1.svalue=-9223372036854775807", "r1.uvalue=9223372036854775809"]
 code:
   <start>: r1 = r1
-post: ["r1.svalue=-9223372036854775807", "r1.uvalue=9223372036854775809"]
+post: ["r1.type=number", "r1.svalue=-9223372036854775807", "r1.uvalue=9223372036854775809"]
 ---
 test-case: "parse INT_MAX-6 invariant"  # largest number that does not overflow
-pre: ["r1.svalue=9223372036854775801", "r1.uvalue=9223372036854775801"]
+pre: ["r1.type=number", "r1.svalue=9223372036854775801", "r1.uvalue=9223372036854775801"]
 code:
   <start>: r1 = r1
-post: ["r1.svalue=9223372036854775801", "r1.uvalue=9223372036854775801"]
+post: ["r1.type=number", "r1.svalue=9223372036854775801", "r1.uvalue=9223372036854775801"]
 ---
 test-case: "parse -1 code"  # smallest number that does not underflow
 pre: []

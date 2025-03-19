@@ -6,7 +6,6 @@
 #include <vector>
 
 #include "asm_marshal.hpp"
-#include "asm_ostream.hpp"
 #include "crab_utils/num_safety.hpp"
 
 using std::vector;
@@ -88,10 +87,10 @@ static uint8_t imm_endian(const Un::Op op) {
 
 struct MarshalVisitor {
   private:
-    static vector<ebpf_inst> makeLddw(const Reg dst, const bool isFd, const int32_t imm, const int32_t next_imm) {
+    static vector<ebpf_inst> makeLddw(const Reg dst, const uint8_t type, const int32_t imm, const int32_t next_imm) {
         return {ebpf_inst{.opcode = gsl::narrow<uint8_t>(INST_CLS_LD | width_to_opcode(8)),
                           .dst = dst.v,
-                          .src = gsl::narrow<uint8_t>(isFd ? 1 : 0),
+                          .src = type,
                           .offset = 0,
                           .imm = imm},
                 ebpf_inst{.opcode = 0, .dst = 0, .src = 0, .offset = 0, .imm = next_imm}};
@@ -106,14 +105,18 @@ struct MarshalVisitor {
         return {};
     }
 
-    vector<ebpf_inst> operator()(LoadMapFd const& b) const { return makeLddw(b.dst, true, b.mapfd, 0); }
+    vector<ebpf_inst> operator()(LoadMapFd const& b) const { return makeLddw(b.dst, INST_LD_MODE_MAP_FD, b.mapfd, 0); }
+
+    vector<ebpf_inst> operator()(LoadMapAddress const& b) const {
+        return makeLddw(b.dst, INST_LD_MODE_MAP_VALUE, b.mapfd, b.offset);
+    }
 
     vector<ebpf_inst> operator()(Bin const& b) const {
         if (b.lddw) {
             const auto pimm = std::get_if<Imm>(&b.v);
             assert(pimm != nullptr);
             auto [imm, next_imm] = split(pimm->v);
-            return makeLddw(b.dst, false, imm, next_imm);
+            return makeLddw(b.dst, INST_LD_MODE_IMM, imm, next_imm);
         }
 
         ebpf_inst res{.opcode = gsl::narrow<uint8_t>((b.is64 ? INST_CLS_ALU64 : INST_CLS_ALU) | (op(b.op) << 4)),
@@ -205,8 +208,6 @@ struct MarshalVisitor {
 
     vector<ebpf_inst> operator()(Assume const&) const { throw std::invalid_argument("Cannot marshal assumptions"); }
 
-    vector<ebpf_inst> operator()(Assert const&) const { throw std::invalid_argument("Cannot marshal assertions"); }
-
     vector<ebpf_inst> operator()(Jmp const& b) const {
         if (b.cond) {
             ebpf_inst res{
@@ -295,16 +296,19 @@ struct MarshalVisitor {
 };
 
 vector<ebpf_inst> marshal(const Instruction& ins, const pc_t pc) {
-    return std::visit(MarshalVisitor{label_to_offset16(pc), label_to_offset32(pc)}, ins);
+    return std::visit(MarshalVisitor{crab::label_to_offset16(pc), crab::label_to_offset32(pc)}, ins);
 }
 
-static int size(const Instruction& inst) {
+int asm_syntax::size(const Instruction& inst) {
     if (const auto pins = std::get_if<Bin>(&inst)) {
         if (pins->lddw) {
             return 2;
         }
     }
     if (std::holds_alternative<LoadMapFd>(inst)) {
+        return 2;
+    }
+    if (std::holds_alternative<LoadMapAddress>(inst)) {
         return 2;
     }
     return 1;
@@ -327,9 +331,9 @@ vector<ebpf_inst> marshal(const InstructionSeq& insts) {
     for (auto [label, ins, _] : insts) {
         (void)label; // unused
         if (const auto pins = std::get_if<Jmp>(&ins)) {
-            pins->target = label_t(pc_of_label.at(pins->target));
+            pins->target = label_t{gsl::narrow<int>(pc_of_label.at(pins->target))};
         }
-        for (auto e : marshal(ins, pc)) {
+        for (const auto e : marshal(ins, pc)) {
             pc++;
             res.push_back(e);
         }

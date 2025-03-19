@@ -3,7 +3,6 @@
 #include <catch2/catch_all.hpp>
 
 #include "asm_marshal.hpp"
-#include "asm_ostream.hpp"
 #include "asm_unmarshal.hpp"
 
 // Below we define a tample of instruction templates that specify
@@ -42,8 +41,8 @@ static const ebpf_instruction_template_t instruction_template[] = {
     {{0x17, DST, 0, 0, IMM}, bpf_conformance_groups_t::base64},
     {{0x18, DST, 0, 0, IMM}, bpf_conformance_groups_t::base64},
     {{0x18, DST, 1, 0, IMM}, bpf_conformance_groups_t::base64},
-    // TODO(issue #533): add support for LDDW with src_reg > 1.
-    // {{0x18, DST, 2, 0, IMM}, bpf_conformance_groups_t::base64},
+    {{0x18, DST, 2, 0, IMM}, bpf_conformance_groups_t::base64},
+    // TODO(issue #533): add support for LDDW with src_reg > 2.
     // {{0x18, DST, 3, 0, IMM}, bpf_conformance_groups_t::base64},
     // {{0x18, DST, 4, 0, IMM}, bpf_conformance_groups_t::base64},
     // {{0x18, DST, 5, 0, IMM}, bpf_conformance_groups_t::base64},
@@ -227,9 +226,10 @@ static void compare_unmarshal_marshal(const ebpf_inst& ins, const ebpf_inst& exp
                                       const ebpf_platform_t& platform = g_ebpf_platform_linux) {
     program_info info{.platform = &platform, .type = platform.get_program_type("unspec", "unspec")};
     constexpr ebpf_inst exit{.opcode = INST_OP_EXIT};
-    InstructionSeq parsed = std::get<InstructionSeq>(unmarshal(raw_program{"", "", 0, "", {ins, exit, exit}, info}));
-    REQUIRE(parsed.size() == 3);
-    auto [_, single, _2] = parsed.front();
+    const InstructionSeq inst_seq =
+        std::get<InstructionSeq>(unmarshal(raw_program{"", "", 0, "", {ins, exit, exit}, info}));
+    REQUIRE(inst_seq.size() == 3);
+    auto [_, single, _2] = inst_seq.front();
     (void)_;  // unused
     (void)_2; // unused
     std::vector<ebpf_inst> marshaled = marshal(single, 0);
@@ -263,10 +263,10 @@ static void compare_unmarshal_marshal(const ebpf_inst& ins1, const ebpf_inst& in
     program_info info{.platform = &g_ebpf_platform_linux,
                       .type = g_ebpf_platform_linux.get_program_type("unspec", "unspec")};
     constexpr ebpf_inst exit{.opcode = INST_OP_EXIT};
-    InstructionSeq parsed =
+    const InstructionSeq inst_seq =
         std::get<InstructionSeq>(unmarshal(raw_program{"", "", 0, "", {ins1, ins2, exit, exit}, info}));
-    REQUIRE(parsed.size() == 3);
-    auto [_, single, _2] = parsed.front();
+    REQUIRE(inst_seq.size() == 3);
+    auto [_, single, _2] = inst_seq.front();
     (void)_;  // unused
     (void)_2; // unused
     std::vector<ebpf_inst> marshaled = marshal(single, 0);
@@ -282,22 +282,25 @@ static void compare_unmarshal_marshal(const ebpf_inst& ins1, const ebpf_inst& in
 static void compare_marshal_unmarshal(const Instruction& ins, bool double_cmd = false,
                                       const ebpf_platform_t& platform = g_ebpf_platform_linux) {
     program_info info{.platform = &platform, .type = platform.get_program_type("unspec", "unspec")};
-    InstructionSeq parsed = std::get<InstructionSeq>(unmarshal(raw_program{"", "", 0, "", marshal(ins, 0), info}));
-    REQUIRE(parsed.size() == 1);
-    auto [_, single, _2] = parsed.back();
+    const InstructionSeq inst_seq =
+        std::get<InstructionSeq>(unmarshal(raw_program{"", "", 0, "", marshal(ins, 0), info}));
+    REQUIRE(inst_seq.size() == 1);
+    auto [_, single, _2] = inst_seq.back();
     (void)_;  // unused
     (void)_2; // unused
     REQUIRE(single == ins);
 }
 
-static void check_marshal_unmarshal_fail(const Instruction& ins, std::string expected_error_message,
+static void check_marshal_unmarshal_fail(const Instruction& ins, const std::string& expected_error_message,
                                          const ebpf_platform_t& platform = g_ebpf_platform_linux) {
     const program_info info{.platform = &platform, .type = platform.get_program_type("unspec", "unspec")};
-    std::string error_message = std::get<std::string>(unmarshal(raw_program{"", "", 0, "", marshal(ins, 0), info}));
-    REQUIRE(error_message == expected_error_message);
+    auto result = unmarshal(raw_program{"", "", 0, "", marshal(ins, 0), info});
+    auto* error_message = std::get_if<std::string>(&result);
+    REQUIRE(error_message != nullptr);
+    REQUIRE(*error_message == expected_error_message);
 }
 
-static void check_unmarshal_fail(ebpf_inst inst, std::string expected_error_message,
+static void check_unmarshal_fail(ebpf_inst inst, const std::string& expected_error_message,
                                  const ebpf_platform_t& platform = g_ebpf_platform_linux) {
     program_info info{.platform = &platform, .type = platform.get_program_type("unspec", "unspec")};
     std::vector insns = {inst};
@@ -319,7 +322,7 @@ static void check_unmarshal_fail_goto(ebpf_inst inst, const std::string& expecte
 }
 
 // Check that unmarshaling a 64-bit immediate instruction fails.
-static void check_unmarshal_fail(ebpf_inst inst1, ebpf_inst inst2, std::string expected_error_message,
+static void check_unmarshal_fail(ebpf_inst inst1, ebpf_inst inst2, const std::string& expected_error_message,
                                  const ebpf_platform_t& platform = g_ebpf_platform_linux) {
     program_info info{.platform = &platform, .type = platform.get_program_type("unspec", "unspec")};
     std::vector insns{inst1, inst2};
@@ -337,7 +340,7 @@ TEST_CASE("disasm_marshal", "[disasm][marshal]") {
             auto ops = {Bin::Op::MOV,  Bin::Op::ADD,  Bin::Op::SUB,    Bin::Op::MUL,     Bin::Op::UDIV,   Bin::Op::UMOD,
                         Bin::Op::OR,   Bin::Op::AND,  Bin::Op::LSH,    Bin::Op::RSH,     Bin::Op::ARSH,   Bin::Op::XOR,
                         Bin::Op::SDIV, Bin::Op::SMOD, Bin::Op::MOVSX8, Bin::Op::MOVSX16, Bin::Op::MOVSX32};
-            for (auto op : ops) {
+            for (const auto op : ops) {
                 compare_marshal_unmarshal(Bin{.op = op, .dst = Reg{1}, .v = Reg{2}, .is64 = true});
                 compare_marshal_unmarshal(Bin{.op = op, .dst = Reg{1}, .v = Reg{2}, .is64 = false});
             }
@@ -347,7 +350,7 @@ TEST_CASE("disasm_marshal", "[disasm][marshal]") {
             auto ops = {Bin::Op::MOV,  Bin::Op::ADD, Bin::Op::SUB,  Bin::Op::MUL, Bin::Op::UDIV,
                         Bin::Op::UMOD, Bin::Op::OR,  Bin::Op::AND,  Bin::Op::LSH, Bin::Op::RSH,
                         Bin::Op::ARSH, Bin::Op::XOR, Bin::Op::SDIV, Bin::Op::SMOD};
-            for (auto op : ops) {
+            for (const auto op : ops) {
                 compare_marshal_unmarshal(Bin{.op = op, .dst = Reg{1}, .v = Imm{2}, .is64 = false});
                 compare_marshal_unmarshal(Bin{.op = op, .dst = Reg{1}, .v = Imm{2}, .is64 = true});
             }
@@ -372,7 +375,7 @@ TEST_CASE("disasm_marshal", "[disasm][marshal]") {
             auto ops = {
                 Un::Op::BE16, Un::Op::BE32, Un::Op::BE64, Un::Op::LE16, Un::Op::LE32, Un::Op::LE64,
             };
-            for (auto op : ops) {
+            for (const auto op : ops) {
                 compare_marshal_unmarshal(Un{.op = op, .dst = Reg{1}, .is64 = false});
             }
         }
@@ -382,13 +385,16 @@ TEST_CASE("disasm_marshal", "[disasm][marshal]") {
                 Un::Op::SWAP32,
                 Un::Op::SWAP64,
             };
-            for (auto op : ops) {
+            for (const auto op : ops) {
                 compare_marshal_unmarshal(Un{.op = op, .dst = Reg{1}, .is64 = true});
             }
         }
     }
 
     SECTION("LoadMapFd") { compare_marshal_unmarshal(LoadMapFd{.dst = Reg{1}, .mapfd = 1}, true); }
+    SECTION("LoadMapAddress") {
+        compare_marshal_unmarshal(LoadMapAddress{.dst = Reg{1}, .mapfd = 1, .offset = 4}, true);
+    }
 
     SECTION("Jmp") {
         auto ops = {Condition::Op::EQ, Condition::Op::GT, Condition::Op::GE, Condition::Op::SET,
@@ -403,7 +409,7 @@ TEST_CASE("disasm_marshal", "[disasm][marshal]") {
             compare_unmarshal_marshal(ebpf_inst{.opcode = INST_OP_JA32, .imm = 1}, jmp_offset);
         }
         SECTION("Reg right") {
-            for (auto op : ops) {
+            for (const auto op : ops) {
                 Condition cond{.op = op, .left = Reg{1}, .right = Reg{2}, .is64 = true};
                 compare_marshal_unmarshal(Jmp{.cond = cond, .target = label_t(0)});
 
@@ -412,7 +418,7 @@ TEST_CASE("disasm_marshal", "[disasm][marshal]") {
             }
         }
         SECTION("Imm right") {
-            for (auto op : ops) {
+            for (const auto op : ops) {
                 Condition cond{.op = op, .left = Reg{1}, .right = Imm{2}, .is64 = true};
                 compare_marshal_unmarshal(Jmp{.cond = cond, .target = label_t(0)});
 

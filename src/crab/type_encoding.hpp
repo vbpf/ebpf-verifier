@@ -40,7 +40,7 @@ enum type_encoding_t {
     T_SHARED = 0
 };
 
-constexpr type_encoding_t T_MIN = T_MAP_PROGRAMS;
+constexpr type_encoding_t T_MIN = T_UNINIT;
 constexpr type_encoding_t T_MAX = T_SHARED;
 
 std::vector<type_encoding_t> iterate_types(type_encoding_t lb, type_encoding_t ub);

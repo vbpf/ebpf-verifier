@@ -32,7 +32,7 @@ extern unsigned CrabVerbosity;
     } while (0)
 
 template <typename... ArgTypes>
-inline void ___print___(std::ostream& os, ArgTypes... args) {
+void ___print___(std::ostream& os, ArgTypes... args) {
     // trick to expand variadic argument pack without recursion
     using expand_variadic_pack = int[];
     // first zero is to prevent empty braced-init-list
@@ -43,13 +43,14 @@ inline void ___print___(std::ostream& os, ArgTypes... args) {
     (void)expand_variadic_pack{0, ((os << args), void(), 0)...};
 }
 
-#define CRAB_ERROR(...)                     \
-    do {                                    \
-        std::ostringstream os;              \
-        os << "CRAB ERROR: ";               \
-        crab::___print___(os, __VA_ARGS__); \
-        os << "\n";                         \
-        throw std::runtime_error(os.str()); \
+#define CRAB_ERROR(...)                                                      \
+    do {                                                                     \
+        std::ostringstream os;                                               \
+        os << "CRAB ERROR: ";                                                \
+        crab::___print___(os, __VA_ARGS__);                                  \
+        crab::___print___(os, "; function ", __func__, ", line ", __LINE__); \
+        os << "\n";                                                          \
+        throw std::runtime_error(os.str());                                  \
     } while (0)
 
 extern bool CrabWarningFlag;

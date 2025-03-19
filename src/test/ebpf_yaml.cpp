@@ -11,8 +11,8 @@
 
 #include <yaml-cpp/yaml.h>
 
-#include "asm_ostream.hpp"
 #include "asm_parse.hpp"
+#include "asm_syntax.hpp"
 #include "ebpf_verifier.hpp"
 #include "ebpf_yaml.hpp"
 #include "string_constraints.hpp"
@@ -29,15 +29,15 @@ static EbpfProgramType ebpf_get_program_type(const string& section, const string
     return g_ebpf_platform_linux.get_program_type(section, path);
 }
 
-static EbpfMapType ebpf_get_map_type(uint32_t platform_specific_type) {
+static EbpfMapType ebpf_get_map_type(const uint32_t platform_specific_type) {
     return g_ebpf_platform_linux.get_map_type(platform_specific_type);
 }
 
-static EbpfHelperPrototype ebpf_get_helper_prototype(int32_t n) {
+static EbpfHelperPrototype ebpf_get_helper_prototype(const int32_t n) {
     return g_ebpf_platform_linux.get_helper_prototype(n);
 }
 
-static bool ebpf_is_helper_usable(int32_t n) { return g_ebpf_platform_linux.is_helper_usable(n); }
+static bool ebpf_is_helper_usable(const int32_t n) { return g_ebpf_platform_linux.is_helper_usable(n); }
 
 static void ebpf_parse_maps_section(vector<EbpfMapDescriptor>&, const char*, size_t, int, const ebpf_platform_t*,
                                     ebpf_verifier_options_t) {}
@@ -168,30 +168,38 @@ static InstructionSeq raw_cfg_to_instruction_seq(const vector<std::tuple<string,
 }
 
 static ebpf_verifier_options_t raw_options_to_options(const std::set<string>& raw_options) {
-    ebpf_verifier_options_t options = ebpf_verifier_default_options;
+    ebpf_verifier_options_t options{};
 
     // Use ~simplify for YAML tests unless otherwise specified.
-    options.simplify = false;
+    options.verbosity_opts.simplify = false;
 
     // All YAML tests use !setup_constraints.
     options.setup_constraints = false;
 
     // Default to the machine's native endianness.
-    options.big_endian = (std::endian::native == std::endian::big);
+    options.big_endian = std::endian::native == std::endian::big;
+
+    // Default to not assuming assertions.
+    options.assume_assertions = false;
+
+    // Permit test cases to not have an exit instruction.
+    options.cfg_opts.must_have_exit = false;
 
     for (const string& name : raw_options) {
         if (name == "!allow_division_by_zero") {
             options.allow_division_by_zero = false;
         } else if (name == "termination") {
-            options.check_termination = true;
+            options.cfg_opts.check_for_termination = true;
         } else if (name == "strict") {
             options.strict = true;
         } else if (name == "simplify") {
-            options.simplify = true;
+            options.verbosity_opts.simplify = true;
         } else if (name == "big_endian") {
             options.big_endian = true;
         } else if (name == "!big_endian") {
             options.big_endian = false;
+        } else if (name == "assume_assertions") {
+            options.assume_assertions = true;
         } else {
             throw std::runtime_error("Unknown option: " + name);
         }
@@ -217,20 +225,6 @@ static vector<TestCase> read_suite(const string& path) {
     return res;
 }
 
-static std::set<string> extract_messages(const string& str) {
-    vector<string> output;
-    boost::split(output, str, boost::is_any_of("\n"));
-
-    std::set<string> actual_messages;
-    for (auto& item : output) {
-        boost::trim(item);
-        if (!item.empty()) {
-            actual_messages.insert(item);
-        }
-    }
-    return actual_messages;
-}
-
 template <typename T>
 static Diff<T> make_diff(const T& actual, const T& expected) {
     return Diff<T>{
@@ -240,63 +234,80 @@ static Diff<T> make_diff(const T& actual, const T& expected) {
 }
 
 std::optional<Failure> run_yaml_test_case(TestCase test_case, bool debug) {
+    test_case.options.verbosity_opts.print_failures = true;
     if (debug) {
-        test_case.options.print_failures = true;
-        test_case.options.print_invariants = true;
-        test_case.options.simplify = false;
+        test_case.options.verbosity_opts.print_invariants = true;
     }
 
     ebpf_context_descriptor_t context_descriptor{64, 0, 4, -1};
     EbpfProgramType program_type = make_program_type(test_case.name, &context_descriptor);
 
     program_info info{&g_platform_test, {}, program_type};
+    thread_local_options = test_case.options;
+    try {
+        const Program prog = Program::from_sequence(test_case.instruction_seq, info, test_case.options.cfg_opts);
+        const Invariants invariants = analyze(prog, test_case.assumed_pre_invariant);
+        const string_invariant actual_last_invariant = invariants.invariant_at(label_t::exit);
+        const std::set<string> actual_messages = invariants.check_assertions(prog).all_messages();
 
-    std::ostringstream ss;
-    const auto& [actual_last_invariant, result] = ebpf_analyze_program_for_test(
-        ss, test_case.instruction_seq, test_case.assumed_pre_invariant, info, test_case.options);
-    std::set<string> actual_messages = extract_messages(ss.str());
-
-    if (actual_last_invariant == test_case.expected_post_invariant && actual_messages == test_case.expected_messages) {
-        return {};
+        if (actual_last_invariant == test_case.expected_post_invariant &&
+            actual_messages == test_case.expected_messages) {
+            return {};
+        }
+        return Failure{
+            .invariant = make_diff(actual_last_invariant, test_case.expected_post_invariant),
+            .messages = make_diff(actual_messages, test_case.expected_messages),
+        };
+    } catch (InvalidControlFlow& ex) {
+        const std::set<string> actual_messages{ex.what()};
+        if (test_case.expected_post_invariant == string_invariant::top() &&
+            actual_messages == test_case.expected_messages) {
+            return {};
+        }
+        return Failure{
+            .invariant = make_diff(string_invariant::top(), test_case.expected_post_invariant),
+            .messages = make_diff(actual_messages, test_case.expected_messages),
+        };
     }
-    return Failure{.invariant = make_diff(actual_last_invariant, test_case.expected_post_invariant),
-                   .messages = make_diff(actual_messages, test_case.expected_messages)};
 }
 
 template <typename T>
-static vector<T> vector_of(const std::vector<uint8_t>& bytes) {
+    requires std::is_trivially_copyable_v<T>
+static vector<T> vector_of(const std::vector<std::byte>& bytes) {
     auto data = bytes.data();
     const auto size = bytes.size();
-    if ((size % sizeof(T) != 0) || size > std::numeric_limits<uint32_t>::max() || !data) {
+    if (size % sizeof(T) != 0 || size > std::numeric_limits<uint32_t>::max() || !data) {
         throw std::runtime_error("Invalid argument to vector_of");
     }
     return {reinterpret_cast<const T*>(data), reinterpret_cast<const T*>(data + size)};
 }
 
-template <typename TS>
-void add_stack_variable(std::set<std::string>& more, int& offset, const std::vector<uint8_t>& memory_bytes) {
+template <std::signed_integral TS>
+void add_stack_variable(std::set<std::string>& more, int& offset, const std::vector<std::byte>& memory_bytes) {
     using TU = std::make_unsigned_t<TS>;
+    constexpr size_t size = sizeof(TS);
+    static_assert(sizeof(TU) == size);
+    const auto src = memory_bytes.data() + offset + memory_bytes.size() - EBPF_TOTAL_STACK_SIZE;
     TS svalue;
+    std::memcpy(&svalue, src, size);
     TU uvalue;
-    memcpy(&svalue, memory_bytes.data() + offset + memory_bytes.size() - EBPF_STACK_SIZE, sizeof(TS));
-    memcpy(&uvalue, memory_bytes.data() + offset + memory_bytes.size() - EBPF_STACK_SIZE, sizeof(TU));
-    more.insert("s[" + std::to_string(offset) + "..." + std::to_string(offset + sizeof(TS) - 1) + "].svalue" + "=" +
-                std::to_string(svalue));
-    more.insert("s[" + std::to_string(offset) + "..." + std::to_string(offset + sizeof(TU) - 1) + "].uvalue" + "=" +
-                std::to_string(uvalue));
-    offset += sizeof(TS);
+    std::memcpy(&uvalue, src, size);
+    const auto range = "s[" + std::to_string(offset) + "..." + std::to_string(offset + size - 1) + "]";
+    more.insert(range + ".svalue=" + std::to_string(svalue));
+    more.insert(range + ".uvalue=" + std::to_string(uvalue));
+    offset += size;
 }
 
-string_invariant stack_contents_invariant(const std::vector<uint8_t>& memory_bytes) {
+string_invariant stack_contents_invariant(const std::vector<std::byte>& memory_bytes) {
     std::set<std::string> more = {"r1.type=stack",
-                                  "r1.stack_offset=" + std::to_string(EBPF_STACK_SIZE - memory_bytes.size()),
+                                  "r1.stack_offset=" + std::to_string(EBPF_TOTAL_STACK_SIZE - memory_bytes.size()),
                                   "r1.stack_numeric_size=" + std::to_string(memory_bytes.size()),
                                   "r10.type=stack",
-                                  "r10.stack_offset=" + std::to_string(EBPF_STACK_SIZE),
-                                  "s[" + std::to_string(EBPF_STACK_SIZE - memory_bytes.size()) + "..." +
-                                      std::to_string(EBPF_STACK_SIZE - 1) + "].type=number"};
+                                  "r10.stack_offset=" + std::to_string(EBPF_TOTAL_STACK_SIZE),
+                                  "s[" + std::to_string(EBPF_TOTAL_STACK_SIZE - memory_bytes.size()) + "..." +
+                                      std::to_string(EBPF_TOTAL_STACK_SIZE - 1) + "].type=number"};
 
-    int offset = EBPF_STACK_SIZE - gsl::narrow<int>(memory_bytes.size());
+    int offset = EBPF_TOTAL_STACK_SIZE - gsl::narrow<int>(memory_bytes.size());
     if (offset % 2 != 0) {
         add_stack_variable<int8_t>(more, offset, memory_bytes);
     }
@@ -306,15 +317,15 @@ string_invariant stack_contents_invariant(const std::vector<uint8_t>& memory_byt
     if (offset % 8 != 0) {
         add_stack_variable<int32_t>(more, offset, memory_bytes);
     }
-    while (offset < EBPF_STACK_SIZE) {
+    while (offset < EBPF_TOTAL_STACK_SIZE) {
         add_stack_variable<int64_t>(more, offset, memory_bytes);
     }
 
     return string_invariant(more);
 }
 
-ConformanceTestResult run_conformance_test_case(const std::vector<uint8_t>& memory_bytes,
-                                                const std::vector<uint8_t>& program_bytes, bool debug) {
+ConformanceTestResult run_conformance_test_case(const std::vector<std::byte>& memory_bytes,
+                                                const std::vector<std::byte>& program_bytes, bool debug) {
     ebpf_context_descriptor_t context_descriptor{64, -1, -1, -1};
     EbpfProgramType program_type = make_program_type("conformance_check", &context_descriptor);
 
@@ -324,7 +335,7 @@ ConformanceTestResult run_conformance_test_case(const std::vector<uint8_t>& memo
     string_invariant pre_invariant = string_invariant::top();
 
     if (!memory_bytes.empty()) {
-        if (memory_bytes.size() > EBPF_STACK_SIZE) {
+        if (memory_bytes.size() > EBPF_TOTAL_STACK_SIZE) {
             std::cerr << "memory size overflow\n";
             return {};
         }
@@ -342,69 +353,56 @@ ConformanceTestResult run_conformance_test_case(const std::vector<uint8_t>& memo
         return {};
     }
 
-    auto& prog = std::get<InstructionSeq>(prog_or_error);
+    const InstructionSeq& inst_seq = std::get<InstructionSeq>(prog_or_error);
 
-    ebpf_verifier_options_t options = ebpf_verifier_default_options;
+    ebpf_verifier_options_t options{};
     if (debug) {
-        print(prog, std::cout, {});
-        options.print_failures = true;
-        options.print_invariants = true;
-        options.simplify = false;
+        print(inst_seq, std::cout, {});
+        options.verbosity_opts.print_failures = true;
+        options.verbosity_opts.print_invariants = true;
+        options.verbosity_opts.simplify = false;
     }
+    thread_local_options = options;
 
     try {
-        std::ostringstream null_stream;
-        const auto& [actual_last_invariant, result] =
-            ebpf_analyze_program_for_test(null_stream, prog, pre_invariant, info, options);
-
-        for (const std::string& invariant : actual_last_invariant.value()) {
-            if (invariant.rfind("r0.svalue=", 0) == 0) {
-                crab::number_t lb, ub;
-                if (invariant[10] == '[') {
-                    lb = std::stoll(invariant.substr(11));
-                    ub = std::stoll(invariant.substr(invariant.find(',', 11) + 1));
-                } else {
-                    lb = ub = std::stoll(invariant.substr(10));
-                }
-                return {result, crab::interval_t(lb, ub)};
-            }
-        }
-        return {result, crab::interval_t::top()};
+        const Program prog = Program::from_sequence(inst_seq, info, options.cfg_opts);
+        const Invariants invariants = analyze(prog, pre_invariant);
+        return ConformanceTestResult{.success = invariants.verified(prog), .r0_value = invariants.exit_value()};
     } catch (const std::exception&) {
         // Catch exceptions thrown in ebpf_domain.cpp.
         return {};
     }
 }
 
-void print_failure(const Failure& failure, std::ostream& out) {
+void print_failure(const Failure& failure, std::ostream& os) {
     constexpr auto INDENT = "  ";
     if (!failure.invariant.unexpected.empty()) {
-        std::cout << "Unexpected properties:\n" << INDENT << failure.invariant.unexpected << "\n";
+        os << "Unexpected properties:\n" << INDENT << failure.invariant.unexpected << "\n";
     } else {
-        std::cout << "Unexpected properties: None\n";
+        os << "Unexpected properties: None\n";
     }
     if (!failure.invariant.unseen.empty()) {
-        std::cout << "Unseen properties:\n" << INDENT << failure.invariant.unseen << "\n";
+        os << "Unseen properties:\n" << INDENT << failure.invariant.unseen << "\n";
     } else {
-        std::cout << "Unseen properties: None\n";
+        os << "Unseen properties: None\n";
     }
 
     if (!failure.messages.unexpected.empty()) {
-        std::cout << "Unexpected messages:\n";
+        os << "Unexpected messages:\n";
         for (const auto& item : failure.messages.unexpected) {
-            std::cout << INDENT << item << "\n";
+            os << INDENT << item << "\n";
         }
     } else {
-        std::cout << "Unexpected messages: None\n";
+        os << "Unexpected messages: None\n";
     }
 
     if (!failure.messages.unseen.empty()) {
-        std::cout << "Unseen messages:\n";
+        os << "Unseen messages:\n";
         for (const auto& item : failure.messages.unseen) {
-            std::cout << INDENT << item << "\n";
+            os << INDENT << item << "\n";
         }
     } else {
-        std::cout << "Unseen messages: None\n";
+        os << "Unseen messages: None\n";
     }
 }
 

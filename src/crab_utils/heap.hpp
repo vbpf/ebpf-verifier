@@ -1,5 +1,5 @@
 #pragma once
-/*********************************************************************************[Heap.h]
+/*********************************************************************************
 MiniSat -- Copyright (c) 2003-2006, Niklas Een, Niklas Sorensson
 
 Permission is hereby granted, free of charge, to any person obtaining
@@ -28,12 +28,10 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace crab {
 
 // A heap implementation with support for decrease/increase key.
-// @tparam Comparator a predicate that compares two integers.
-template <std::predicate<int, int> Comparator>
 class Heap {
-    Comparator lt;
-    std::vector<int> heap;    // heap of ints
-    std::vector<int> indices; // int -> index in heap
+    std::function<bool(int, int)> lt; // comparison function
+    std::vector<int> heap;            // heap of ints
+    std::vector<int> indices;         // int -> index in heap
 
     // Index "traversal" functions
     static int left(const int i) { return i * 2 + 1; }
@@ -41,7 +39,7 @@ class Heap {
     static int parent(const int i) { return (i - 1) >> 1; }
 
     void percolateUp(int i) {
-        int x = heap[i];
+        const int x = heap[i];
         while (i != 0 && lt(x, heap[parent(i)])) {
             const int v = heap[i] = heap[parent(i)];
             indices[v] = i;
@@ -51,7 +49,8 @@ class Heap {
         indices[x] = i;
     }
 
-    void percolateDown(int i) {
+    void percolateDown() {
+        int i = 0;
         const int x = heap[i];
         const int size = heap.size();
         while (left(i) < size) {
@@ -69,14 +68,8 @@ class Heap {
         indices[x] = i;
     }
 
-    [[nodiscard]]
-    bool heapProperty(const int i) const {
-        return i >= heap.size() ||
-               ((i == 0 || !lt(heap[i], heap[parent(i)])) && heapProperty(left(i)) && heapProperty(right(i)));
-    }
-
   public:
-    explicit Heap(const Comparator& c) : lt(c) {}
+    explicit Heap(const std::function<bool(int, int)>& lt) : lt{lt} {}
 
     [[nodiscard]]
     int size() const {
@@ -123,7 +116,7 @@ class Heap {
         indices[x] = -1;
         heap.pop_back();
         if (heap.size() > 1) {
-            percolateDown(0);
+            percolateDown();
         }
         return x;
     }

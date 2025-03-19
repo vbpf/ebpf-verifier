@@ -4,13 +4,17 @@
 
 #include <map>
 
-#include "crab/cfg.hpp"
 #include "crab/ebpf_domain.hpp"
+#include "program.hpp"
 
 namespace crab {
 
-using invariant_table_t = std::map<label_t, ebpf_domain_t>;
+struct invariant_map_pair {
+    ebpf_domain_t pre;
+    ebpf_domain_t post;
+};
+using invariant_table_t = std::map<label_t, invariant_map_pair>;
 
-std::pair<invariant_table_t, invariant_table_t> run_forward_analyzer(cfg_t& cfg, ebpf_domain_t entry_inv);
+invariant_table_t run_forward_analyzer(const Program& prog, ebpf_domain_t entry_inv);
 
 } // namespace crab

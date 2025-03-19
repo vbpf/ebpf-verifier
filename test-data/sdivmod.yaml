@@ -11,9 +11,6 @@ code:
     r1 s/= r2
 
 post:
-  - r1.type=number
-  - r1.svalue=6
-  - r1.uvalue=6
   - r2.svalue=1
   - r2.uvalue=1
 
@@ -151,7 +148,7 @@ messages:
 test-case: non-zero divided by possibly zero register 2
 
 pre: ["r1.type=number", "r1.svalue=6", "r1.uvalue=6",
-      "r2.type=number", "r2.svalue=[0, 5]", "r2.uvalue=[0, 5]", "r2.svalue=r2.uvalue"]
+      "r2.type=number", "r2.svalue=[0, 5]", "r2.uvalue=[0, 5]", "r2.uvalue=r2.svalue"]
 
 options: ["!allow_division_by_zero"]
 
@@ -162,12 +159,10 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 6]
-  - r1.uvalue=[0, 6]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
   - r2.type=number
   - r2.svalue=[0, 5]
-  - r2.uvalue=[0, 5]
-  - r2.svalue=r2.uvalue
+  - r2.uvalue=r2.svalue
 
 messages:
   - "0: Possible division by zero (r2 != 0)"
@@ -347,8 +342,7 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 6]
-  - r1.uvalue=[0, 6]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
   - r2.type=number
   - r2.svalue=[-5, 5]
 
@@ -381,7 +375,7 @@ test-case: non-zero modulo possibly zero register 2
 options: ["!allow_division_by_zero"]
 
 pre: ["r1.type=number", "r1.svalue=6", "r1.uvalue=6",
-      "r2.type=number", "r2.svalue=[0, 5]", "r2.uvalue=[0, 5]", "r2.svalue=r2.uvalue"]
+      "r2.type=number", "r2.svalue=[0, 5]", "r2.uvalue=[0, 5]", "r2.uvalue=r2.svalue"]
 
 code:
   <start>: |
@@ -390,12 +384,10 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 6]
-  - r1.uvalue=[0, 6]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
   - r2.type=number
   - r2.svalue=[0, 5]
-  - r2.uvalue=[0, 5]
-  - r2.svalue=r2.uvalue
+  - r2.uvalue=r2.svalue
 
 messages:
   - "0: Possible division by zero (r2 != 0)"
@@ -435,8 +427,7 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 6]
-  - r1.uvalue=[0, 6]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
   - r2.type=number
 
 messages:
@@ -474,8 +465,7 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 4]
-  - r1.uvalue=[0, 4]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
   - r2.type=number
   - r2.svalue=[1, 5]
   - r2.uvalue=[1, 5]
@@ -518,8 +508,7 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[0, 2]
-  - r1.uvalue=[0, 2]
-  - r1.svalue=r1.uvalue
+  - r1.uvalue=r1.svalue
   - r2.type=number
   - r2.svalue=[-3, -2]
   - r2.uvalue=[18446744073709551613, 18446744073709551614]
@@ -569,3 +558,22 @@ post:
   - r2.type=number
   - r2.svalue=[7, 10]
   - r2.uvalue=[7, 10]
+
+---
+test-case: Inverted range after modulo
+
+# Ranges are and divisor are selected so that the result of modulo has
+# inverted range compared (i.e 0x8000 % 0x808 = 0x788 and 0x7FFFFFFFFFFFFFFF % 0x808 = 0x787)
+# This previously caused an issue in the verifier as the range would be bottom (instead of a valid range).
+# Constants were picked by the libfuzzer tool.
+pre: ["r0.type=number",
+      "r0.svalue=[32768, 9223372036854775807]"]
+
+code:
+  <start>: |
+    r0 s%= 0x808
+
+post:
+  - r0.type=number
+  - r0.svalue=[0, 2055]
+  - r0.uvalue=r0.svalue

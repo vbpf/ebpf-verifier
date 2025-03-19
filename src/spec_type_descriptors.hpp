@@ -10,8 +10,6 @@
 
 #include "crab_utils/lazy_allocator.hpp"
 
-constexpr int EBPF_STACK_SIZE = 512;
-
 enum class EbpfMapValueType { ANY, MAP, PROGRAM };
 
 struct EbpfMapType {
@@ -40,16 +38,14 @@ struct EbpfProgramType {
     bool is_privileged{};
 };
 
-void print_map_descriptors(const std::vector<EbpfMapDescriptor>& descriptors, std::ostream& o);
-
-using EquivalenceKey = std::tuple<EbpfMapValueType /* value_type */, uint32_t /* key_size */, uint32_t /* value_size */,
-                                  uint32_t /* max_entries */>;
-
-struct program_info {
-    const struct ebpf_platform_t* platform{};
-    std::vector<EbpfMapDescriptor> map_descriptors{};
-    EbpfProgramType type{};
-    std::map<EquivalenceKey, int> cache{};
+// Represents the key characteristics that determine equivalence between eBPF maps.
+// Used to cache and compare map configurations across the program.
+struct EquivalenceKey {
+    EbpfMapValueType value_type;
+    uint32_t key_size;
+    uint32_t value_size;
+    uint32_t max_entries;
+    std::strong_ordering operator<=>(const EquivalenceKey&) const = default;
 };
 
 struct btf_line_info_t {
@@ -59,6 +55,14 @@ struct btf_line_info_t {
     uint32_t column_number{};
 };
 
+struct program_info {
+    const struct ebpf_platform_t* platform{};
+    std::vector<EbpfMapDescriptor> map_descriptors{};
+    EbpfProgramType type{};
+    std::map<EquivalenceKey, int> cache{};
+    std::map<int, btf_line_info_t> line_info{};
+};
+
 struct raw_program {
     std::string filename{};
     std::string section_name{};
@@ -66,7 +70,10 @@ struct raw_program {
     std::string function_name{};
     std::vector<ebpf_inst> prog{};
     program_info info{};
-    std::vector<btf_line_info_t> line_info{};
 };
 
-extern thread_local crab::lazy_allocator<program_info> global_program_info;
+void print_map_descriptors(const std::vector<EbpfMapDescriptor>& descriptors, std::ostream& o);
+
+std::ostream& operator<<(std::ostream& os, const btf_line_info_t& line_info);
+
+extern thread_local crab::lazy_allocator<program_info> thread_local_program_info;

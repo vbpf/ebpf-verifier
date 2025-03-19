@@ -16,16 +16,17 @@ post:
 ---
 test-case: assign register
 
-pre: []
+pre: ["r2.type=number"]
 
 code:
   <start>: |
     r1 = r2;
 
 post:
-  - r1.type=r2.type
-  - r1.svalue=r2.svalue
-  - r1.uvalue=r2.uvalue
+  - r1.type=number
+  - r2.type=number
+  - r2.svalue=r1.svalue
+  - r2.uvalue=r1.uvalue
 
 ---
 test-case: re-assign immediate
@@ -98,8 +99,8 @@ code:
 post:
   - r1.type=packet
   - r1.packet_offset=0
-  - r1.svalue=s[504...511].svalue
-  - r1.uvalue=s[504...511].uvalue
+  - s[504...511].svalue=r1.svalue
+  - s[504...511].uvalue=r1.uvalue
   - r10.type=stack
   - r10.stack_offset=512
   - s[504...511].type=packet
@@ -131,8 +132,8 @@ code:
 post:
   - r1.type=packet
   - r1.packet_offset=0
-  - r1.svalue=s[504...511].svalue
-  - r1.uvalue=s[504...511].uvalue
+  - s[504...511].svalue=r1.svalue
+  - s[504...511].uvalue=r1.uvalue
   - r10.type=stack
   - r10.stack_offset=512
   - s[500...503].type=number
@@ -168,9 +169,9 @@ post:
   - r1.stack_offset=0
   - r2.type=stack
   - r2.stack_offset=0
-  - r1.svalue=r2.svalue
-  - r1.uvalue=r2.uvalue
-  - r1.stack_numeric_size=r2.stack_numeric_size
+  - r2.svalue=r1.svalue
+  - r2.uvalue=r1.uvalue
+  - r2.stack_numeric_size=r1.stack_numeric_size
 ---
 test-case: 32-bit assign register stack value
 
@@ -182,10 +183,12 @@ code:
 
 post:
   - r2.svalue=[0, 4294967295]
-  - r2.svalue=r2.uvalue
-  - r2.uvalue=[0, 4294967295]
+  - r2.uvalue=r2.svalue
   - r10.type=stack
   - r10.stack_offset=512
+
+messages:
+  - "0: Invalid type (r10.type == number)"
 ---
 test-case: assign register shared value
 
@@ -202,8 +205,8 @@ post:
   - r2.type=shared
   - r2.shared_offset=0
   - r2.shared_region_size=16
-  - r1.svalue=r2.svalue
-  - r1.uvalue=r2.uvalue
+  - r2.svalue=r1.svalue
+  - r2.uvalue=r1.uvalue
 ---
 test-case: 32-bit assign register shared value
 
@@ -218,8 +221,10 @@ post:
   - r1.shared_offset=0
   - r1.shared_region_size=16
   - r2.svalue=[0, 4294967295]
-  - r2.uvalue=[0, 4294967295]
-  - r2.svalue=r2.uvalue
+  - r2.uvalue=r2.svalue
+
+messages:
+  - "0: Invalid type (r1.type == number)"
 ---
 test-case: assign register combination value
 
@@ -235,14 +240,13 @@ post:
   - r1.shared_region_size=16
   - r1.stack_offset=500
   - r1.stack_numeric_size=16
-  - r2.type in {stack, shared}
   - r2.shared_offset=0
   - r2.shared_region_size=16
   - r2.stack_offset=500
   - r2.stack_numeric_size=16
-  - r1.type=r2.type
-  - r1.svalue=r2.svalue
-  - r1.uvalue=r2.uvalue
+  - r2.type=r1.type
+  - r2.svalue=r1.svalue
+  - r2.uvalue=r1.uvalue
 ---
 test-case: 32-bit indirect assignment from context
 
@@ -253,7 +257,7 @@ code:
     r2 = *(u32 *)(r1 + 4)
 
 post:
-  - packet_size=r2.packet_offset
+  - r2.packet_offset=packet_size
   - r1.ctx_offset=0
   - r1.type=ctx
   - r1.svalue=[1, 2147418112]
@@ -291,26 +295,24 @@ post:
 ---
 test-case: assign register packet value
 
-pre: ["packet_size=r2.packet_offset", "r2.type=packet", "r2.svalue=[4098, 2147418112]"]
+pre: ["r2.packet_offset=packet_size", "r2.type=packet", "r2.svalue=[4098, 2147418112]"]
 
 code:
   <start>: |
     r1 = r2
 
 post:
-  - packet_size=r1.packet_offset
+  - r1.packet_offset=packet_size
+  - r2.packet_offset=packet_size
+  - r2.svalue=r1.svalue
+  - r2.uvalue=r1.uvalue
   - r1.type=packet
   - r1.svalue=[4098, 2147418112]
-  - packet_size=r2.packet_offset
   - r2.type=packet
-  - r2.svalue=[4098, 2147418112]
-  - r1.packet_offset=r2.packet_offset
-  - r1.svalue=r2.svalue
-  - r1.uvalue=r2.uvalue
 ---
 test-case: 32-bit assign register packet value
 
-pre: ["packet_size=r2.packet_offset", "r2.type=packet", "r2.svalue=[4098, 2147418112]"]
+pre: ["r2.packet_offset=packet_size", "r2.type=packet", "r2.svalue=[4098, 2147418112]"]
 
 code:
   <start>: |
@@ -318,11 +320,13 @@ code:
 
 post:
   - r1.svalue=[0, 4294967295]
-  - r1.uvalue=[0, 4294967295]
-  - r1.svalue=r1.uvalue
-  - packet_size=r2.packet_offset
+  - r1.uvalue=r1.svalue
+  - r2.packet_offset=packet_size
   - r2.type=packet
   - r2.svalue=[4098, 2147418112]
+
+messages:
+  - "0: Invalid type (r2.type == number)"
 ---
 test-case: assign register context value
 
@@ -339,10 +343,8 @@ post:
   - r1.uvalue=[1, 2147418112]
   - r2.ctx_offset=0
   - r2.type=ctx
-  - r2.svalue=[1, 2147418112]
-  - r2.uvalue=[1, 2147418112]
-  - r1.svalue=r2.svalue
-  - r1.uvalue=r2.uvalue
+  - r2.svalue=r1.svalue
+  - r2.uvalue=r1.uvalue
 ---
 test-case: 32-bit assign register context value
 
@@ -358,8 +360,10 @@ post:
   - r1.svalue=[1, 2147418112]
   - r1.uvalue=[1, 2147418112]
   - r2.svalue=[1, 2147418112]
-  - r2.uvalue=[1, 2147418112]
-  - r2.svalue=r2.uvalue
+  - r2.uvalue=r2.svalue
+
+messages:
+  - "0: Invalid type (r1.type == number)"
 ---
 test-case: assign register map value
 
@@ -374,8 +378,8 @@ post:
   - r1.type=map_fd
   - r2.map_fd=1
   - r2.type=map_fd
-  - r1.svalue=r2.svalue
-  - r1.uvalue=r2.uvalue
+  - r2.svalue=r1.svalue
+  - r2.uvalue=r1.uvalue
 ---
 test-case: 32-bit assign register map value
 
@@ -389,8 +393,10 @@ post:
   - r1.map_fd=1
   - r1.type=map_fd
   - r2.svalue=[0, 4294967295]
-  - r2.uvalue=[0, 4294967295]
-  - r2.svalue=r2.uvalue
+  - r2.uvalue=r2.svalue
+
+messages:
+  - "0: Invalid type (r1.type == number)"
 ---
 test-case: assign register map programs value
 
@@ -405,8 +411,8 @@ post:
   - r1.type=map_fd_programs
   - r2.map_fd=1
   - r2.type=map_fd_programs
-  - r1.svalue=r2.svalue
-  - r1.uvalue=r2.uvalue
+  - r2.svalue=r1.svalue
+  - r2.uvalue=r1.uvalue
 ---
 test-case: 32-bit assign register map programs value
 
@@ -420,5 +426,7 @@ post:
   - r1.map_fd=1
   - r1.type=map_fd_programs
   - r2.svalue=[0, 4294967295]
-  - r2.uvalue=[0, 4294967295]
-  - r2.svalue=r2.uvalue
+  - r2.uvalue=r2.svalue
+
+messages:
+  - "0: Invalid type (r1.type == number)"

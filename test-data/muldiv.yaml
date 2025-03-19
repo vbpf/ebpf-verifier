@@ -1,0 +1,60 @@
+# Copyright (c) Prevail Verifier contributors.
+# SPDX-License-Identifier: MIT
+---
+test-case: 32bit division - negative divisor
+
+pre: ["r0.type=number", "r0.svalue=0", "r0.uvalue=0"]
+
+code:
+  <start>: |
+    w0 = 4194435072
+    w0 /= 4096655360
+
+post:
+  - r0.type=number
+  - r0.svalue=1
+  - r0.uvalue=1
+
+---
+test-case: 32bit modulo - negative divisor
+pre: ["r0.type=number", "r0.svalue=0", "r0.uvalue=0"]
+
+code:
+  <start>: |
+    w0 = 4194435072
+    w0 %= 4096655360
+
+post:
+  - r0.type=number
+  - r0.svalue=97779712
+  - r0.uvalue=97779712
+
+---
+test-case: 64bit division - negative divisor
+
+pre: ["r0.type=number", "r0.svalue=0", "r0.uvalue=0"]
+
+code:
+  <start>: |
+    r0 = 4194435072
+    r0 /= 4096655360
+
+post:
+  - r0.type=number
+  - r0.svalue=1
+  - r0.uvalue=1
+
+---
+test-case: 64bit modulo - negative divisor
+
+pre: ["r0.type=number", "r0.svalue=0", "r0.uvalue=0"]
+
+code:
+  <start>: |
+    r0 = 4194435072
+    r0 %= 4096655360
+
+post:
+  - r0.type=number
+  - r0.svalue=97779712
+  - r0.uvalue=97779712

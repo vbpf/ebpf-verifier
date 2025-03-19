@@ -26,8 +26,12 @@
 #include <stack>
 #include <utility>
 #include <vector>
+#include <optional>
 
 #include "crab/cfg.hpp"
+#include "crab/label.hpp"
+
+namespace crab {
 
 // Bourdoncle, "Efficient chaotic iteration strategies with widenings", 1993
 // uses the notation w(c) to refer to the set of heads of the nested components
@@ -92,6 +96,9 @@ class wto_cycle_t final {
     }
 };
 
+// Check if node is a member of the wto component.
+bool is_component_member(const label_t& label, const cycle_or_label& component);
+
 class wto_t final {
     // Top level components, in reverse order.
     wto_partition_t _components;
@@ -102,10 +109,10 @@ class wto_t final {
     // Table mapping label to the list of heads of cycles containing the label.
     // This is an on-demand cache, since for most vertices the nesting is never
     // looked at so we only create a wto_nesting_t for cases we actually need it.
-    std::map<label_t, wto_nesting_t> _nesting;
+    mutable std::map<label_t, wto_nesting_t> _nesting;
 
-    std::vector<label_t> collect_heads(const label_t& label);
-    std::optional<label_t> head(const label_t& label);
+    std::vector<label_t> collect_heads(const label_t& label) const;
+    std::optional<label_t> head(const label_t& label) const;
 
     wto_t() = default;
     friend class wto_builder_t;
@@ -124,5 +131,21 @@ class wto_t final {
     }
 
     friend std::ostream& operator<<(std::ostream& o, const wto_t& wto);
-    const wto_nesting_t& nesting(const label_t& label);
+    const wto_nesting_t& nesting(const label_t& label) const;
+
+    /**
+     * Visit the heads of all loops in the WTO.
+     *
+     * @param f The callable to be invoked for each loop head.
+     *
+     * The order in which the heads are visited is not specified.
+     */
+    void for_each_loop_head(auto&& f) const {
+        for (const auto& component : *this) {
+            if (const auto pc = std::get_if<std::shared_ptr<wto_cycle_t>>(&component)) {
+                f((*pc)->head());
+            }
+        }
+    }
 };
+} // namespace crab

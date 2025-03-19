@@ -6,7 +6,7 @@
 #include "ebpf_yaml.hpp"
 
 // Avoid affecting other headers by macros.
-#include "CLI11.hpp"
+#include "CLI11/CLI11.hpp"
 
 int main(int argc, char** argv) {
     CLI::App app{"Run YAML test cases"};
@@ -41,7 +41,7 @@ int main(int argc, char** argv) {
             std::cout << "failed:\n";
             res = false;
             std::cout << "------\n";
-            print_failure(*maybe_failure, std::cout);
+            print_failure(*maybe_failure);
             std::cout << "------\n";
         } else {
             std::cout << "pass\n";

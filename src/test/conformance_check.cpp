@@ -11,7 +11,7 @@
 #include <string>
 #include <vector>
 
-#include "CLI11.hpp"
+#include "CLI11/CLI11.hpp"
 #include "ebpf_verifier.hpp"
 #include "ebpf_yaml.hpp"
 
@@ -21,8 +21,8 @@
  * @param[in] input String containing hex bytes.
  * @return Vector of bytes.
  */
-std::vector<uint8_t> base16_decode(const std::string& input) {
-    std::vector<uint8_t> output;
+std::vector<std::byte> base16_decode(const std::string& input) {
+    std::vector<std::byte> output;
     std::stringstream ss(input);
     std::string value;
     while (std::getline(ss, value, ' ')) {
@@ -30,7 +30,7 @@ std::vector<uint8_t> base16_decode(const std::string& input) {
             continue;
         }
         try {
-            output.push_back(std::stoi(value, nullptr, 16));
+            output.push_back(static_cast<std::byte>(std::stoi(value, nullptr, 16)));
         } catch (std::invalid_argument&) {
             std::cerr << "base16_decode failed to decode " << value << "\n";
         } catch (std::out_of_range&) {

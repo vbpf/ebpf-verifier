@@ -3,78 +3,18 @@
 #pragma once
 
 #include <optional>
+#include <ostream>
 #include <string>
 #include <tuple>
 #include <utility>
 #include <variant>
 #include <vector>
 
-#include "crab/variable.hpp"
+#include "crab/label.hpp"
+#include "crab/type_encoding.hpp"
+#include "crab_utils/num_safety.hpp"
 #include "spec_type_descriptors.hpp"
 
-constexpr char STACK_FRAME_DELIMITER = '/';
-
-namespace crab {
-struct label_t {
-    int from;                       ///< Jump source, or simply index of instruction
-    int to;                         ///< Jump target or -1
-    std::string stack_frame_prefix; ///< Variable prefix when calling this label.
-
-    explicit label_t(const int index, const int to = -1, std::string stack_frame_prefix = {}) noexcept
-        : from(index), to(to), stack_frame_prefix(std::move(stack_frame_prefix)) {}
-
-    static label_t make_jump(const label_t& src_label, const label_t& target_label) {
-        return label_t{src_label.from, target_label.from, target_label.stack_frame_prefix};
-    }
-
-    bool operator==(const label_t& other) const noexcept = default;
-
-    constexpr bool operator<(const label_t& other) const {
-        if (this == &other) {
-            return false;
-        }
-        if (*this == label_t::exit) {
-            return false;
-        }
-        if (other == label_t::exit) {
-            return true;
-        }
-        return (stack_frame_prefix < other.stack_frame_prefix ||
-                (stack_frame_prefix == other.stack_frame_prefix &&
-                 (from < other.from || (from == other.from && to < other.to))));
-    }
-
-    // no hash; intended for use in ordered containers.
-
-    [[nodiscard]]
-    constexpr bool isjump() const {
-        return to != -1;
-    }
-
-    friend std::ostream& operator<<(std::ostream& os, const label_t& label) {
-        if (label == entry) {
-            return os << "entry";
-        }
-        if (label == exit) {
-            return os << "exit";
-        }
-        if (!label.stack_frame_prefix.empty()) {
-            os << label.stack_frame_prefix << STACK_FRAME_DELIMITER;
-        }
-        if (label.to == -1) {
-            return os << label.from;
-        }
-        return os << label.from << ":" << label.to;
-    }
-
-    static const label_t entry;
-    static const label_t exit;
-};
-
-inline const label_t label_t::entry{-1};
-inline const label_t label_t::exit{-2};
-
-} // namespace crab
 using crab::label_t;
 
 // Assembly syntax.
@@ -151,6 +91,15 @@ struct LoadMapFd {
     Reg dst;
     int32_t mapfd{};
     constexpr bool operator==(const LoadMapFd&) const = default;
+};
+
+// Load the address of a map value into a register.
+struct LoadMapAddress {
+    Reg dst;          // Destination register to store the address of the map value.
+    int32_t mapfd{};  // File descriptor of the map to load the address from.
+    int32_t offset{}; // Offset within the map, must be within bounds.
+
+    constexpr bool operator==(const LoadMapAddress&) const = default;
 };
 
 struct Condition {
@@ -296,8 +245,23 @@ struct Undefined {
 /// the branch and before each jump target.
 struct Assume {
     Condition cond;
+
+    // True if the condition is implicitly written in the program (False for tests).
+    bool is_implicit{true};
+
     constexpr bool operator==(const Assume&) const = default;
 };
+
+struct IncrementLoopCounter {
+    label_t name;
+    bool operator==(const IncrementLoopCounter&) const = default;
+};
+
+using Instruction = std::variant<Undefined, Bin, Un, LoadMapFd, Call, CallLocal, Callx, Exit, Jmp, Mem, Packet, Atomic,
+                                 Assume, IncrementLoopCounter, LoadMapAddress>;
+
+using LabeledInstruction = std::tuple<label_t, Instruction, std::optional<btf_line_info_t>>;
+using InstructionSeq = std::vector<LabeledInstruction>;
 
 /// Condition check whether something is a valid size.
 struct ValidSize {
@@ -337,6 +301,7 @@ enum class AccessType {
 };
 
 struct ValidAccess {
+    int call_stack_depth{};
     Reg reg;
     int32_t offset{};
     Value width{Imm{0}};
@@ -385,32 +350,45 @@ struct ZeroCtxOffset {
     constexpr bool operator==(const ZeroCtxOffset&) const = default;
 };
 
-using AssertionConstraint = std::variant<Comparable, Addable, ValidDivisor, ValidAccess, ValidStore, ValidSize,
-                                         ValidMapKeyValue, ValidCall, TypeConstraint, FuncConstraint, ZeroCtxOffset>;
-
-struct Assert {
-    AssertionConstraint cst;
-    Assert(AssertionConstraint cst) : cst(std::move(cst)) {}
-    constexpr bool operator==(const Assert&) const = default;
-};
-
-struct IncrementLoopCounter {
+struct BoundedLoopCount {
     label_t name;
-    bool operator==(const IncrementLoopCounter&) const = default;
+    bool operator==(const BoundedLoopCount&) const = default;
+    // Maximum number of loop iterations allowed during verification.
+    // This prevents infinite loops while allowing reasonable bounded loops.
+    // When exceeded, verification fails as the loop might not terminate.
+    static constexpr int limit = 100000;
 };
 
-using Instruction = std::variant<Undefined, Bin, Un, LoadMapFd, Call, CallLocal, Callx, Exit, Jmp, Mem, Packet, Atomic,
-                                 Assume, Assert, IncrementLoopCounter>;
+using Assertion = std::variant<Comparable, Addable, ValidDivisor, ValidAccess, ValidStore, ValidSize, ValidMapKeyValue,
+                               ValidCall, TypeConstraint, FuncConstraint, ZeroCtxOffset, BoundedLoopCount>;
 
-using LabeledInstruction = std::tuple<label_t, Instruction, std::optional<btf_line_info_t>>;
-using InstructionSeq = std::vector<LabeledInstruction>;
+std::ostream& operator<<(std::ostream& os, Instruction const& ins);
+std::string to_string(Instruction const& ins);
 
-// cpu=v4 supports 32-bit PC offsets so we need a large enough type.
-using pc_t = size_t;
+std::ostream& operator<<(std::ostream& os, Bin::Op op);
+std::ostream& operator<<(std::ostream& os, Condition::Op op);
+
+inline std::ostream& operator<<(std::ostream& os, const Imm imm) { return os << crab::to_signed(imm.v); }
+inline std::ostream& operator<<(std::ostream& os, Reg const& a) { return os << "r" << gsl::narrow<int>(a.v); }
+inline std::ostream& operator<<(std::ostream& os, Value const& a) {
+    if (const auto pa = std::get_if<Imm>(&a)) {
+        return os << *pa;
+    }
+    return os << std::get<Reg>(a);
+}
+
+std::ostream& operator<<(std::ostream& os, const Assertion& a);
+std::string to_string(const Assertion& constraint);
+
+void print(const InstructionSeq& insts, std::ostream& out, const std::optional<const label_t>& label_to_print,
+           bool print_line_info = false);
+
+int size(const Instruction& inst);
 
 } // namespace asm_syntax
 
 using namespace asm_syntax;
+using crab::pc_t;
 
 template <class... Ts>
 struct overloaded : Ts... {

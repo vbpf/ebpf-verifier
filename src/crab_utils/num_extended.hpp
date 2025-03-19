@@ -152,7 +152,7 @@ class extended_number final {
     }
 
     [[nodiscard]]
-    extended_number UDiv(const extended_number& x) const {
+    extended_number udiv(const extended_number& x) const {
         using M = uint64_t;
         return AbsDiv(x, [](number_t dividend, number_t divisor) {
             dividend = dividend >= 0 ? dividend : number_t{dividend.cast_to<M>()};
@@ -162,7 +162,7 @@ class extended_number final {
     }
 
     [[nodiscard]]
-    extended_number URem(const extended_number& x) const {
+    extended_number urem(const extended_number& x) const {
         using M = uint64_t;
         return AbsDiv(x, [](number_t dividend, number_t divisor) {
             dividend = dividend >= 0 ? dividend : number_t{dividend.cast_to<M>()};
@@ -180,6 +180,22 @@ class extended_number final {
     bool operator==(const extended_number& x) const { return (_is_infinite == x._is_infinite && _n == x._n); }
 
     bool operator!=(const extended_number& x) const { return !operator==(x); }
+
+    [[nodiscard]]
+    number_t sign_extend(const int width) const {
+        if (is_infinite()) {
+            CRAB_ERROR("Bound: infinity cannot be sign_extended");
+        }
+        return _n.sign_extend(width);
+    }
+
+    [[nodiscard]]
+    number_t zero_extend(const int width) const {
+        if (is_infinite()) {
+            CRAB_ERROR("Bound: infinity cannot be zero_extended");
+        }
+        return _n.zero_extend(width);
+    }
 
     /*	operator<= and operator>= use a somewhat optimized implementation.
      *	results include up to 20% improvements in performance in the octagon domain

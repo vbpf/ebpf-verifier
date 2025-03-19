@@ -18,11 +18,9 @@ code:
 post:
   - "r0.type=number"
   - "r0.svalue=4"
-  - "r0.uvalue=4"
-  - "r0.svalue=r0.uvalue"
+  - "r0.uvalue=r0.svalue"
   - "pc[1]=5"
   - "pc[1]=r0.svalue+1"
-  - "pc[1]=r0.uvalue+1"
 ---
 test-case: until loop, unsigned leq
 options: ["termination"]
@@ -38,13 +36,10 @@ code:
     exit
 
 post:
-  - "r0.type=number"
-  - "r0.svalue=4"
-  - "r0.uvalue=4"
-  - "r0.svalue=r0.uvalue"
-  - "pc[1]=4"
-  - "pc[1]=r0.svalue"
-  - "pc[1]=r0.uvalue"
+  - r0.uvalue=pc[1]
+  - r0.svalue=pc[1]
+  - r0.type=number
+  - pc[1]=4
 ---
 test-case: while loop, signed gte
 options: ["termination"]
@@ -61,13 +56,11 @@ code:
     exit
 
 post:
-  - "r0.type=number"
-  - "r0.svalue=4"
-  - "r0.uvalue=4"
-  - "r0.svalue=r0.uvalue"
-  - "pc[1]=5"
-  - "pc[1]=r0.svalue+1"
-  - "pc[1]=r0.uvalue+1"
+  - r0.type=number
+  - r0.svalue=4
+  - r0.uvalue=r0.svalue
+  - pc[1]=5
+  - pc[1]=r0.svalue+1
 ---
 test-case: until loop, signed leq
 options: ["termination"]
@@ -84,13 +77,10 @@ code:
     exit
 
 post:
-  - "r0.type=number"
-  - "r0.svalue=4"
-  - "r0.uvalue=4"
-  - "r0.svalue=r0.uvalue"
-  - "pc[1]=4"
-  - "pc[1]=r0.svalue"
-  - "pc[1]=r0.uvalue"
+  - r0.uvalue=pc[1]
+  - r0.svalue=pc[1]
+  - r0.type=number
+  - pc[1]=4
 ---
 test-case: loop with data dependence, unsigned leq
 options: ["termination"]
@@ -109,16 +99,13 @@ code:
     exit
 
 post:
-  - "r0.type=number"
-  - "r0.svalue=[1, 4]"
-  - "r0.uvalue=[1, 4]"
-  - "r0.svalue=r0.uvalue"
-  - "r1.type=number"
-  - "r2.type=number"
-  - "r3.type=number"
-  - "pc[1]=[1, 4]"
-  - "pc[1]=r0.svalue"
-  - "pc[1]=r0.uvalue"
+  - r0.uvalue=pc[1]
+  - r0.svalue=pc[1]
+  - r0.type=number
+  - r1.type=number
+  - r2.type=number
+  - r3.type=number
+  - pc[1]=[1, 4]
 ---
 test-case: while loop, eq
 # options: ["termination"]
@@ -138,7 +125,7 @@ post:
   - "r0.type=number"
   - "r0.svalue=4"
   - "r0.uvalue=4"
-#  - "r0.svalue=r0.uvalue"
+#  - "r0.uvalue=r0.svalue"
 #  - "pc[1]=4"
 #  - "pc[1]=r0.value"
 ---
@@ -160,7 +147,7 @@ post:
   - "r0.type=number"
   - "r0.svalue=9"
   - "r0.uvalue=9"
-#  - "r0.svalue=r0.uvalue"
+#  - "r0.uvalue=r0.svalue"
 #  - "pc[1]=9"
 #  - "pc[1]=r0.value"
 ---
@@ -182,11 +169,11 @@ post:
   - "r0.type=number"
   - "r0.svalue=9"
   - "r0.uvalue=9"
-  # - "r0.svalue=r0.uvalue"
+  # - "r0.uvalue=r0.svalue"
   - "pc[1]=[1, +oo]"
 
 messages:
-  - "Could not prove termination."
+  - "1 (counter): Loop counter is too large (pc[1] < 100000)"
 
 ---
 test-case: realistic forward loop
@@ -207,8 +194,8 @@ code:
     r2 -= r1
     r3 = 0
     r0 = 0
-#    r2 <<= 32; this fails with "11: Upper bound must be at most packet_size (valid_access(r4.offset, width=1) for read)"
-#    r2 >>= 32
+  #    r2 <<= 32; this fails with "11: Upper bound must be at most packet_size (valid_access(r4.offset, width=1) for read)"
+  #    r2 >>= 32
   <loop>: |
     r4 = r1
     r4 += r3
@@ -222,47 +209,213 @@ code:
     exit
 
 post:
+  - r2.uvalue=packet_size
+  - r2.svalue=packet_size
+  - r3.uvalue=pc[7]
+  - r3.svalue=pc[7]
+  - r4.svalue=pc[7]
+  - r4.uvalue=pc[7]
   - meta_offset=[-oo, 0]
   - packet_size=[1, 65534]
-  - packet_size=r2.svalue
-  - packet_size=r2.uvalue
-  - pc[7]-packet_size<=0
-  - pc[7]-r2.svalue<=0
-  - pc[7]-r2.uvalue<=0
   - pc[7]=[1, 255]
-  - pc[7]=r3.svalue
-  - pc[7]=r3.uvalue
-  - pc[7]=r4.svalue
-  - pc[7]=r4.uvalue
   - r0.type=number
   - r1.packet_offset=0
   - r1.svalue=[4098, 2147418112]
   - r1.type=packet
-  - r2.svalue=[1, 65534]
-  - r2.svalue=r2.uvalue
   - r2.type=number
-  - r2.uvalue=[1, 65534]
-  - r3.svalue-packet_size<=0
-  - r3.svalue-r2.svalue<=0
-  - r3.svalue-r2.uvalue<=0
-  - r3.svalue=[1, 255]
-  - r3.svalue=r3.uvalue
-  - r3.svalue=r4.svalue
-  - r3.svalue=r4.uvalue
   - r3.type=number
-  - r3.uvalue-packet_size<=0
-  - r3.uvalue-r2.svalue<=0
-  - r3.uvalue-r2.uvalue<=0
-  - r3.uvalue=[1, 255]
-  - r3.uvalue=r4.svalue
-  - r3.uvalue=r4.uvalue
-  - r4.svalue-packet_size<=0
-  - r4.svalue-r2.svalue<=0
-  - r4.svalue-r2.uvalue<=0
-  - r4.svalue=[1, 255]
-  - r4.svalue=r4.uvalue
   - r4.type=number
-  - r4.uvalue-packet_size<=0
-  - r4.uvalue-r2.svalue<=0
-  - r4.uvalue-r2.uvalue<=0
-  - r4.uvalue=[1, 255]
+
+---
+test-case: simple infinite loop, less than
+options: ["termination"]
+
+pre: []
+
+code:
+  <start>: |
+    r0 = 0
+    if r0 < 1 goto <start>
+    exit
+
+post: []
+
+messages:
+  - "1:2: Code becomes unreachable (assume r0 >= 1)"
+  - "0 (counter): Loop counter is too large (pc[0] < 100000)"
+---
+test-case: simple infinite loop, less than or equal
+options: ["termination"]
+
+pre: []
+
+code:
+  <start>: |
+    r0 = 0
+    if r0 <= 1 goto <start>
+    exit
+
+post: []
+
+messages:
+  - "1:2: Code becomes unreachable (assume r0 > 1)"
+  - "0 (counter): Loop counter is too large (pc[0] < 100000)"
+
+---
+test-case: simple infinite loop, equal
+options: ["termination"]
+
+pre: []
+
+code:
+  <start>: |
+    r0 = 0
+    if r0 == 0 goto <start>
+    exit
+
+post: []
+
+messages:
+  - "1:2: Code becomes unreachable (assume r0 != 0)"
+  - "0 (counter): Loop counter is too large (pc[0] < 100000)"
+
+---
+test-case: simple infinite loop, greater than
+options: ["termination"]
+
+pre: []
+
+code:
+  <start>: |
+    r0 = 1
+    if r0 > 0 goto <start>
+    exit
+
+post: []
+
+messages:
+  - "1:2: Code becomes unreachable (assume r0 <= 0)"
+  - "0 (counter): Loop counter is too large (pc[0] < 100000)"
+
+---
+test-case: simple infinite loop, greater than or equal
+options: ["termination"]
+
+pre: []
+
+code:
+  <start>: |
+    r0 = 1
+    if r0 >= 0 goto <start>
+    exit
+
+post: []
+
+messages:
+  - "1:2: Code becomes unreachable (assume r0 < 0)"
+  - "0 (counter): Loop counter is too large (pc[0] < 100000)"
+---
+test-case: infinite loop with multiple exits
+options: ["termination"]
+pre: []
+code:
+  <start>: |
+    r0 = 1
+    if r0 > 0 goto <loop1>
+    exit
+  <loop1>: |
+    if r0 < 2 goto <start>
+    exit
+post: []
+messages:
+  - "1:2: Code becomes unreachable (assume r0 <= 0)"
+  - "3:4: Code becomes unreachable (assume r0 >= 2)"
+  - "0 (counter): Loop counter is too large (pc[0] < 100000)"
+
+---
+# Note: This test case terminates after 1000001 iterations, but the verifier assumes that the loop is infinite
+# because it is greater than the default limit of 1000000 iterations.
+test-case: very large loop > 1M iterations
+options: ["termination"]
+pre: [r0.type=number, r0.svalue=0, r0.uvalue=0]
+code:
+  <start>: |
+    r0 += 1
+    if r0 < 1000001 goto <start>
+  <out>: |
+    exit
+post:
+  - pc[0]=1000001
+  - r0.uvalue=pc[0]
+  - r0.svalue=pc[0]
+  - r0.type=number
+messages:
+  - "0 (counter): Loop counter is too large (pc[0] < 100000)"
+
+---
+test-case: possible infinite loop
+options: ["termination"]
+
+pre: [r0.type=number]
+code:
+  <start>: |
+    if r0 > 0 goto <start>
+    exit
+
+post:
+  - pc[0]=[1, +oo]
+  - r0.svalue=0
+  - r0.uvalue=0
+  - r0.type=number
+
+messages:
+  - "0 (counter): Loop counter is too large (pc[0] < 100000)"
+
+---
+# Check for case where there are backwards jumps that don't form a loop.
+test-case: non-loop backwards jump
+options: ["termination"]
+
+pre: [r0.type=number]
+code:
+  <start>: |
+    r0 = 1
+    goto <two>
+  <one>: |
+    r0 += 1
+    exit
+  <two>: |
+    r0 += 1
+    goto <one>
+
+post:
+  - r0.svalue=3
+  - r0.uvalue=3
+  - r0.type=number
+
+messages: []
+
+---
+# Nested loops with inner infinite loop
+test-case: nested loops with inner infinite loop
+options: ["termination"]
+
+pre:
+  - "r0.type=number"
+  - "r0.svalue=0"
+  - "r0.uvalue=0"
+code:
+  <start>: |
+    r0 += 1
+    if r0 > 10 goto <out>
+  <inner>: |
+    if r0 > 0 goto <inner>
+  <out>: |
+    exit
+
+post: []
+
+messages:
+  - "1:3: Code becomes unreachable (assume r0 > 10)"
+  - "2:3: Code becomes unreachable (assume r0 <= 0)"
+  - "2 (counter): Loop counter is too large (pc[2] < 100000)"

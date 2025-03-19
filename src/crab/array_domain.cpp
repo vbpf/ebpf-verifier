@@ -28,8 +28,8 @@ static bool maybe_between(const NumAbsDomain& dom, const extended_number& x, con
     assert(x.is_finite());
     const linear_expression_t num(*x.number());
     NumAbsDomain tmp(dom);
-    tmp += num >= symb_lb;
-    tmp += num <= symb_ub;
+    tmp.add_constraint(num >= symb_lb);
+    tmp.add_constraint(num <= symb_ub);
     return !tmp.is_bottom();
 }
 
@@ -226,7 +226,7 @@ class offset_map_t final {
     void operator-=(const cell_t& c) { remove_cell(c); }
 
     void operator-=(const std::vector<cell_t>& cells) {
-        for (auto const& c : cells) {
+        for (const auto& c : cells) {
             this->operator-=(c);
         }
     }
@@ -290,7 +290,7 @@ std::vector<cell_t> offset_map_t::get_overlap_cells_symbolic_offset(const NumAbs
         }
         if (!largest_cell.is_null()) {
             if (largest_cell.symbolic_overlap(symb_lb, symb_ub, dom)) {
-                for (auto& c : o_cells) {
+                for (const auto& c : o_cells) {
                     out.push_back(c);
                 }
             }
@@ -421,17 +421,11 @@ std::vector<cell_t> offset_map_t::get_overlap_cells(const offset_t o, const unsi
 // We use a global array map
 using array_map_t = std::unordered_map<data_kind_t, offset_map_t>;
 
-static thread_local lazy_allocator<array_map_t> global_array_map;
+static thread_local lazy_allocator<array_map_t> thread_local_array_map;
 
-void clear_thread_local_state() { global_array_map.clear(); }
+void clear_thread_local_state() { thread_local_array_map.clear(); }
 
-static offset_map_t& lookup_array_map(const data_kind_t kind) { return (*global_array_map)[kind]; }
-
-/**
-    Ugly this needs to be fixed: needed if multiple analyses are
-    run so we can clear the array map from one run to another.
-**/
-void clear_global_state() { global_array_map->clear(); }
+static offset_map_t& lookup_array_map(const data_kind_t kind) { return (*thread_local_array_map)[kind]; }
 
 void array_domain_t::initialize_numbers(const int lb, const int width) {
     num_bytes.reset(lb, width);
@@ -547,14 +541,14 @@ static std::optional<std::pair<offset_t, unsigned>> kill_and_find_var(NumAbsDoma
     }
     if (!cells.empty()) {
         // Forget the scalars from the numerical domain
-        for (auto const& c : cells) {
-            inv -= c.get_scalar(kind);
+        for (const auto& c : cells) {
+            inv.havoc(c.get_scalar(kind));
 
             // Forget signed and unsigned values together.
             if (kind == data_kind_t::svalues) {
-                inv -= c.get_scalar(data_kind_t::uvalues);
+                inv.havoc(c.get_scalar(data_kind_t::uvalues));
             } else if (kind == data_kind_t::uvalues) {
-                inv -= c.get_scalar(data_kind_t::svalues);
+                inv.havoc(c.get_scalar(data_kind_t::svalues));
             }
         }
         // Remove the cells. If needed again they will be re-created.
@@ -799,11 +793,6 @@ std::optional<variable_t> array_domain_t::store_type(NumAbsDomain& inv, const li
     return {};
 }
 
-std::optional<variable_t> array_domain_t::store_type(NumAbsDomain& inv, const linear_expression_t& idx,
-                                                     const linear_expression_t& elem_size, const Reg& reg) {
-    return store_type(inv, idx, elem_size, variable_t::reg(data_kind_t::types, reg.v));
-}
-
 void array_domain_t::havoc(NumAbsDomain& inv, const data_kind_t kind, const linear_expression_t& idx,
                            const linear_expression_t& elem_size) {
     auto maybe_cell = split_and_find_var(*this, inv, kind, idx, elem_size);
@@ -816,19 +805,19 @@ void array_domain_t::havoc(NumAbsDomain& inv, const data_kind_t kind, const line
 void array_domain_t::store_numbers(const NumAbsDomain& inv, const variable_t _idx, const variable_t _width) {
 
     // TODO: this should be an user parameter.
-    const number_t max_num_elems = EBPF_STACK_SIZE;
+    const number_t max_num_elems = EBPF_TOTAL_STACK_SIZE;
 
     if (is_bottom()) {
         return;
     }
 
-    const std::optional<number_t> idx_n = inv[_idx].singleton();
+    const std::optional<number_t> idx_n = inv.eval_interval(_idx).singleton();
     if (!idx_n) {
         CRAB_WARN("array expansion store range ignored because ", "lower bound is not constant");
         return;
     }
 
-    const std::optional<number_t> width = inv[_width].singleton();
+    const std::optional<number_t> width = inv.eval_interval(_width).singleton();
     if (!width) {
         CRAB_WARN("array expansion store range ignored because ", "upper bound is not constant");
         return;

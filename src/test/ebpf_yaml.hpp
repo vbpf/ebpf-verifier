@@ -9,7 +9,7 @@
 
 struct TestCase {
     std::string name;
-    ebpf_verifier_options_t options;
+    ebpf_verifier_options_t options{};
     string_invariant assumed_pre_invariant;
     InstructionSeq instruction_seq;
     string_invariant expected_post_invariant;
@@ -30,7 +30,7 @@ struct Failure {
     Diff<std::set<std::string>> messages;
 };
 
-void print_failure(const Failure& failure, std::ostream& out);
+void print_failure(const Failure& failure, std::ostream& os = std::cout);
 
 std::optional<Failure> run_yaml_test_case(TestCase test_case, bool debug = false);
 
@@ -39,7 +39,7 @@ struct ConformanceTestResult {
     crab::interval_t r0_value = crab::interval_t::top();
 };
 
-ConformanceTestResult run_conformance_test_case(const std::vector<uint8_t>& memory_bytes,
-                                                const std::vector<uint8_t>& program_bytes, bool debug);
+ConformanceTestResult run_conformance_test_case(const std::vector<std::byte>& memory_bytes,
+                                                const std::vector<std::byte>& program_bytes, bool debug);
 
 bool run_yaml(const std::string& path);

@@ -4,7 +4,7 @@
  * Factories for variable names.
  */
 
-#include "asm_syntax.hpp"
+#include "crab/label.hpp"
 #include "crab/variable.hpp"
 #include "crab_utils/lazy_allocator.hpp"
 
@@ -134,7 +134,7 @@ std::vector<std::string> default_variable_names() {
         "data_size",
         "meta_size",
     };
-};
+}
 
 thread_local lazy_allocator<std::vector<std::string>, default_variable_names> variable_t::names;
 
@@ -148,8 +148,7 @@ std::ostream& operator<<(std::ostream& o, const data_kind_t& s) { return o << na
 
 static std::string mk_scalar_name(const data_kind_t kind, const number_t& o, const number_t& size) {
     std::stringstream os;
-    os << "s"
-       << "[" << o;
+    os << "s" << "[" << o;
     if (size != 1) {
         os << "..." << o + size - 1;
     }
@@ -190,6 +189,8 @@ std::vector<variable_t> variable_t::get_type_variables() {
 }
 
 bool variable_t::is_in_stack() const { return this->name()[0] == 's'; }
+
+bool variable_t::printing_order(const variable_t& a, const variable_t& b) { return a.name() < b.name(); }
 
 std::vector<variable_t> variable_t::get_loop_counters() {
     std::vector<variable_t> res;

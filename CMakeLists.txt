@@ -1,9 +1,22 @@
 # Copyright (c) Prevail Verifier contributors.
 # SPDX-License-Identifier: MIT
-cmake_minimum_required(VERSION 3.14)
+# Set cmake version to 3.16 to use CMP0091 aka MSVC_RUNTIME_LIBRARY property.
+cmake_minimum_required(VERSION 3.16)
+
 project(ebpf_verifier)
 
 include(FetchContent)
+
+if (IS_DIRECTORY "${PROJECT_SOURCE_DIR}/.git")
+    # Install Git pre-commit hook
+    file(COPY scripts/pre-commit scripts/commit-msg
+            DESTINATION "${PROJECT_SOURCE_DIR}/.git/hooks")
+    option(VERIFIER_ENABLE_TESTS "Build tests" ON)
+else ()
+    option(VERIFIER_ENABLE_TESTS "Build tests" OFF)
+endif ()
+
+message("Building tests: ${VERIFIER_ENABLE_TESTS}")
 
 FetchContent_Declare(GSL
         GIT_REPOSITORY "https://github.com/microsoft/GSL"
@@ -13,22 +26,21 @@ FetchContent_Declare(GSL
 FetchContent_MakeAvailable(GSL)
 get_target_property(GSL_INCLUDE_DIRS Microsoft.GSL::GSL INTERFACE_INCLUDE_DIRECTORIES)
 
-FetchContent_Declare(Catch2
-        GIT_REPOSITORY "https://github.com/catchorg/Catch2.git"
-        GIT_TAG "v3.7.1"
-        GIT_SHALLOW ON
-)
-FetchContent_MakeAvailable(Catch2)
-
-if (IS_DIRECTORY "${PROJECT_SOURCE_DIR}/.git")
-    # Install Git pre-commit hook
-    file(COPY scripts/pre-commit scripts/commit-msg
-            DESTINATION "${PROJECT_SOURCE_DIR}/.git/hooks")
+if (VERIFIER_ENABLE_TESTS)
+    FetchContent_Declare(Catch2
+            GIT_REPOSITORY "https://github.com/catchorg/Catch2.git"
+            GIT_TAG "v3.7.1"
+            GIT_SHALLOW ON
+    )
+    FetchContent_MakeAvailable(Catch2)
 endif ()
+
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR
         "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
-    find_package(yaml-cpp REQUIRED)
+    if (VERIFIER_ENABLE_TESTS)
+        find_package(yaml-cpp REQUIRED)
+    endif ()
     find_package(Boost REQUIRED)
     set(CMAKE_CXX_STANDARD 20)
     set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -53,22 +65,24 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
     set(Boost_INCLUDE_DIRS ${CMAKE_BINARY_DIR}/packages/boost/lib/native/include)
     set(Boost_LIBRARY_DIRS ${CMAKE_BINARY_DIR}/packages/boost_filesystem-vc143/lib/native)
 
-    # MSVC's "std:c++20" option is the current standard that supports all the C++17
-    # features we use. However, cmake can't deal with that here, so we set it below.
+    if (VERIFIER_ENABLE_TESTS)
+        # MSVC's "std:c++20" option is the current standard that supports all the C++17
+        # features we use. However, cmake can't deal with that here, so we set it below.
 
-    set(EXTERNAL_INSTALL_LOCATION ${CMAKE_BINARY_DIR}/packages/yaml-cpp)
-    include(ExternalProject)
-    ExternalProject_Add(yaml-cpp
-            GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
-            GIT_TAG "yaml-cpp-0.7.0"
-            GIT_SHALLOW true
-            CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${EXTERNAL_INSTALL_LOCATION}
-            -DYAML_MSVC_SHARED_RT=ON
-            -DYAML_CPP_BUILD_TESTS=OFF
-            -DYAML_CPP_BUILD_TOOLS=OFF
-    )
-    set(YAML_CPP_LIBRARIES ${EXTERNAL_INSTALL_LOCATION}/lib/yaml-cpp$<$<CONFIG:DEBUG>:d>.lib)
-    set(YAML_CPP_INCLUDE_DIRS ${EXTERNAL_INSTALL_LOCATION}/include/)
+        set(EXTERNAL_INSTALL_LOCATION ${CMAKE_BINARY_DIR}/packages/yaml-cpp)
+        include(ExternalProject)
+        ExternalProject_Add(yaml-cpp
+                GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
+                GIT_TAG "yaml-cpp-0.7.0"
+                GIT_SHALLOW true
+                CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${EXTERNAL_INSTALL_LOCATION}
+                -DYAML_MSVC_SHARED_RT=ON
+                -DYAML_CPP_BUILD_TESTS=OFF
+                -DYAML_CPP_BUILD_TOOLS=OFF
+        )
+        set(YAML_CPP_LIBRARIES ${EXTERNAL_INSTALL_LOCATION}/lib/yaml-cpp$<$<CONFIG:DEBUG>:d>.lib)
+        set(YAML_CPP_INCLUDE_DIR ${EXTERNAL_INSTALL_LOCATION}/include/)
+    endif ()
 endif ()
 
 include_directories(./external)
@@ -77,8 +91,11 @@ include_directories(./src)
 include_directories(./external/libbtf)
 include_directories(${GSL_INCLUDE_DIRS})
 include_directories(${Boost_INCLUDE_DIRS})
-include_directories(${YAML_CPP_INCLUDE_DIRS})
+include_directories(${YAML_CPP_INCLUDE_DIR})
+
+link_directories(${YAML_CPP_LIBRARY_DIR})
 link_directories(${Boost_LIBRARY_DIRS})
+
 
 file(GLOB LIB_SRC
         "./src/*.cpp"
@@ -88,14 +105,19 @@ file(GLOB LIB_SRC
         "./src/linux/linux_platform.cpp"
 )
 
-file(GLOB ALL_TEST
-        "./src/test/test_conformance.cpp"
-        "./src/test/test_marshal.cpp"
-        "./src/test/test_print.cpp"
-        "./src/test/test_verify.cpp"
-        "./src/test/test_wto.cpp"
-        "./src/test/test_yaml.cpp"
-)
+if (VERIFIER_ENABLE_TESTS)
+    file(GLOB ALL_TEST
+            "./src/test/test_conformance.cpp"
+            "./src/test/test_marshal.cpp"
+            "./src/test/test_print.cpp"
+            "./src/test/test_verify.cpp"
+            "./src/test/test_wto.cpp"
+            "./src/test/test_yaml.cpp"
+            "./src/test/test_sign_extension.cpp"
+    )
+
+    set(LIB_SRC ${LIB_SRC} "./src/test/ebpf_yaml.cpp")
+endif ()
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR
         "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
@@ -112,30 +134,36 @@ endif ()
 
 add_library(ebpfverifier ${LIB_SRC})
 
-add_executable(check src/main/check.cpp src/main/linux_verifier.cpp)
-add_executable(tests ${ALL_TEST})
-add_executable(run_yaml src/main/run_yaml.cpp)
-add_executable(conformance_check src/test/conformance_check.cpp)
+if (VERIFIER_ENABLE_TESTS)
+    add_executable(check src/main/check.cpp src/main/linux_verifier.cpp)
+    add_executable(tests ${ALL_TEST})
+    add_executable(run_yaml src/main/run_yaml.cpp)
+    add_executable(conformance_check src/test/conformance_check.cpp)
+endif ()
 
 target_include_directories(ebpfverifier PRIVATE ${GSL_INCLUDE_DIRS})
 
-set_target_properties(check
-        PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/..")
+if (VERIFIER_ENABLE_TESTS)
+    target_include_directories(run_yaml PRIVATE src/test)
 
-set_target_properties(tests
-        PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/..")
+    set_target_properties(check
+            PROPERTIES
+            RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/..")
 
-set_target_properties(run_yaml
-        PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/..")
+    set_target_properties(tests
+            PROPERTIES
+            RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/..")
 
-set_target_properties(conformance_check
-        PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/..")
+    set_target_properties(run_yaml
+            PROPERTIES
+            RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/..")
 
-add_dependencies(tests conformance_check)
+    set_target_properties(conformance_check
+            PROPERTIES
+            RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/..")
+
+    add_dependencies(tests conformance_check)
+endif ()
 
 target_compile_options(ebpfverifier PRIVATE ${COMMON_FLAGS})
 target_compile_options(ebpfverifier PUBLIC "$<$<CONFIG:DEBUG>:${DEBUG_FLAGS}>")
@@ -143,7 +171,9 @@ target_compile_options(ebpfverifier PUBLIC "$<$<CONFIG:RELEASE>:${RELEASE_FLAGS}
 target_compile_options(ebpfverifier PUBLIC "$<$<CONFIG:SANITIZE>:${SANITIZE_FLAGS}>")
 
 add_subdirectory("external/bpf_conformance/external/elfio")
-add_subdirectory("external/bpf_conformance/src")
+if (VERIFIER_ENABLE_TESTS)
+    add_subdirectory("external/bpf_conformance/src")
+endif ()
 add_subdirectory("external/libbtf")
 
 # CMake derives a Visual Studio project GUID from the file path but can be overridden via a property
@@ -161,23 +191,25 @@ target_link_libraries(ebpfverifier PRIVATE libbtf)
 target_link_libraries(ebpfverifier PRIVATE Microsoft.GSL::GSL)
 target_compile_options(ebpfverifier PRIVATE ${COMMON_FLAGS})
 
-target_compile_options(check PRIVATE ${COMMON_FLAGS})
-target_compile_options(check PUBLIC "$<$<CONFIG:DEBUG>:${DEBUG_FLAGS}>")
-target_compile_options(check PUBLIC "$<$<CONFIG:RELEASE>:${RELEASE_FLAGS}>")
-target_compile_options(check PUBLIC "$<$<CONFIG:SANITIZE>:${SANITIZE_FLAGS}>")
-target_link_libraries(check PRIVATE ebpfverifier)
+if (VERIFIER_ENABLE_TESTS)
+    target_compile_options(check PRIVATE ${COMMON_FLAGS})
+    target_compile_options(check PUBLIC "$<$<CONFIG:DEBUG>:${DEBUG_FLAGS}>")
+    target_compile_options(check PUBLIC "$<$<CONFIG:RELEASE>:${RELEASE_FLAGS}>")
+    target_compile_options(check PUBLIC "$<$<CONFIG:SANITIZE>:${SANITIZE_FLAGS}>")
+    target_link_libraries(check PRIVATE ebpfverifier)
 
-message("Boost_LIBRARY_DIRS: ${Boost_LIBRARY_DIRS}")
-target_compile_options(tests PRIVATE ${COMMON_FLAGS})
-target_compile_options(tests PUBLIC "$<$<CONFIG:DEBUG>:${DEBUG_FLAGS}>")
-target_compile_options(tests PUBLIC "$<$<CONFIG:RELEASE>:${RELEASE_FLAGS}>")
-target_compile_options(tests PUBLIC "$<$<CONFIG:SANITIZE>:${SANITIZE_FLAGS}>")
-target_link_libraries(tests PRIVATE ebpfverifier)
-target_link_libraries(tests PRIVATE bpf_conformance)
-target_link_libraries(tests PRIVATE ${CMAKE_DL_LIBS})
-target_link_libraries(tests PRIVATE Threads::Threads)
-target_link_libraries(tests PRIVATE Catch2::Catch2WithMain)
+    message("Boost_LIBRARY_DIRS: ${Boost_LIBRARY_DIRS}")
+    target_compile_options(tests PRIVATE ${COMMON_FLAGS})
+    target_compile_options(tests PUBLIC "$<$<CONFIG:DEBUG>:${DEBUG_FLAGS}>")
+    target_compile_options(tests PUBLIC "$<$<CONFIG:RELEASE>:${RELEASE_FLAGS}>")
+    target_compile_options(tests PUBLIC "$<$<CONFIG:SANITIZE>:${SANITIZE_FLAGS}>")
+    target_link_libraries(tests PRIVATE ebpfverifier)
+    target_link_libraries(tests PRIVATE bpf_conformance)
+    target_link_libraries(tests PRIVATE ${CMAKE_DL_LIBS})
+    target_link_libraries(tests PRIVATE Threads::Threads)
+    target_link_libraries(tests PRIVATE Catch2::Catch2WithMain)
 
-target_link_libraries(run_yaml PRIVATE ebpfverifier)
+    target_link_libraries(run_yaml PRIVATE ebpfverifier)
 
-target_link_libraries(conformance_check PRIVATE ebpfverifier)
+    target_link_libraries(conformance_check PRIVATE ebpfverifier)
+endif ()

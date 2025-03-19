@@ -6,18 +6,18 @@
 
 #define CONFORMANCE_TEST_PATH "external/bpf_conformance/tests/"
 
-void test_conformance(std::string filename, bpf_conformance_test_result_t expected_result,
-                      std::string expected_reason) {
+static void test_conformance(const std::string& filename, const bpf_conformance_test_result_t& expected_result,
+                             const std::string& expected_reason) {
     std::vector<std::filesystem::path> test_files = {CONFORMANCE_TEST_PATH + filename};
     boost::filesystem::path test_path = boost::dll::program_location();
-    boost::filesystem::path extension = test_path.extension();
-    std::filesystem::path plugin_path =
+    const boost::filesystem::path extension = test_path.extension();
+    const std::filesystem::path plugin_path =
         test_path.remove_filename().append("conformance_check" + extension.string()).string();
     std::map<std::filesystem::path, std::tuple<bpf_conformance_test_result_t, std::string>> result =
         bpf_conformance(test_files, plugin_path, {}, {}, {}, bpf_conformance_test_CPU_version_t::v4,
                         bpf_conformance_groups_t::default_groups | bpf_conformance_groups_t::callx,
                         bpf_conformance_list_instructions_t::LIST_INSTRUCTIONS_NONE, true);
-    for (auto file : test_files) {
+    for (const auto& file : test_files) {
         auto& [file_result, reason] = result[file];
         REQUIRE(file_result == expected_result);
         if (file_result != bpf_conformance_test_result_t::TEST_RESULT_PASS && !expected_reason.empty()) {
@@ -197,12 +197,20 @@ TEST_CONFORMANCE("movsx3264-reg.data")
 TEST_CONFORMANCE("movsx832-reg.data")
 TEST_CONFORMANCE("movsx864-reg.data")
 TEST_CONFORMANCE("mul32-imm.data")
+TEST_CONFORMANCE("mul32-intmin-by-negone-imm.data")
+TEST_CONFORMANCE("mul32-intmin-by-negone-reg.data")
 TEST_CONFORMANCE("mul32-reg-overflow.data")
 TEST_CONFORMANCE("mul32-reg.data")
 TEST_CONFORMANCE("mul64-imm.data")
+TEST_CONFORMANCE("mul64-intmin-by-negone-imm.data")
+TEST_CONFORMANCE("mul64-intmin-by-negone-reg.data")
 TEST_CONFORMANCE("mul64-reg.data")
 TEST_CONFORMANCE("neg.data")
+TEST_CONFORMANCE("neg32-intmin-imm.data")
+TEST_CONFORMANCE("neg32-intmin-reg.data")
 TEST_CONFORMANCE("neg64.data")
+TEST_CONFORMANCE("neg64-intmin-imm.data")
+TEST_CONFORMANCE("neg64-intmin-reg.data")
 TEST_CONFORMANCE_RANGE("prime.data", "[0, 1]")
 TEST_CONFORMANCE("rsh32-imm.data")
 TEST_CONFORMANCE("rsh32-imm-high.data")
@@ -219,11 +227,17 @@ TEST_CONFORMANCE("rsh64-reg-neg.data")
 TEST_CONFORMANCE("sdiv32-by-zero-imm.data")
 TEST_CONFORMANCE("sdiv32-by-zero-reg.data")
 TEST_CONFORMANCE("sdiv32-imm.data")
+TEST_CONFORMANCE("sdiv32-intmin-by-negone-imm.data")
+TEST_CONFORMANCE("sdiv32-intmin-by-negone-reg.data")
 TEST_CONFORMANCE("sdiv32-reg.data")
 TEST_CONFORMANCE("sdiv64-by-zero-imm.data")
 TEST_CONFORMANCE("sdiv64-by-zero-reg.data")
 TEST_CONFORMANCE("sdiv64-imm.data")
+TEST_CONFORMANCE("sdiv64-intmin-by-negone-imm.data")
+TEST_CONFORMANCE("sdiv64-intmin-by-negone-reg.data")
 TEST_CONFORMANCE("sdiv64-reg.data")
+TEST_CONFORMANCE("smod32-intmin-by-negone-imm.data")
+TEST_CONFORMANCE("smod32-intmin-by-negone-reg.data")
 TEST_CONFORMANCE("smod32-neg-by-neg-imm.data")
 TEST_CONFORMANCE("smod32-neg-by-neg-reg.data")
 TEST_CONFORMANCE("smod32-neg-by-pos-imm.data")
@@ -232,6 +246,8 @@ TEST_CONFORMANCE("smod32-neg-by-zero-imm.data")
 TEST_CONFORMANCE("smod32-neg-by-zero-reg.data")
 TEST_CONFORMANCE("smod32-pos-by-neg-imm.data")
 TEST_CONFORMANCE("smod32-pos-by-neg-reg.data")
+TEST_CONFORMANCE("smod64-intmin-by-negone-imm.data")
+TEST_CONFORMANCE("smod64-intmin-by-negone-reg.data")
 TEST_CONFORMANCE("smod64-neg-by-neg-imm.data")
 TEST_CONFORMANCE("smod64-neg-by-neg-reg.data")
 TEST_CONFORMANCE("smod64-neg-by-pos-imm.data")
