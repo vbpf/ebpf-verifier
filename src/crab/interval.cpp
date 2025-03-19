@@ -373,34 +373,43 @@ interval_t interval_t::LShr(const interval_t& x) const {
     return top();
 }
 
+// idea: use uvalue and svalue to be more precise
 interval_t interval_t::sign_extend(const int bits) const {
     if (bits >= 64) {
         CRAB_ERROR("Invalid width ", bits);
     }
 
-    const uint64_t span = 1ULL << bits;
-    if (size() >= span) {
-        return signed_int(bits);
+    const interval_t full_range = signed_int(bits);
+    if (size() >= full_range.size()) {
+        return full_range;
     }
 
-    const auto [_lb, _ub] = pair<int64_t>();
-    // interpret as unsigned to avoid undefined behavior on signed shift
-    const auto [lb, ub] = std::make_tuple<uint64_t>(to_unsigned(_lb), to_unsigned(_ub));
-
-    const auto sext = [bits](const uint64_t x) -> int64_t {
+    const auto sext = [bits](const int64_t x) -> int64_t {
         const int shift = 64 - bits;
-        return keep_signed<int64_t>(x << shift) >> shift;
+        // Work with unsigned values to avoid undefined behavior on shifts.
+        return keep_signed<int64_t>(to_unsigned(x) << shift) >> shift;
     };
-    {
-        const int64_t new_lb = sext(lb);
-        const int64_t new_ub = sext(ub);
-        if (new_lb < 0 || new_ub >= 0) {
-            return interval_t{new_lb, new_ub};
-        }
+
+    // int64_t is guaranteed to hold {_lb, _ub}.
+    const auto [_lb, _ub] = pair<int64_t>();
+    const int64_t lb_sext = sext(_lb);
+    const int64_t ub_sext = sext(_ub);
+
+    // If the sign–extended endpoints are in order, no wrap occurred.
+    if (lb_sext <= ub_sext) {
+        return interval_t{lb_sext, ub_sext};
     }
-    // Wrapped interval: lb ≥ 0, ub < 0
-    const int64_t new_lb = sext(1ULL << (bits - 1));
-    const int64_t new_ub = sext(lb & (span - 1));
-    return interval_t{sext(new_lb), sext(new_ub)};
+
+    // lb_sext > ub_sext, so we have a wrapped interval.
+    // When the lower bound is zero, use the sign-extension of the upper bound as the lower endpoint.
+    // Example: [0b000, 0b100] (i.e., [0, 4]) sign-extends to [-4, 3]
+    //   sext(0) = 0, sext(4) = -4 -> wrapped -> result = [-4, 3]
+    if (lb_sext == 0) {
+        return interval_t{ub_sext, full_range._ub};
+    }
+    // Otherwise, the wrapped interval covers the full signed range.
+    // Example: [0b001, 0b101] (i.e., [1, 5]) sign-extends to [1, -3],
+    // but 0b100 is in the range, and so does 0b011, so the result is [-4, 3]
+    return full_range;
 }
 } // namespace crab
