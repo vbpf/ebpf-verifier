@@ -232,7 +232,7 @@ class interval_t final {
         if (is_bottom()) {
             return bound_t{number_t{0}};
         }
-        return _ub - _lb;
+        return _ub - _lb + 1;
     }
 
     [[nodiscard]]
@@ -348,13 +348,16 @@ class interval_t final {
     // Return an interval in the range [INT_MIN, INT_MAX] which can only
     // be represented as an svalue.
     static interval_t signed_int(const int width) {
-        switch (width) {
-        case 8: return full<int8_t>();
-        case 16: return full<int16_t>();
-        case 32: return full<int32_t>();
-        case 64: return full<int64_t>();
-        default: CRAB_ERROR("Invalid width ", width);
+        if (width == 64) {
+            return full<int64_t>();
         }
+        if (width <= 0 || width >= 64) {
+            CRAB_ERROR("Invalid width ", width);
+        }
+        const int64_t highest_bit = 1LL << (width - 1);
+        const int64_t lower = -highest_bit;
+        const int64_t upper = highest_bit - 1;
+        return interval_t{lower, upper};
     }
 
     interval_t unsigned_int(bool is64) const = delete;

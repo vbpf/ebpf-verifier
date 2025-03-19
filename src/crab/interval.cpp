@@ -385,20 +385,22 @@ interval_t interval_t::sign_extend(const int bits) const {
 
     const auto [_lb, _ub] = pair<int64_t>();
     // interpret as unsigned to avoid undefined behavior on signed shift
-    const auto [lb, ub] = std::tuple{to_unsigned(_lb), to_unsigned(_ub)};
-    const int shift = 64 - bits;
+    const auto [lb, ub] = std::make_tuple<uint64_t>(to_unsigned(_lb), to_unsigned(_ub));
 
-    const int64_t new_lb = keep_signed<int64_t>(lb << shift) >> shift;
-    const int64_t new_ub = keep_signed<int64_t>(ub << shift) >> shift;
-    if (new_lb < 0 || new_ub >= 0) {
-        return interval_t{new_lb, new_ub};
+    const auto sext = [bits](const uint64_t x) -> int64_t {
+        const int shift = 64 - bits;
+        return keep_signed<int64_t>(x << shift) >> shift;
+    };
+    {
+        const int64_t new_lb = sext(lb);
+        const int64_t new_ub = sext(ub);
+        if (new_lb < 0 || new_ub >= 0) {
+            return interval_t{new_lb, new_ub};
+        }
     }
     // Wrapped interval: lb ≥ 0, ub < 0
-    // Real range: [1ULL << (bits - 1), ub & (span - 1)]
-    const uint64_t real_lb = 1ULL << (bits - 1);
-    const uint64_t real_ub = ub & (span - 1);
-    const int64_t signed_lb = keep_signed<int64_t>(real_lb << shift) >> shift;
-    const int64_t signed_ub = keep_signed<int64_t>(real_ub << shift) >> shift;
-    return interval_t{signed_lb, signed_ub};
+    const int64_t new_lb = sext(1ULL << (bits - 1));
+    const int64_t new_ub = sext(lb & (span - 1));
+    return interval_t{sext(new_lb), sext(new_ub)};
 }
 } // namespace crab
