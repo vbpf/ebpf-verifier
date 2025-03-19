@@ -52,8 +52,6 @@ class ebpf_transformer final {
 
     void initialize_loop_counter(const label_t& label);
 
-    static ebpf_domain_t setup_entry(bool init_r1);
-
   private:
     void assign(variable_t lhs, variable_t rhs);
     void assign(variable_t x, const linear_expression_t& e);
@@ -114,7 +112,7 @@ class ebpf_transformer final {
     void havoc_subprogram_stack(const std::string& prefix);
     void forget_packet_pointers();
     void do_load_mapfd(const Reg& dst_reg, int mapfd, bool maybe_null);
-    void do_load_map_address(const Reg& dst_reg, const int mapfd, int32_t offset);
+    void do_load_map_address(const Reg& dst_reg, int mapfd, int32_t offset);
 
     void assign_valid_ptr(const Reg& dst_reg, bool maybe_null);
 
@@ -695,7 +693,7 @@ static std::vector<linear_constraint_t> assume_unsigned_cst_interval(const NumAb
     // Handle uvalue != right.
     if (op == Condition::Op::NE) {
         if (auto rn = right_interval.singleton()) {
-            if (rn == left_interval.truncate_to_uint(is64 ? 64 : 32).lb().number()) {
+            if (rn == left_interval.zero_extend(is64 ? 64 : 32).lb().number()) {
                 // "NE lower bound" is equivalent to "GT lower bound".
                 op = Condition::Op::GT;
                 right_interval = interval_t{left_interval.lb()};
@@ -961,8 +959,8 @@ static void overflow_bounds(NumAbsDomain& inv, variable_t lhs, int finite_width,
     // For a signed result, we need to ensure the signed and unsigned results match
     // so for a 32-bit operation, 0x80000000 should be a positive 64-bit number not
     // a sign extended negative one.
-    number_t lb = lb_value.truncate_to_uint(finite_width);
-    number_t ub = ub_value.truncate_to_uint(finite_width);
+    number_t lb = lb_value.zero_extend(finite_width);
+    number_t ub = ub_value.zero_extend(finite_width);
     if (issigned) {
         lb = lb.truncate_to<int64_t>();
         ub = ub.truncate_to<int64_t>();
@@ -1431,12 +1429,8 @@ void ebpf_transformer::do_load_packet_or_shared(NumAbsDomain& inv, const Reg& ta
     havoc_register(inv, target_reg);
 
     // A 1 or 2 byte copy results in a limited range of values that may be used as array indices.
-    if (width == 1) {
-        const interval_t full = interval_t::full<uint8_t>();
-        inv.set(target.svalue, full);
-        inv.set(target.uvalue, full);
-    } else if (width == 2) {
-        const interval_t full = interval_t::full<uint16_t>();
+    if (width == 1 || width == 2) {
+        const interval_t full = interval_t::unsigned_int(width * 8);
         inv.set(target.svalue, full);
         inv.set(target.uvalue, full);
     }
