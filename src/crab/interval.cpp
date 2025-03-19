@@ -373,9 +373,14 @@ interval_t interval_t::LShr(const interval_t& x) const {
     return top();
 }
 
-// idea: use uvalue and svalue to be more precise
+static int64_t sext(const int64_t x, const int bits) {
+    const int shift = 64 - bits;
+    // Work with unsigned values to avoid undefined behavior on shifts.
+    return keep_signed<int64_t>(to_unsigned(x) << shift) >> shift;
+}
+
 interval_t interval_t::sign_extend(const int bits) const {
-    if (bits >= 64) {
+    if (bits >= 64 || bits <= 0) {
         CRAB_ERROR("Invalid width ", bits);
     }
 
@@ -384,32 +389,18 @@ interval_t interval_t::sign_extend(const int bits) const {
         return full_range;
     }
 
-    const auto sext = [bits](const int64_t x) -> int64_t {
-        const int shift = 64 - bits;
-        // Work with unsigned values to avoid undefined behavior on shifts.
-        return keep_signed<int64_t>(to_unsigned(x) << shift) >> shift;
-    };
-
     // int64_t is guaranteed to hold {_lb, _ub}.
     const auto [_lb, _ub] = pair<int64_t>();
-    const int64_t lb_sext = sext(_lb);
-    const int64_t ub_sext = sext(_ub);
+    const int64_t lb_sext = sext(_lb, bits);
+    const int64_t ub_sext = sext(_ub, bits);
 
     // If the sign–extended endpoints are in order, no wrap occurred.
     if (lb_sext <= ub_sext) {
         return interval_t{lb_sext, ub_sext};
     }
-
-    // lb_sext > ub_sext, so we have a wrapped interval.
-    // When the lower bound is zero, use the sign-extension of the upper bound as the lower endpoint.
-    // Example: [0b000, 0b100] (i.e., [0, 4]) sign-extends to [-4, 3]
-    //   sext(0) = 0, sext(4) = -4 -> wrapped -> result = [-4, 3]
-    if (lb_sext == 0) {
-        return interval_t{ub_sext, full_range._ub};
-    }
-    // Otherwise, the wrapped interval covers the full signed range.
-    // Example: [0b001, 0b101] (i.e., [1, 5]) sign-extends to [1, -3],
-    // but 0b100 is in the range, and so does 0b011, so the result is [-4, 3]
+    // otherwise:
+    // * 0b1000... is in the range (<=ub), so lb must be the minimum.
+    // * 0b0111... is in the range (>=lb), so ub must be the maximum.
     return full_range;
 }
 } // namespace crab
