@@ -72,7 +72,7 @@ interval_t interval_t::operator/(const interval_t& x) const {
 }
 
 // Signed division.
-interval_t interval_t::SDiv(const interval_t& x) const {
+interval_t interval_t::sdiv(const interval_t& x) const {
     if (is_bottom() || x.is_bottom()) {
         return bottom();
     }
@@ -96,12 +96,12 @@ interval_t interval_t::SDiv(const interval_t& x) const {
         // The divisor contains 0.
         interval_t l{x._lb, -1};
         interval_t u{1, x._ub};
-        return SDiv(l) | SDiv(u) | interval_t{0};
+        return sdiv(l) | sdiv(u) | interval_t{0};
     } else if (contains(0)) {
         // The dividend contains 0.
         interval_t l{_lb, -1};
         interval_t u{1, _ub};
-        return l.SDiv(x) | u.SDiv(x) | interval_t{0};
+        return l.sdiv(x) | u.sdiv(x) | interval_t{0};
     } else {
         // Neither the dividend nor the divisor contains 0
         interval_t a = make_dividend_when_both_nonzero(*this, x);
@@ -116,7 +116,7 @@ interval_t interval_t::SDiv(const interval_t& x) const {
 }
 
 // Unsigned division.
-interval_t interval_t::UDiv(const interval_t& x) const {
+interval_t interval_t::udiv(const interval_t& x) const {
     if (is_bottom() || x.is_bottom()) {
         return bottom();
     }
@@ -129,7 +129,7 @@ interval_t interval_t::UDiv(const interval_t& x) const {
             if (c == 1) {
                 return *this;
             } else if (c > 0) {
-                return interval_t{_lb.UDiv(c), _ub.UDiv(c)};
+                return interval_t{_lb.udiv(c), _ub.udiv(c)};
             } else {
                 // The eBPF ISA defines division by 0 as resulting in 0.
                 return interval_t{0};
@@ -140,27 +140,27 @@ interval_t interval_t::UDiv(const interval_t& x) const {
         // The divisor contains 0.
         interval_t l{x._lb, -1};
         interval_t u{1, x._ub};
-        return UDiv(l) | UDiv(u) | interval_t{0};
+        return udiv(l) | udiv(u) | interval_t{0};
     }
     if (contains(0)) {
         // The dividend contains 0.
         interval_t l{_lb, -1};
         interval_t u{1, _ub};
-        return l.UDiv(x) | u.UDiv(x) | interval_t{0};
+        return l.udiv(x) | u.udiv(x) | interval_t{0};
     }
     // Neither the dividend nor the divisor contains 0
     interval_t a = make_dividend_when_both_nonzero(*this, x);
     const auto [clb, cub] = std::minmax({
-        a._lb.UDiv(x._lb),
-        a._lb.UDiv(x._ub),
-        a._ub.UDiv(x._lb),
-        a._ub.UDiv(x._ub),
+        a._lb.udiv(x._lb),
+        a._lb.udiv(x._ub),
+        a._ub.udiv(x._lb),
+        a._ub.udiv(x._ub),
     });
     return interval_t{clb, cub};
 }
 
 // Signed remainder (modulo).
-interval_t interval_t::SRem(const interval_t& x) const {
+interval_t interval_t::srem(const interval_t& x) const {
     // note that the sign of the divisor does not matter
 
     if (is_bottom() || x.is_bottom()) {
@@ -178,7 +178,7 @@ interval_t interval_t::SRem(const interval_t& x) const {
         // The divisor contains 0.
         interval_t l{x._lb, -1};
         interval_t u{1, x._ub};
-        return SRem(l) | SRem(u) | *this;
+        return srem(l) | srem(u) | *this;
     }
     if (x.ub().is_finite() && x.lb().is_finite()) {
         auto [xlb, xub] = x.pair_number();
@@ -203,7 +203,7 @@ interval_t interval_t::SRem(const interval_t& x) const {
 }
 
 // Unsigned remainder (modulo).
-interval_t interval_t::URem(const interval_t& x) const {
+interval_t interval_t::urem(const interval_t& x) const {
     if (is_bottom() || x.is_bottom()) {
         return bottom();
     }
@@ -224,12 +224,12 @@ interval_t interval_t::URem(const interval_t& x) const {
         // The divisor contains 0.
         interval_t l{x._lb, -1};
         interval_t u{1, x._ub};
-        return URem(l) | URem(u) | *this;
+        return urem(l) | urem(u) | *this;
     } else if (contains(0)) {
         // The dividend contains 0.
         interval_t l{_lb, -1};
         interval_t u{1, _ub};
-        return l.URem(x) | u.URem(x) | *this;
+        return l.urem(x) | u.urem(x) | *this;
     } else {
         // Neither the dividend nor the divisor contains 0
         if (x._lb.is_infinite() || x._ub.is_infinite()) {
@@ -248,28 +248,30 @@ interval_t interval_t::URem(const interval_t& x) const {
 }
 
 // Do a bitwise-AND between two uvalue intervals.
-interval_t interval_t::And(const interval_t& x) const {
+interval_t interval_t::bitwise_and(const interval_t& x) const {
     if (is_bottom() || x.is_bottom()) {
         return bottom();
     }
     assert(is_top() || (lb() >= 0));
     assert(x.is_top() || (x.lb() >= 0));
 
-    if (const auto left = singleton()) {
-        if (const auto right = x.singleton()) {
+    if (*this == interval_t{0} || x == interval_t{0}) {
+        return interval_t{0};
+    }
+
+    if (const auto right = x.singleton()) {
+        if (const auto left = singleton()) {
             return interval_t{*left & *right};
         }
-    }
-    if (x == interval_t{std::numeric_limits<uint32_t>::max()}) {
-        // Handle bitwise-AND with std::numeric_limits<uint32_t>::max(), which we do for 32-bit operations.
-        if (const auto width = finite_size()) {
-            const number_t lb32_n = lb().number()->truncate_to<uint32_t>();
-            const number_t ub32_n = ub().number()->truncate_to<uint32_t>();
-            if (width->fits<uint32_t>() && lb32_n < ub32_n && lb32_n + width->truncate_to<uint32_t>() == ub32_n) {
-                return interval_t{lb32_n, ub32_n};
-            }
+        if (right == number_t::max_uint(32)) {
+            return zero_extend(32);
         }
-        return unsigned_int(32);
+        if (right == number_t::max_uint(16)) {
+            return zero_extend(16);
+        }
+        if (right == number_t::max_uint(8)) {
+            return zero_extend(8);
+        }
     }
     if (x.contains(std::numeric_limits<uint64_t>::max())) {
         return truncate_to<uint64_t>();
@@ -284,7 +286,7 @@ interval_t interval_t::And(const interval_t& x) const {
     }
 }
 
-interval_t interval_t::Or(const interval_t& x) const {
+interval_t interval_t::bitwise_or(const interval_t& x) const {
     if (is_bottom() || x.is_bottom()) {
         return bottom();
     }
@@ -304,7 +306,7 @@ interval_t interval_t::Or(const interval_t& x) const {
     return top();
 }
 
-interval_t interval_t::Xor(const interval_t& x) const {
+interval_t interval_t::bitwise_xor(const interval_t& x) const {
     if (is_bottom() || x.is_bottom()) {
         return bottom();
     }
@@ -313,10 +315,10 @@ interval_t interval_t::Xor(const interval_t& x) const {
             return interval_t{*left_op ^ *right_op};
         }
     }
-    return Or(x);
+    return bitwise_or(x);
 }
 
-interval_t interval_t::Shl(const interval_t& x) const {
+interval_t interval_t::shl(const interval_t& x) const {
     if (is_bottom() || x.is_bottom()) {
         return bottom();
     }
@@ -338,7 +340,7 @@ interval_t interval_t::Shl(const interval_t& x) const {
     return top();
 }
 
-interval_t interval_t::AShr(const interval_t& x) const {
+interval_t interval_t::ashr(const interval_t& x) const {
     if (is_bottom() || x.is_bottom()) {
         return bottom();
     }
@@ -360,7 +362,7 @@ interval_t interval_t::AShr(const interval_t& x) const {
     return top();
 }
 
-interval_t interval_t::LShr(const interval_t& x) const {
+interval_t interval_t::lshr(const interval_t& x) const {
     if (is_bottom() || x.is_bottom()) {
         return bottom();
     }

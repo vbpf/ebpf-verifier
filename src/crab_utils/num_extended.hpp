@@ -152,7 +152,7 @@ class extended_number final {
     }
 
     [[nodiscard]]
-    extended_number UDiv(const extended_number& x) const {
+    extended_number udiv(const extended_number& x) const {
         using M = uint64_t;
         return AbsDiv(x, [](number_t dividend, number_t divisor) {
             dividend = dividend >= 0 ? dividend : number_t{dividend.cast_to<M>()};
@@ -162,7 +162,7 @@ class extended_number final {
     }
 
     [[nodiscard]]
-    extended_number URem(const extended_number& x) const {
+    extended_number urem(const extended_number& x) const {
         using M = uint64_t;
         return AbsDiv(x, [](number_t dividend, number_t divisor) {
             dividend = dividend >= 0 ? dividend : number_t{dividend.cast_to<M>()};

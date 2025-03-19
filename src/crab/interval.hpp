@@ -128,7 +128,7 @@ class interval_t final {
         if (is_bottom()) {
             return x.is_bottom();
         } else {
-            return (_lb == x._lb) && (_ub == x._ub);
+            return _lb == x._lb && _ub == x._ub;
         }
     }
 
@@ -140,7 +140,7 @@ class interval_t final {
         } else if (x.is_bottom()) {
             return false;
         } else {
-            return (x._lb <= _lb) && (_ub <= x._ub);
+            return x._lb <= _lb && _ub <= x._ub;
         }
     }
 
@@ -181,8 +181,8 @@ class interval_t final {
         } else if (x.is_bottom()) {
             return *this;
         } else {
-            bound_t lb = x._lb < _lb ? ts.get_prev(x._lb) : _lb;
-            bound_t ub = _ub < x._ub ? ts.get_next(x._ub) : _ub;
+            const bound_t lb = x._lb < _lb ? ts.get_prev(x._lb) : _lb;
+            const bound_t ub = _ub < x._ub ? ts.get_next(x._ub) : _ub;
             return interval_t{lb, ub};
         }
     }
@@ -247,7 +247,7 @@ class interval_t final {
 
     [[nodiscard]]
     std::optional<number_t> singleton() const {
-        if (!is_bottom() && _lb == _ub) {
+        if (is_singleton()) {
             return _lb.number();
         } else {
             return std::optional<number_t>();
@@ -262,47 +262,40 @@ class interval_t final {
         return _lb <= b && b <= _ub;
     }
 
-    friend std::ostream& operator<<(std::ostream& o, const interval_t& interval) {
-        if (interval.is_bottom()) {
-            o << "_|_";
-        } else {
-            o << "[" << interval._lb << ", " << interval._ub << "]";
-        }
-        return o;
-    }
+    friend std::ostream& operator<<(std::ostream& o, const interval_t& interval);
 
     // division and remainder operations
 
     [[nodiscard]]
-    interval_t SDiv(const interval_t& x) const;
+    interval_t sdiv(const interval_t& x) const;
 
     [[nodiscard]]
-    interval_t UDiv(const interval_t& x) const;
+    interval_t udiv(const interval_t& x) const;
 
     [[nodiscard]]
-    interval_t SRem(const interval_t& x) const;
+    interval_t srem(const interval_t& x) const;
 
     [[nodiscard]]
-    interval_t URem(const interval_t& x) const;
+    interval_t urem(const interval_t& x) const;
 
     // bitwise operations
     [[nodiscard]]
-    interval_t And(const interval_t& x) const;
+    interval_t bitwise_and(const interval_t& x) const;
 
     [[nodiscard]]
-    interval_t Or(const interval_t& x) const;
+    interval_t bitwise_or(const interval_t& x) const;
 
     [[nodiscard]]
-    interval_t Xor(const interval_t& x) const;
+    interval_t bitwise_xor(const interval_t& x) const;
 
     [[nodiscard]]
-    interval_t Shl(const interval_t& x) const;
+    interval_t shl(const interval_t& x) const;
 
     [[nodiscard]]
-    interval_t LShr(const interval_t& x) const;
+    interval_t lshr(const interval_t& x) const;
 
     [[nodiscard]]
-    interval_t AShr(const interval_t& x) const;
+    interval_t ashr(const interval_t& x) const;
 
     interval_t sign_extend(bool is64) const = delete;
     [[nodiscard]]
@@ -345,27 +338,6 @@ class interval_t final {
     // Return a negative interval in the range [INT_MIN, -1],
     // which can be represented as both an svalue and a uvalue.
     static interval_t negative(const int width) { return interval_t{number_t::min_int(width), number_t{-1}}; }
-
-    template <std::integral T>
-    static interval_t nonnegative() {
-        return {number_t{0}, number_t{std::numeric_limits<T>::max()}};
-    }
-
-    template <std::integral T>
-    static interval_t negative() {
-        return {number_t{std::numeric_limits<T>::min()}, number_t{-1}};
-    }
-
-    template <std::integral T>
-    static interval_t full() {
-        return {number_t{std::numeric_limits<T>::min()}, number_t{std::numeric_limits<T>::max()}};
-    }
-
-    template <std::unsigned_integral T>
-    static interval_t high() {
-        return interval_t{number_t{std::numeric_limits<std::make_signed_t<T>>::max()} + 1,
-                          number_t{std::numeric_limits<T>::max()}};
-    }
 
     interval_t unsigned_high(bool is64) const = delete;
     // Return an interval in the range [INT_MAX+1, UINT_MAX], which can only be represented as a uvalue.

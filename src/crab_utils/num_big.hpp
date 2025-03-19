@@ -11,6 +11,7 @@
 
 #include "crab_utils/num_safety.hpp"
 #include "debug.hpp"
+
 using boost::multiprecision::cpp_int;
 
 namespace crab {
