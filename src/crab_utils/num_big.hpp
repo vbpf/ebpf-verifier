@@ -145,6 +145,10 @@ class number_t final {
         }
     }
 
+    static number_t max_int(const int width) { return number_t{cpp_int(1) << width} - 1; }
+
+    static number_t min_int(const int width) { return number_t{-(cpp_int(1) << width)}; }
+
     number_t operator+(const number_t& x) const { return number_t(_n + x._n); }
 
     number_t operator*(const number_t& x) const { return number_t(_n * x._n); }

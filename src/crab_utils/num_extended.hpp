@@ -181,6 +181,14 @@ class extended_number final {
 
     bool operator!=(const extended_number& x) const { return !operator==(x); }
 
+    [[nodiscard]]
+    number_t sign_extend(const int width) const {
+        if (is_infinite()) {
+            CRAB_ERROR("Bound: infinity cannot be sign_extended");
+        }
+        return _n.sign_extend(width);
+    }
+
     /*	operator<= and operator>= use a somewhat optimized implementation.
      *	results include up to 20% improvements in performance in the octagon domain
      *	over a more naive implementation.

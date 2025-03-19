@@ -373,14 +373,8 @@ interval_t interval_t::LShr(const interval_t& x) const {
     return top();
 }
 
-static int64_t sext(const int64_t x, const int bits) {
-    const int shift = 64 - bits;
-    // Work with unsigned values to avoid undefined behavior on shifts.
-    return keep_signed<int64_t>(to_unsigned(x) << shift) >> shift;
-}
-
 interval_t interval_t::sign_extend(const int bits) const {
-    if (bits >= 64 || bits <= 0) {
+    if (bits <= 0) {
         CRAB_ERROR("Invalid width ", bits);
     }
 
@@ -390,9 +384,8 @@ interval_t interval_t::sign_extend(const int bits) const {
     }
 
     // int64_t is guaranteed to hold {_lb, _ub}.
-    const auto [_lb, _ub] = pair<int64_t>();
-    const int64_t lb_sext = sext(_lb, bits);
-    const int64_t ub_sext = sext(_ub, bits);
+    const number_t lb_sext = _lb.sign_extend(bits);
+    const number_t ub_sext = _ub.sign_extend(bits);
 
     // If the sign–extended endpoints are in order, no wrap occurred.
     if (lb_sext <= ub_sext) {
