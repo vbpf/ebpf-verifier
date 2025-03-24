@@ -378,6 +378,12 @@ class program_reader_t {
                 const ELFIO::section& subprogram_section = *reader.sections[symbol_details.section_index];
 
                 if (const auto subprogram = find_subprogram(raw_programs, subprogram_section, symbol_details.name)) {
+                    // Don't permit recursive subprograms.
+                    if (subprogram == &prog) {
+                        throw UnmarshalError("Subprogram '" + symbol_details.name +
+                                             "' is the same as the calling program");
+                    }
+
                     // Make sure subprogram has already had any subprograms of its own appended.
                     std::string error = append_subprograms(*subprogram);
                     if (!error.empty()) {
