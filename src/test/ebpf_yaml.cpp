@@ -245,7 +245,7 @@ std::optional<Failure> run_yaml_test_case(TestCase test_case, bool debug) {
     program_info info{&g_platform_test, {}, program_type};
     thread_local_options = test_case.options;
     try {
-        const Program prog = Program::from_sequence(test_case.instruction_seq, info, test_case.options.cfg_opts);
+        const Program prog = Program::from_sequence(test_case.instruction_seq, info, test_case.options);
         const Invariants invariants = analyze(prog, test_case.assumed_pre_invariant);
         const string_invariant actual_last_invariant = invariants.invariant_at(label_t::exit);
         const std::set<string> actual_messages = invariants.check_assertions(prog).all_messages();
@@ -362,10 +362,9 @@ ConformanceTestResult run_conformance_test_case(const std::vector<std::byte>& me
         options.verbosity_opts.print_invariants = true;
         options.verbosity_opts.simplify = false;
     }
-    thread_local_options = options;
 
     try {
-        const Program prog = Program::from_sequence(inst_seq, info, options.cfg_opts);
+        const Program prog = Program::from_sequence(inst_seq, info, options);
         const Invariants invariants = analyze(prog, pre_invariant);
         return ConformanceTestResult{.success = invariants.verified(prog), .r0_value = invariants.exit_value()};
     } catch (const std::exception&) {

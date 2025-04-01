@@ -290,16 +290,17 @@ static cfg_builder_t instruction_seq_to_cfg(const InstructionSeq& insts, const b
 }
 
 Program Program::from_sequence(const InstructionSeq& inst_seq, const program_info& info,
-                               const prepare_cfg_options& options) {
+                               const ebpf_verifier_options_t& options) {
     thread_local_program_info.set(info);
+    thread_local_options = options;
 
     // Convert the instruction sequence to a deterministic control-flow graph.
-    cfg_builder_t builder = instruction_seq_to_cfg(inst_seq, options.must_have_exit);
+    cfg_builder_t builder = instruction_seq_to_cfg(inst_seq, options.cfg_opts.must_have_exit);
 
     // Detect loops using Weak Topological Ordering (WTO) and insert counters at loop entry points. WTO provides a
     // hierarchical decomposition of the CFG that identifies all strongly connected components (cycles) and their entry
     // points. These entry points serve as natural locations for loop counters that help verify program termination.
-    if (options.check_for_termination) {
+    if (options.cfg_opts.check_for_termination) {
         const crab::wto_t wto{builder.prog.cfg()};
         wto.for_each_loop_head([&](const label_t& label) -> void {
             builder.insert_after(label, label_t::make_increment_counter(label), IncrementLoopCounter{label});

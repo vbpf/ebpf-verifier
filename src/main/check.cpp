@@ -239,7 +239,7 @@ int main(int argc, char** argv) {
         // Convert the instruction sequence to a control-flow graph.
         try {
             const auto verbosity = ebpf_verifier_options.verbosity_opts;
-            const Program prog = Program::from_sequence(inst_seq, raw_prog.info, ebpf_verifier_options.cfg_opts);
+            const Program prog = Program::from_sequence(inst_seq, raw_prog.info, ebpf_verifier_options);
             if (domain == "cfg") {
                 print_program(prog, std::cout, verbosity.simplify);
                 return 0;
@@ -277,7 +277,7 @@ int main(int argc, char** argv) {
         return !res;
     } else if (domain == "stats") {
         // Convert the instruction sequence to a control-flow graph.
-        const Program prog = Program::from_sequence(inst_seq, raw_prog.info, ebpf_verifier_options.cfg_opts);
+        const Program prog = Program::from_sequence(inst_seq, raw_prog.info, ebpf_verifier_options);
 
         // Just print eBPF program stats.
         auto stats = collect_stats(prog);

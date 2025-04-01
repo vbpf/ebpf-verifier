@@ -53,7 +53,7 @@ class Program {
     }
 
     static Program from_sequence(const InstructionSeq& inst_seq, const program_info& info,
-                                 const prepare_cfg_options& options);
+                                 const ebpf_verifier_options_t& options);
 };
 
 class InvalidControlFlow final : public std::runtime_error {
