@@ -66,9 +66,6 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
     set(Boost_LIBRARY_DIRS ${CMAKE_BINARY_DIR}/packages/boost_filesystem-vc143/lib/native)
 
     if (VERIFIER_ENABLE_TESTS)
-        # MSVC's "std:c++20" option is the current standard that supports all the C++17
-        # features we use. However, cmake can't deal with that here, so we set it below.
-
         set(EXTERNAL_INSTALL_LOCATION ${CMAKE_BINARY_DIR}/packages/yaml-cpp)
         include(ExternalProject)
         ExternalProject_Add(yaml-cpp
@@ -79,6 +76,7 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
                 -DYAML_MSVC_SHARED_RT=ON
                 -DYAML_CPP_BUILD_TESTS=OFF
                 -DYAML_CPP_BUILD_TOOLS=OFF
+                -DCMAKE_POLICY_VERSION_MINIMUM=3.14
         )
         set(YAML_CPP_LIBRARIES ${EXTERNAL_INSTALL_LOCATION}/lib/yaml-cpp$<$<CONFIG:DEBUG>:d>.lib)
         set(YAML_CPP_INCLUDE_DIR ${EXTERNAL_INSTALL_LOCATION}/include/)
