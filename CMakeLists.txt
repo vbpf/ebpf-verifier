@@ -131,6 +131,7 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 endif ()
 
 add_library(ebpfverifier ${LIB_SRC})
+target_compile_definitions(ebpfverifier PRIVATE YAML_CPP_STATIC_DEFINE)
 
 if (VERIFIER_ENABLE_TESTS)
     add_executable(check src/main/check.cpp src/main/linux_verifier.cpp)
