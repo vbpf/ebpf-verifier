@@ -73,7 +73,7 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
         include(ExternalProject)
         ExternalProject_Add(yaml-cpp
                 GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
-                GIT_TAG "yaml-cpp-0.7.0"
+                GIT_TAG "0.8.0"
                 GIT_SHALLOW true
                 CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${EXTERNAL_INSTALL_LOCATION}
                 -DYAML_MSVC_SHARED_RT=ON
