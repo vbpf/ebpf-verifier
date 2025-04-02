@@ -41,27 +41,27 @@ FAIL_UNMARSHAL("invalid", "invalid-lddw.o", ".text")
         std::variant<InstructionSeq, std::string> prog_or_error = unmarshal(raw_prog);                            \
         const auto inst_seq = std::get_if<InstructionSeq>(&prog_or_error);                                        \
         REQUIRE(inst_seq != nullptr);                                                                             \
-        Program prog = Program::from_sequence(*inst_seq, raw_prog.info, thread_local_options.cfg_opts);           \
+        Program prog = Program::from_sequence(*inst_seq, raw_prog.info, thread_local_options);                    \
         REQUIRE_THROWS_AS(analyze(prog), UnmarshalError);                                                         \
     }
 
 FAIL_ANALYZE("build", "badmapptr.o", "test")
 
 // Verify a program in a section that may have multiple programs in it.
-#define VERIFY_PROGRAM(dirname, filename, section_name, program_name, _options, platform, should_pass, count)         \
-    do {                                                                                                              \
-        thread_local_options = _options;                                                                              \
-        const auto raw_progs = read_elf("ebpf-samples/" dirname "/" filename, section_name, {}, platform);            \
-        REQUIRE(raw_progs.size() == count);                                                                           \
-        for (const auto& raw_prog : raw_progs) {                                                                      \
-            if (count == 1 || raw_prog.function_name == program_name) {                                               \
-                const auto prog_or_error = unmarshal(raw_prog);                                                       \
-                const auto inst_seq = std::get_if<InstructionSeq>(&prog_or_error);                                    \
-                REQUIRE(inst_seq != nullptr);                                                                         \
-                const Program prog = Program::from_sequence(*inst_seq, raw_prog.info, thread_local_options.cfg_opts); \
-                REQUIRE(verify(prog) == should_pass);                                                                 \
-            }                                                                                                         \
-        }                                                                                                             \
+#define VERIFY_PROGRAM(dirname, filename, section_name, program_name, _options, platform, should_pass, count) \
+    do {                                                                                                      \
+        thread_local_options = _options;                                                                      \
+        const auto raw_progs = read_elf("ebpf-samples/" dirname "/" filename, section_name, {}, platform);    \
+        REQUIRE(raw_progs.size() == count);                                                                   \
+        for (const auto& raw_prog : raw_progs) {                                                              \
+            if (count == 1 || raw_prog.function_name == program_name) {                                       \
+                const auto prog_or_error = unmarshal(raw_prog);                                               \
+                const auto inst_seq = std::get_if<InstructionSeq>(&prog_or_error);                            \
+                REQUIRE(inst_seq != nullptr);                                                                 \
+                const Program prog = Program::from_sequence(*inst_seq, raw_prog.info, thread_local_options);  \
+                REQUIRE(verify(prog) == should_pass);                                                         \
+            }                                                                                                 \
+        }                                                                                                     \
     } while (0)
 
 // Verify a section with only one program in it.
