@@ -20,7 +20,7 @@ message("Building tests: ${VERIFIER_ENABLE_TESTS}")
 
 FetchContent_Declare(GSL
         GIT_REPOSITORY "https://github.com/microsoft/GSL"
-        GIT_TAG "v4.0.0"
+        GIT_TAG "v4.2.0"
         GIT_SHALLOW ON
 )
 FetchContent_MakeAvailable(GSL)
@@ -29,7 +29,7 @@ get_target_property(GSL_INCLUDE_DIRS Microsoft.GSL::GSL INTERFACE_INCLUDE_DIRECT
 if (VERIFIER_ENABLE_TESTS)
     FetchContent_Declare(Catch2
             GIT_REPOSITORY "https://github.com/catchorg/Catch2.git"
-            GIT_TAG "v3.7.1"
+            GIT_TAG "v3.8.0"
             GIT_SHALLOW ON
     )
     FetchContent_MakeAvailable(Catch2)
@@ -66,19 +66,17 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
     set(Boost_LIBRARY_DIRS ${CMAKE_BINARY_DIR}/packages/boost_filesystem-vc143/lib/native)
 
     if (VERIFIER_ENABLE_TESTS)
-        # MSVC's "std:c++20" option is the current standard that supports all the C++17
-        # features we use. However, cmake can't deal with that here, so we set it below.
-
         set(EXTERNAL_INSTALL_LOCATION ${CMAKE_BINARY_DIR}/packages/yaml-cpp)
         include(ExternalProject)
         ExternalProject_Add(yaml-cpp
                 GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
-                GIT_TAG "yaml-cpp-0.7.0"
+                GIT_TAG "0.8.0"
                 GIT_SHALLOW true
                 CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${EXTERNAL_INSTALL_LOCATION}
                 -DYAML_MSVC_SHARED_RT=ON
                 -DYAML_CPP_BUILD_TESTS=OFF
                 -DYAML_CPP_BUILD_TOOLS=OFF
+                -DCMAKE_POLICY_VERSION_MINIMUM=3.14
         )
         set(YAML_CPP_LIBRARIES ${EXTERNAL_INSTALL_LOCATION}/lib/yaml-cpp$<$<CONFIG:DEBUG>:d>.lib)
         set(YAML_CPP_INCLUDE_DIR ${EXTERNAL_INSTALL_LOCATION}/include/)
@@ -133,6 +131,7 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 endif ()
 
 add_library(ebpfverifier ${LIB_SRC})
+target_compile_definitions(ebpfverifier PRIVATE YAML_CPP_STATIC_DEFINE)
 
 if (VERIFIER_ENABLE_TESTS)
     add_executable(check src/main/check.cpp src/main/linux_verifier.cpp)
